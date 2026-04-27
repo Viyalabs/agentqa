@@ -10,10 +10,17 @@ Paste a deployed URL. AgentQA launches a real Chromium browser, crawls up to 10 
 
 - **Real browser crawling** — Playwright Chromium visits every page (not a headless HTTP client)
 - **Multi-page testing** — crawls navbar, footer, CTA links + probes common routes (`/login`, `/signup`, `/dashboard`, etc.)
-- **Issue detection** — 404s, JS crashes, console errors, broken images, failed API requests, broken forms, slow loads
-- **Screenshots** — full viewport capture for every scanned page
+- **Issue detection** — 404s, JS crashes, console errors, broken images, failed API requests, broken forms, slow loads, mobile layout overflow, large assets
+- **Screenshots** — full desktop (1280×800) and mobile (375×812) captures for every scanned page
+- **Video recording** — Playwright records a WebM replay for every page that has critical or medium issues
+- **Network debugging** — captures XHR/Fetch/script/stylesheet requests with status codes, response times, and sizes
+- **JS error stacks** — uncaught exceptions captured via `pageerror` with full stack traces
+- **Mobile responsiveness** — detects horizontal overflow at 375 px viewport after every page load
 - **QA Score** — 0–100 score with severity-weighted deductions
 - **Progressive results** — dashboard updates in real time as pages are scanned
+- **Issue grouping** — repeated issues collapsed to "Broken images on 4 pages" instead of 20 duplicate cards
+- **Shareable reports** — every scan gets a permanent public URL at `/report/{id}`
+- **Rescan** — one-click rescan from the results dashboard
 
 ---
 
@@ -25,7 +32,7 @@ Paste a deployed URL. AgentQA launches a real Chromium browser, crawls up to 10 
 | UI Components | Shadcn-style Radix UI components |
 | Testing Engine | Playwright (real Chromium) |
 | Database | Supabase (PostgreSQL) |
-| Storage | Supabase Storage (screenshots) |
+| Storage | Supabase Storage (screenshots, mobile screenshots, videos) |
 | Deployment | Vercel (frontend) |
 
 ---
@@ -87,13 +94,27 @@ Open [http://localhost:3000](http://localhost:3000).
 
 ---
 
+## Migrating an existing database
+
+If you already have the schema from the initial release, run these in your Supabase SQL Editor:
+
+```sql
+ALTER TABLE scanned_pages ADD COLUMN IF NOT EXISTS has_mobile_issues BOOLEAN NOT NULL DEFAULT false;
+ALTER TABLE scanned_pages ADD COLUMN IF NOT EXISTS mobile_screenshot_url TEXT;
+ALTER TABLE scanned_pages ADD COLUMN IF NOT EXISTS video_url TEXT;
+ALTER TABLE scanned_pages ADD COLUMN IF NOT EXISTS network_details JSONB;
+ALTER TABLE page_logs ADD COLUMN IF NOT EXISTS stack_trace TEXT;
+```
+
+---
+
 ## Usage
 
 1. Go to `http://localhost:3000`
 2. Enter any deployed URL (e.g. `https://example.com`)
 3. Click **Test Your App**
 4. Watch the dashboard update in real time
-5. Review the QA score, issues, pages, and screenshots
+5. Review the QA score, issues, network requests, screenshots, and video replays
 
 ---
 
@@ -105,13 +126,15 @@ agentqa/
 │   ├── page.tsx                  # Homepage
 │   ├── layout.tsx                # Root layout
 │   ├── globals.css               # Global styles
-│   └── api/
-│       └── scan/
-│           ├── route.ts          # POST /api/scan — start a scan
-│           └── [id]/
-│               └── route.ts      # GET /api/scan/:id — poll results
-├── app/scan/[id]/
-│   └── page.tsx                  # Results dashboard page
+│   ├── api/
+│   │   └── scan/
+│   │       ├── route.ts          # POST /api/scan — start a scan
+│   │       └── [id]/
+│   │           └── route.ts      # GET /api/scan/:id — poll results
+│   ├── scan/[id]/
+│   │   └── page.tsx              # Results dashboard page
+│   └── report/[id]/
+│       └── page.tsx              # Shareable public report URL
 ├── components/
 │   ├── ui/                       # Primitive UI components
 │   ├── hero.tsx                  # Homepage hero + scan form
@@ -123,13 +146,13 @@ agentqa/
 │   ├── footer.tsx                # Site footer
 │   ├── scan-form.tsx             # URL input form
 │   ├── results-dashboard.tsx     # Real-time results view (polls API)
-│   ├── issue-card.tsx            # Individual issue display
+│   ├── issue-card.tsx            # Individual issue display with stack traces
 │   └── screenshot-viewer.tsx     # Screenshot grid + lightbox
 ├── lib/
 │   ├── supabase.ts               # Supabase client + storage helpers
 │   └── utils.ts                  # URL validation, formatting helpers
 ├── playwright/
-│   ├── crawler.ts                # BFS web crawler, link extraction
+│   ├── crawler.ts                # BFS web crawler, link extraction, video recording
 │   └── page-tester.ts            # Per-page Playwright test runner
 ├── services/
 │   ├── scanner.ts                # Scan orchestrator (DB writes, issue classification)
@@ -137,7 +160,7 @@ agentqa/
 ├── types/
 │   └── index.ts                  # All TypeScript types
 ├── database/
-│   └── schema.sql                # Supabase table definitions + RLS policies
+│   └── schema.sql                # Supabase table definitions + RLS policies + migration
 └── __tests__/
     ├── url-validation.test.ts    # URL validation unit tests
     ├── scorer.test.ts            # Scoring logic tests
@@ -173,18 +196,36 @@ Minimum score is 0.
 - Page crash / unreachable
 - 404 Not Found
 - 5xx Server Error
-- Uncaught TypeError / ReferenceError / SyntaxError
+- Uncaught JS exception (TypeError / ReferenceError / SyntaxError) with stack trace
 
 **Medium**
 - Console errors (non-crash)
-- Failed XHR/fetch API requests
+- Failed XHR/Fetch API requests
 - Broken images (naturalWidth === 0)
 - Forms without submit buttons
 - Failed script/stylesheet loads
+- Mobile layout overflow (content wider than 375 px viewport)
 
 **Low**
 - Page load time > 5 seconds
 - More than 3 console warnings
+- Large JS/CSS assets (> 500 KB per file)
+
+---
+
+## Results dashboard
+
+| Tab | What it shows |
+|---|---|
+| **Issues** | All detected issues grouped by type, with severity filter. Expandable stack traces for JS errors. |
+| **Network** | Per-page breakdown of XHR, Fetch, script, and stylesheet requests — status, method, response time, size. Failed requests highlighted in red. |
+| **Pages** | All crawled pages with status code, load time, error/network/mobile flags, and video replay links. |
+| **Screenshots** | Desktop screenshot grid with click-to-fullscreen lightbox. |
+
+### Header actions
+- **Share** — copies `/report/{id}` to clipboard for a permanent public link
+- **Export JSON** — downloads the full scan data
+- **Rescan** — starts a fresh scan of the same URL
 
 ---
 
@@ -197,7 +238,7 @@ Minimum score is 0.
 3. Add environment variables (same as `.env.local`)
 4. Deploy
 
-> **Important:** Playwright requires Chromium binaries. Vercel serverless functions support this via the `playwright` npm package with bundled Chromium. For scans longer than Vercel's function timeout (60s on Hobby, 300s on Pro), consider running the scanner as a separate long-running process.
+> **Important:** Playwright requires Chromium binaries. Playwright videos and mobile screenshots are written to the system temp directory during a scan and uploaded to Supabase Storage before the function exits. On Vercel Hobby (60s timeout) very large sites may not complete — upgrade to Pro (300s) or run the scanner as a standalone worker.
 
 ### Running a standalone scan worker
 
@@ -207,8 +248,6 @@ For production environments where serverless timeouts are a concern:
 # Set up environment variables first, then:
 node scripts/run-scan.js <scanId> <url>
 ```
-
-The API route creates the scan record and the worker picks it up — you can decouple these however your infrastructure requires.
 
 ---
 
@@ -230,8 +269,11 @@ The API route creates the scan record and the worker picks it up — you can dec
 ### Why fire-and-forget scanning?
 The POST `/api/scan` endpoint creates the DB record and immediately returns a `scanId`. The Playwright scan runs asynchronously (fire-and-forget via `void runScan(...)`) and writes results to Supabase progressively. The frontend polls `GET /api/scan/:id` every 2.5 seconds. This gives fast initial response, real-time progress, and a clean separation between accepting the request and executing the scan.
 
-### Why Supabase Storage for screenshots?
-Base64-encoding screenshots in the DB column works but inflates the DB size quickly (each PNG is 200–500 KB). Supabase Storage keeps the DB lean and serves images via a CDN.
+### Why Supabase Storage for screenshots and videos?
+Storing binaries in the DB inflates it quickly. Supabase Storage keeps the DB lean and serves assets via CDN. Desktop screenshots, mobile screenshots, and WebM video replays all use the same `screenshots` bucket under different path prefixes.
+
+### Why store network_details as JSONB?
+Each page generates at most ~60 tracked requests (XHR, Fetch, scripts, stylesheets). Storing them as a JSONB column on `scanned_pages` avoids an extra join and keeps the API response shape flat, while still being queryable if needed later.
 
 ### Why not Edge runtime?
 Playwright requires Node.js APIs (child processes, file system). Edge runtime is incompatible. All API routes use `export const runtime = 'nodejs'`.
