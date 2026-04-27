@@ -1,8 +1,21 @@
-import type { PageTestResult } from '../types'
+import type { NetworkRequest, PageTestResult } from '../types'
 
 // Re-export the internal classification function for testing by extracting it.
 // We test the scoring integration end-to-end.
 import { calculateScore } from '../services/scorer'
+
+function makeNetworkFailure(resourceType: string): NetworkRequest {
+  return {
+    url: `https://api.example.com/${resourceType}`,
+    method: 'GET',
+    resourceType,
+    statusCode: null,
+    responseTimeMs: 0,
+    responseSizeBytes: null,
+    failed: true,
+    errorText: 'net::ERR_FAILED',
+  }
+}
 
 function makePageResult(overrides: Partial<PageTestResult> = {}): PageTestResult {
   return {
@@ -12,10 +25,14 @@ function makePageResult(overrides: Partial<PageTestResult> = {}): PageTestResult
     title: 'Example Page',
     consoleErrors: [],
     consoleWarnings: [],
-    networkFailures: [],
+    jsErrors: [],
+    networkRequests: [],
     failedImages: [],
     forms: [],
     screenshot: null,
+    mobileScreenshot: null,
+    hasMobileLayoutIssues: false,
+    videoPath: null,
     error: null,
     links: [],
     isCrash: false,
@@ -39,17 +56,23 @@ function expectIssueCount(pages: PageTestResult[], expected: { critical?: number
     if (page.isCrash) issues.push({ severity: 'critical' })
     if (page.is404) issues.push({ severity: 'critical' })
 
-    const criticalJs = page.consoleErrors.filter((e) =>
-      /TypeError|ReferenceError|SyntaxError|Uncaught/.test(e.message)
-    )
-    if (criticalJs.length > 0) issues.push({ severity: 'critical' })
+    // jsErrors (pageerror) take priority for critical JS detection
+    if (page.jsErrors.length > 0) {
+      issues.push({ severity: 'critical' })
+    } else {
+      const criticalJs = page.consoleErrors.filter((e) =>
+        /TypeError|ReferenceError|SyntaxError|Uncaught/.test(e.message)
+      )
+      if (criticalJs.length > 0) issues.push({ severity: 'critical' })
+    }
 
     const nonCriticalErrors = page.consoleErrors.filter(
       (e) => !/TypeError|ReferenceError|SyntaxError|Uncaught/.test(e.message)
     )
     if (nonCriticalErrors.length > 0) issues.push({ severity: 'medium' })
 
-    const apiFailures = page.networkFailures.filter((f) => f.resourceType === 'xhr' || f.resourceType === 'fetch')
+    const failedRequests = page.networkRequests.filter((r) => r.failed)
+    const apiFailures = failedRequests.filter((f) => f.resourceType === 'xhr' || f.resourceType === 'fetch')
     if (apiFailures.length > 0) issues.push({ severity: 'medium' })
 
     if (page.failedImages.length > 0) issues.push({ severity: 'medium' })
@@ -57,10 +80,12 @@ function expectIssueCount(pages: PageTestResult[], expected: { critical?: number
     const brokenForms = page.forms.filter((f) => !f.hasSubmitButton)
     if (brokenForms.length > 0) issues.push({ severity: 'medium' })
 
-    const resourceFailures = page.networkFailures.filter(
+    const resourceFailures = failedRequests.filter(
       (f) => f.resourceType === 'script' || f.resourceType === 'stylesheet'
     )
     if (resourceFailures.length > 0) issues.push({ severity: 'medium' })
+
+    if (page.hasMobileLayoutIssues) issues.push({ severity: 'medium' })
 
     if (page.loadTimeMs > 5000 && !page.is404) issues.push({ severity: 'low' })
     if (page.consoleWarnings.length > 3) issues.push({ severity: 'low' })
@@ -99,7 +124,14 @@ describe('Issue classification', () => {
       expectIssueCount([page], { critical: 1 })
     })
 
-    it('detects uncaught TypeError as critical', () => {
+    it('detects uncaught exception via jsErrors (pageerror)', () => {
+      const page = makePageResult({
+        jsErrors: [{ message: 'TypeError: Cannot read properties of null', stackTrace: 'Error\n  at foo', timestamp: Date.now() }],
+      })
+      expectIssueCount([page], { critical: 1 })
+    })
+
+    it('detects uncaught TypeError via console fallback', () => {
       const page = makePageResult({
         consoleErrors: [{ level: 'error', message: 'TypeError: Cannot read properties of null' }],
       })
@@ -124,14 +156,14 @@ describe('Issue classification', () => {
 
     it('detects failed XHR requests', () => {
       const page = makePageResult({
-        networkFailures: [{ url: 'https://api.example.com/data', status: null, method: 'GET', resourceType: 'xhr' }],
+        networkRequests: [makeNetworkFailure('xhr')],
       })
       expectIssueCount([page], { medium: 1 })
     })
 
     it('detects failed fetch requests', () => {
       const page = makePageResult({
-        networkFailures: [{ url: 'https://api.example.com/v2', status: null, method: 'POST', resourceType: 'fetch' }],
+        networkRequests: [makeNetworkFailure('fetch')],
       })
       expectIssueCount([page], { medium: 1 })
     })
@@ -155,6 +187,11 @@ describe('Issue classification', () => {
         forms: [{ action: '/submit', method: 'post', hasSubmitButton: true }],
       })
       expectIssueCount([page], { medium: 0, critical: 0 })
+    })
+
+    it('detects mobile layout overflow', () => {
+      const page = makePageResult({ hasMobileLayoutIssues: true })
+      expectIssueCount([page], { medium: 1 })
     })
   })
 

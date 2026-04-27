@@ -19,9 +19,15 @@ export interface CrawlProgress {
   totalVisited: number
 }
 
+export interface CrawlOptions {
+  /** Directory for Playwright video recordings. When provided, videos are recorded per page. */
+  videoDir?: string
+}
+
 export async function crawlWebsite(
   startUrl: string,
-  onProgress?: (progress: CrawlProgress) => Promise<void>
+  onProgress?: (progress: CrawlProgress) => Promise<void>,
+  options?: CrawlOptions
 ): Promise<PageTestResult[]> {
   const normalizedStart = normalizeUrl(startUrl)
   let baseOrigin: string
@@ -42,6 +48,9 @@ export async function crawlWebsite(
     userAgent: 'Mozilla/5.0 (compatible; AgentQA/1.0; +https://agentqa.dev/bot) Chrome/120',
     ignoreHTTPSErrors: true,
     javaScriptEnabled: true,
+    ...(options?.videoDir
+      ? { recordVideo: { dir: options.videoDir, size: { width: 1280, height: 800 } } }
+      : {}),
   })
 
   const visited = new Set<string>()
@@ -72,7 +81,6 @@ export async function crawlWebsite(
         }).catch(console.error)
       }
 
-      // Enqueue links discovered during page test (no second page load needed)
       if (depth < MAX_DEPTH && !result.isUnreachable && result.statusCode !== 404) {
         for (const link of result.links) {
           if (!visited.has(link) && !queued.has(link)) {

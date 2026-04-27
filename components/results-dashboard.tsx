@@ -1,6 +1,7 @@
 'use client'
 
-import { useEffect, useState, useCallback } from 'react'
+import { useEffect, useState, useCallback, useTransition } from 'react'
+import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import {
   CheckCircle2,
@@ -15,6 +16,14 @@ import {
   RefreshCw,
   Download,
   ArrowLeft,
+  Share2,
+  Copy,
+  Check,
+  Smartphone,
+  Video,
+  Wifi,
+  WifiOff,
+  Layers,
 } from 'lucide-react'
 import { Card, CardContent } from './ui/card'
 import { Badge } from './ui/badge'
@@ -22,7 +31,7 @@ import { Progress } from './ui/progress'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs'
 import { IssueCard } from './issue-card'
 import { ScreenshotViewer } from './screenshot-viewer'
-import type { ScanStatusResponse } from '@/types'
+import type { Issue, IssueSeverity, IssueType, NetworkRequest, ScanStatusResponse } from '@/types'
 import {
   getScoreColor,
   getScoreBgColor,
@@ -41,11 +50,115 @@ const POLL_INTERVAL_MS = 2500
 
 type SeverityFilter = 'all' | 'critical' | 'medium' | 'low'
 
+// ── Issue grouping ────────────────────────────────────────────────────────────
+
+interface GroupedIssue {
+  type: IssueType
+  severity: IssueSeverity
+  title: string
+  description: string | null
+  pageCount: number
+  totalCount: number
+  affectedUrls: string[]
+  representative: Issue
+  all: Issue[]
+}
+
+function groupIssues(issues: Issue[]): GroupedIssue[] {
+  const map = new Map<string, GroupedIssue>()
+
+  for (const issue of issues) {
+    const key = `${issue.type}::${issue.severity}`
+    if (!map.has(key)) {
+      map.set(key, {
+        type: issue.type,
+        severity: issue.severity,
+        title: issue.title,
+        description: issue.description,
+        pageCount: 0,
+        totalCount: 0,
+        affectedUrls: [],
+        representative: issue,
+        all: [],
+      })
+    }
+    const g = map.get(key)!
+    g.totalCount++
+    g.all.push(issue)
+    const url = typeof issue.details?.url === 'string' ? issue.details.url : null
+    if (url && !g.affectedUrls.includes(url)) {
+      g.affectedUrls.push(url)
+      g.pageCount++
+    }
+  }
+
+  return Array.from(map.values())
+}
+
+// ── Friendly scan failure messages ────────────────────────────────────────────
+
+function getFriendlyError(raw: string | null): string {
+  if (!raw) return 'The scan failed unexpectedly. Please try again.'
+  // Already categorised by scanner — just pass through
+  return raw
+}
+
+// ── Network request row ───────────────────────────────────────────────────────
+
+function NetworkRow({ req }: { req: NetworkRequest }) {
+  const badgeColor = req.failed
+    ? 'text-red-400 bg-red-500/10'
+    : req.statusCode && req.statusCode >= 400
+    ? 'text-yellow-400 bg-yellow-500/10'
+    : 'text-green-400 bg-green-500/10'
+
+  const statusText = req.failed
+    ? req.errorText?.slice(0, 20) ?? 'FAILED'
+    : String(req.statusCode ?? '—')
+
+  const typeLabel: Record<string, string> = {
+    xhr: 'XHR', fetch: 'Fetch', script: 'JS', stylesheet: 'CSS',
+    document: 'Doc', image: 'Img', font: 'Font',
+  }
+
+  return (
+    <div className="flex items-center gap-3 py-2 px-3 rounded-md hover:bg-zinc-900/60 text-xs">
+      <span
+        className={`shrink-0 w-14 text-center font-mono rounded px-1.5 py-0.5 text-xs font-medium ${badgeColor}`}
+      >
+        {statusText}
+      </span>
+      <span className="shrink-0 w-10 text-zinc-600 font-mono">{typeLabel[req.resourceType] ?? req.resourceType}</span>
+      <span className="shrink-0 w-8 text-zinc-600">{req.method}</span>
+      <span className="flex-1 font-mono text-zinc-400 truncate" title={req.url}>
+        {truncateUrl(req.url, 70)}
+      </span>
+      {req.responseTimeMs > 0 && (
+        <span className={`shrink-0 font-mono ${req.responseTimeMs > 1000 ? 'text-yellow-400' : 'text-zinc-600'}`}>
+          {req.responseTimeMs}ms
+        </span>
+      )}
+      {req.responseSizeBytes !== null && (
+        <span className="shrink-0 text-zinc-700">
+          {req.responseSizeBytes > 1024
+            ? `${(req.responseSizeBytes / 1024).toFixed(0)}k`
+            : `${req.responseSizeBytes}b`}
+        </span>
+      )}
+    </div>
+  )
+}
+
+// ── Main component ────────────────────────────────────────────────────────────
+
 export function ResultsDashboard({ scanId }: ResultsDashboardProps) {
+  const router = useRouter()
   const [data, setData] = useState<ScanStatusResponse | null>(null)
   const [fetchError, setFetchError] = useState<string | null>(null)
   const [isPolling, setIsPolling] = useState(true)
   const [severityFilter, setSeverityFilter] = useState<SeverityFilter>('all')
+  const [copied, setCopied] = useState(false)
+  const [rescanPending, startRescan] = useTransition()
 
   const fetchResults = useCallback(async () => {
     try {
@@ -66,9 +179,7 @@ export function ResultsDashboard({ scanId }: ResultsDashboardProps) {
     }
   }, [scanId])
 
-  useEffect(() => {
-    fetchResults()
-  }, [fetchResults])
+  useEffect(() => { fetchResults() }, [fetchResults])
 
   useEffect(() => {
     if (!isPolling) return
@@ -86,6 +197,33 @@ export function ResultsDashboard({ scanId }: ResultsDashboardProps) {
     a.click()
     URL.revokeObjectURL(url)
   }, [data, scanId])
+
+  const copyShareLink = useCallback(() => {
+    const shareUrl = `${window.location.origin}/report/${scanId}`
+    navigator.clipboard.writeText(shareUrl).then(() => {
+      setCopied(true)
+      setTimeout(() => setCopied(false), 2000)
+    })
+  }, [scanId])
+
+  const handleRescan = useCallback(() => {
+    if (!data) return
+    startRescan(async () => {
+      try {
+        const res = await fetch('/api/scan', {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ url: data.scan.url }),
+        })
+        if (res.ok) {
+          const { scanId: newId } = await res.json()
+          router.push(`/scan/${newId}`)
+        }
+      } catch {
+        // silently ignore
+      }
+    })
+  }, [data, router])
 
   if (fetchError) {
     return (
@@ -122,6 +260,8 @@ export function ResultsDashboard({ scanId }: ResultsDashboardProps) {
   const mediumIssues = issues.filter((i) => i.severity === 'medium')
   const lowIssues = issues.filter((i) => i.severity === 'low')
 
+  const isClean = isComplete && scan.score !== null && scan.score >= 90 && criticalIssues.length === 0
+
   const scanProgress = isComplete
     ? 100
     : scan.total_pages > 0
@@ -129,6 +269,26 @@ export function ResultsDashboard({ scanId }: ResultsDashboardProps) {
     : 15
 
   const lastScannedUrl = pages.length > 0 ? pages[pages.length - 1]?.url : null
+
+  // Group issues by type for de-duplicated display
+  const groupedCritical = groupIssues(criticalIssues)
+  const groupedMedium = groupIssues(mediumIssues)
+  const groupedLow = groupIssues(lowIssues)
+
+  const filteredGroups =
+    severityFilter === 'all'
+      ? [...groupedCritical, ...groupedMedium, ...groupedLow]
+      : severityFilter === 'critical'
+      ? groupedCritical
+      : severityFilter === 'medium'
+      ? groupedMedium
+      : groupedLow
+
+  // All network requests across all pages (for the network tab)
+  const allNetworkRequests: NetworkRequest[] = pages.flatMap(
+    (p) => (p.network_details as NetworkRequest[] | null) ?? []
+  )
+  const failedNetworkRequests = allNetworkRequests.filter((r) => r.failed)
 
   return (
     <div className="max-w-6xl mx-auto px-4 py-8 space-y-6">
@@ -152,15 +312,35 @@ export function ResultsDashboard({ scanId }: ResultsDashboardProps) {
           </div>
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2 flex-wrap">
           {isComplete && (
-            <button
-              onClick={exportReport}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-zinc-700 text-zinc-400 hover:text-zinc-200 hover:border-zinc-600 text-sm transition-colors"
-            >
-              <Download className="h-3.5 w-3.5" />
-              Export JSON
-            </button>
+            <>
+              <button
+                onClick={copyShareLink}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-zinc-700 text-zinc-400 hover:text-zinc-200 hover:border-zinc-600 text-sm transition-colors"
+                title="Copy shareable link"
+              >
+                {copied ? <Check className="h-3.5 w-3.5 text-green-400" /> : <Share2 className="h-3.5 w-3.5" />}
+                {copied ? 'Copied!' : 'Share'}
+              </button>
+              <button
+                onClick={exportReport}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-zinc-700 text-zinc-400 hover:text-zinc-200 hover:border-zinc-600 text-sm transition-colors"
+              >
+                <Download className="h-3.5 w-3.5" />
+                Export JSON
+              </button>
+              <button
+                onClick={handleRescan}
+                disabled={rescanPending}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-500 text-white text-sm transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {rescanPending
+                  ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                  : <RefreshCw className="h-3.5 w-3.5" />}
+                Rescan
+              </button>
+            </>
           )}
 
           {isRunning && (
@@ -170,47 +350,37 @@ export function ResultsDashboard({ scanId }: ResultsDashboardProps) {
             </div>
           )}
           {isComplete && (
-            <div className="flex items-center gap-3">
-              <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-green-500/10 border border-green-500/20 text-green-400 text-sm">
-                <CheckCircle2 className="h-4 w-4" />
-                Scan complete
-              </div>
-              <Link
-                href="/"
-                className="flex items-center gap-1.5 text-sm text-zinc-400 hover:text-zinc-200 transition-colors"
-              >
-                <ArrowLeft className="h-3.5 w-3.5" />
-                New scan
-              </Link>
+            <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-green-500/10 border border-green-500/20 text-green-400 text-sm">
+              <CheckCircle2 className="h-4 w-4" />
+              Scan complete
             </div>
           )}
           {isFailed && (
-            <div className="flex items-center gap-3">
-              <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-red-500/10 border border-red-500/20 text-red-400 text-sm">
-                <XCircle className="h-4 w-4" />
-                Scan failed
-              </div>
-              <Link
-                href="/"
-                className="flex items-center gap-1.5 text-sm text-zinc-400 hover:text-zinc-200 transition-colors"
-              >
-                <ArrowLeft className="h-3.5 w-3.5" />
-                New scan
-              </Link>
+            <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-red-500/10 border border-red-500/20 text-red-400 text-sm">
+              <XCircle className="h-4 w-4" />
+              Scan failed
             </div>
           )}
+          <Link
+            href="/"
+            className="flex items-center gap-1.5 text-sm text-zinc-400 hover:text-zinc-200 transition-colors"
+          >
+            <ArrowLeft className="h-3.5 w-3.5" />
+            New scan
+          </Link>
         </div>
       </div>
 
-      {/* Progress bar (during scan) */}
+      {/* Progress bar */}
       {isRunning && (
         <div className="space-y-2">
           <div className="flex justify-between text-xs text-zinc-500">
             <span>
               {lastScannedUrl
-                ? <>Scanning page {scan.total_pages} of {MAX_PAGES_PER_SCAN}: <span className="font-mono text-zinc-400">{truncateUrl(lastScannedUrl, 55)}</span></>
-                : 'Starting scan…'
-              }
+                ? <>Scanning page {scan.total_pages} of {MAX_PAGES_PER_SCAN}:{' '}
+                    <span className="font-mono text-zinc-400">{truncateUrl(lastScannedUrl, 55)}</span>
+                  </>
+                : 'Starting scan…'}
             </span>
             <span>{scan.total_pages} / {MAX_PAGES_PER_SCAN}</span>
           </div>
@@ -218,17 +388,44 @@ export function ResultsDashboard({ scanId }: ResultsDashboardProps) {
         </div>
       )}
 
-      {/* Error message */}
+      {/* Failure message */}
       {isFailed && scan.error_message && (
-        <div className="p-4 rounded-lg bg-red-950/20 border border-red-500/20 text-red-400 text-sm">
-          <strong>Error:</strong> {scan.error_message}
+        <div className="p-4 rounded-lg bg-red-950/20 border border-red-500/20 text-red-400 text-sm space-y-3">
+          <p><strong>Scan failed:</strong> {getFriendlyError(scan.error_message)}</p>
+          <div className="flex gap-3 flex-wrap text-xs text-red-500/80">
+            <span>Possible causes: bot protection · CAPTCHA · site unreachable · auth required</span>
+          </div>
+          <button
+            onClick={handleRescan}
+            disabled={rescanPending}
+            className="flex items-center gap-1.5 text-sm text-red-400 hover:text-red-300 transition-colors disabled:opacity-50"
+          >
+            <RefreshCw className="h-3.5 w-3.5" />
+            Try again
+          </button>
+        </div>
+      )}
+
+      {/* Success empty state */}
+      {isClean && (
+        <div className="p-5 rounded-xl bg-green-950/20 border border-green-500/20 flex items-start gap-4">
+          <CheckCircle2 className="h-8 w-8 text-green-400 shrink-0 mt-0.5" />
+          <div>
+            <h3 className="text-green-300 font-semibold text-base mb-1">
+              Great news — no critical issues detected
+            </h3>
+            <p className="text-green-600 text-sm">
+              All scanned pages passed with a score of{' '}
+              <span className="text-green-400 font-bold">{scan.score}/100</span>. Minor warnings
+              may still exist — check the Low severity tab.
+            </p>
+          </div>
         </div>
       )}
 
       {/* Score + stats */}
       {(isComplete || scan.total_pages > 0) && (
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-          {/* QA Score */}
           <Card className={`col-span-2 lg:col-span-1 border ${isComplete && scan.score !== null ? getScoreBgColor(scan.score) : 'border-zinc-800'}`}>
             <CardContent className="p-6">
               <div className="text-xs text-zinc-500 mb-1 uppercase tracking-wider">QA Score</div>
@@ -252,9 +449,7 @@ export function ResultsDashboard({ scanId }: ResultsDashboardProps) {
             <CardContent className="p-6">
               <div className="text-xs text-zinc-500 mb-1 uppercase tracking-wider">Pages Scanned</div>
               <div className="flex items-end gap-2">
-                <div className="text-4xl font-bold text-white tabular-nums">
-                  {scan.total_pages}
-                </div>
+                <div className="text-4xl font-bold text-white tabular-nums">{scan.total_pages}</div>
                 <Globe className="h-5 w-5 text-zinc-600 mb-1" />
               </div>
             </CardContent>
@@ -263,9 +458,7 @@ export function ResultsDashboard({ scanId }: ResultsDashboardProps) {
           <Card>
             <CardContent className="p-6">
               <div className="text-xs text-zinc-500 mb-1 uppercase tracking-wider">Total Issues</div>
-              <div className="text-4xl font-bold text-white tabular-nums">
-                {scan.total_issues}
-              </div>
+              <div className="text-4xl font-bold text-white tabular-nums">{scan.total_issues}</div>
             </CardContent>
           </Card>
 
@@ -303,6 +496,15 @@ export function ResultsDashboard({ scanId }: ResultsDashboardProps) {
           <TabsTrigger value="issues">
             Issues {issues.length > 0 && <span className="ml-1.5 tabular-nums">({issues.length})</span>}
           </TabsTrigger>
+          <TabsTrigger value="network">
+            Network {allNetworkRequests.length > 0 && (
+              <span className="ml-1.5 tabular-nums">
+                ({failedNetworkRequests.length > 0 ? (
+                  <span className="text-red-400">{failedNetworkRequests.length} failed</span>
+                ) : allNetworkRequests.length})
+              </span>
+            )}
+          </TabsTrigger>
           <TabsTrigger value="pages">
             Pages {pages.length > 0 && <span className="ml-1.5 tabular-nums">({pages.length})</span>}
           </TabsTrigger>
@@ -338,10 +540,13 @@ export function ResultsDashboard({ scanId }: ResultsDashboardProps) {
                     lowIssues.length
                   const isActive = severityFilter === f
                   const colorClass =
-                    f === 'critical' ? (isActive ? 'border-red-500/50 bg-red-500/10 text-red-400' : 'border-zinc-700 text-zinc-500 hover:text-red-400 hover:border-red-500/30') :
-                    f === 'medium' ? (isActive ? 'border-yellow-500/50 bg-yellow-500/10 text-yellow-400' : 'border-zinc-700 text-zinc-500 hover:text-yellow-400 hover:border-yellow-500/30') :
-                    f === 'low' ? (isActive ? 'border-blue-500/50 bg-blue-500/10 text-blue-400' : 'border-zinc-700 text-zinc-500 hover:text-blue-400 hover:border-blue-500/30') :
-                    (isActive ? 'border-zinc-600 bg-zinc-800 text-zinc-200' : 'border-zinc-700 text-zinc-500 hover:text-zinc-300')
+                    f === 'critical'
+                      ? isActive ? 'border-red-500/50 bg-red-500/10 text-red-400' : 'border-zinc-700 text-zinc-500 hover:text-red-400 hover:border-red-500/30'
+                      : f === 'medium'
+                      ? isActive ? 'border-yellow-500/50 bg-yellow-500/10 text-yellow-400' : 'border-zinc-700 text-zinc-500 hover:text-yellow-400 hover:border-yellow-500/30'
+                      : f === 'low'
+                      ? isActive ? 'border-blue-500/50 bg-blue-500/10 text-blue-400' : 'border-zinc-700 text-zinc-500 hover:text-blue-400 hover:border-blue-500/30'
+                      : isActive ? 'border-zinc-600 bg-zinc-800 text-zinc-200' : 'border-zinc-700 text-zinc-500 hover:text-zinc-300'
                   return (
                     <button
                       key={f}
@@ -353,59 +558,114 @@ export function ResultsDashboard({ scanId }: ResultsDashboardProps) {
                     </button>
                   )
                 })}
+                <span className="ml-auto text-xs text-zinc-600 flex items-center gap-1">
+                  <Layers className="h-3 w-3" />
+                  Grouped by type
+                </span>
               </div>
 
-              {/* Issue groups */}
+              {/* Grouped issue sections */}
               <div className="space-y-6">
-                {(severityFilter === 'all' || severityFilter === 'critical') && criticalIssues.length > 0 && (
-                  <div>
-                    <h3 className="flex items-center gap-2 text-sm font-semibold text-red-400 mb-3">
-                      <AlertCircle className="h-4 w-4" />
-                      Critical ({criticalIssues.length})
-                    </h3>
-                    <div className="space-y-2">
-                      {criticalIssues.map((issue) => (
-                        <IssueCard key={issue.id} issue={issue} />
-                      ))}
-                    </div>
-                  </div>
+                {(severityFilter === 'all' || severityFilter === 'critical') && groupedCritical.length > 0 && (
+                  <IssueSection
+                    label="Critical"
+                    groups={groupedCritical}
+                    iconColor="text-red-400"
+                    Icon={AlertCircle}
+                  />
+                )}
+                {(severityFilter === 'all' || severityFilter === 'medium') && groupedMedium.length > 0 && (
+                  <IssueSection
+                    label="Medium"
+                    groups={groupedMedium}
+                    iconColor="text-yellow-400"
+                    Icon={AlertTriangle}
+                  />
+                )}
+                {(severityFilter === 'all' || severityFilter === 'low') && groupedLow.length > 0 && (
+                  <IssueSection
+                    label="Low"
+                    groups={groupedLow}
+                    iconColor="text-blue-400"
+                    Icon={Info}
+                  />
                 )}
 
-                {(severityFilter === 'all' || severityFilter === 'medium') && mediumIssues.length > 0 && (
-                  <div>
-                    <h3 className="flex items-center gap-2 text-sm font-semibold text-yellow-400 mb-3">
-                      <AlertTriangle className="h-4 w-4" />
-                      Medium ({mediumIssues.length})
-                    </h3>
-                    <div className="space-y-2">
-                      {mediumIssues.map((issue) => (
-                        <IssueCard key={issue.id} issue={issue} />
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                {(severityFilter === 'all' || severityFilter === 'low') && lowIssues.length > 0 && (
-                  <div>
-                    <h3 className="flex items-center gap-2 text-sm font-semibold text-blue-400 mb-3">
-                      <Info className="h-4 w-4" />
-                      Low ({lowIssues.length})
-                    </h3>
-                    <div className="space-y-2">
-                      {lowIssues.map((issue) => (
-                        <IssueCard key={issue.id} issue={issue} />
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                {severityFilter !== 'all' && { critical: criticalIssues, medium: mediumIssues, low: lowIssues }[severityFilter].length === 0 && (
+                {filteredGroups.length === 0 && severityFilter !== 'all' && (
                   <div className="flex flex-col items-center justify-center py-12 text-zinc-600">
                     <CheckCircle2 className="h-6 w-6 text-green-500 mb-2" />
                     <p className="text-sm">No {severityFilter} issues found.</p>
                   </div>
                 )}
               </div>
+            </div>
+          )}
+        </TabsContent>
+
+        {/* Network tab */}
+        <TabsContent value="network">
+          {allNetworkRequests.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-16 text-zinc-600">
+              {isRunning ? (
+                <>
+                  <Loader2 className="h-6 w-6 animate-spin mb-3" />
+                  <p className="text-sm">Collecting network data…</p>
+                </>
+              ) : (
+                <>
+                  <Wifi className="h-8 w-8 mb-3" />
+                  <p className="text-sm">No network requests recorded.</p>
+                  <p className="text-xs mt-1">Only XHR, Fetch, scripts, and stylesheets are tracked.</p>
+                </>
+              )}
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {/* Summary row */}
+              <div className="flex items-center gap-4 text-xs text-zinc-500">
+                <span className="flex items-center gap-1.5">
+                  <Wifi className="h-3.5 w-3.5 text-green-400" />
+                  {allNetworkRequests.filter((r) => !r.failed).length} successful
+                </span>
+                {failedNetworkRequests.length > 0 && (
+                  <span className="flex items-center gap-1.5 text-red-400">
+                    <WifiOff className="h-3.5 w-3.5" />
+                    {failedNetworkRequests.length} failed
+                  </span>
+                )}
+                <span className="text-zinc-700">
+                  Across {pages.filter((p) => p.network_details).length} pages
+                </span>
+              </div>
+
+              {/* Per-page breakdown */}
+              {pages
+                .filter((p) => p.network_details && (p.network_details as NetworkRequest[]).length > 0)
+                .map((page) => {
+                  const reqs = page.network_details as NetworkRequest[]
+                  const failed = reqs.filter((r) => r.failed)
+                  return (
+                    <div key={page.id} className="space-y-1">
+                      <div className="flex items-center gap-2 text-xs text-zinc-500 px-1">
+                        <Globe className="h-3 w-3 shrink-0" />
+                        <span className="font-mono truncate">{truncateUrl(page.url, 70)}</span>
+                        {failed.length > 0 && (
+                          <span className="shrink-0 text-red-400">{failed.length} failed</span>
+                        )}
+                      </div>
+                      <Card>
+                        <CardContent className="p-1">
+                          <div className="divide-y divide-zinc-800/50">
+                            {/* Show failed first, then successful */}
+                            {[...reqs.filter((r) => r.failed), ...reqs.filter((r) => !r.failed)].map(
+                              (req, i) => <NetworkRow key={i} req={req} />
+                            )}
+                          </div>
+                        </CardContent>
+                      </Card>
+                    </div>
+                  )
+                })}
             </div>
           )}
         </TabsContent>
@@ -452,15 +712,34 @@ export function ResultsDashboard({ scanId }: ResultsDashboardProps) {
 
                       <div className="shrink-0 flex items-center gap-3 text-xs text-zinc-600">
                         {page.load_time_ms && (
-                          <span title="Load time">
-                            {formatDuration(page.load_time_ms)}
-                          </span>
+                          <span title="Load time">{formatDuration(page.load_time_ms)}</span>
                         )}
                         {page.has_console_errors && (
                           <span className="text-red-500 font-medium">Errors</span>
                         )}
                         {page.has_network_failures && (
                           <span className="text-yellow-500 font-medium">Net</span>
+                        )}
+                        {page.has_mobile_issues && (
+                          <span
+                            className="flex items-center gap-0.5 text-orange-400 font-medium"
+                            title="Mobile layout overflow detected"
+                          >
+                            <Smartphone className="h-3 w-3" />
+                            Mobile
+                          </span>
+                        )}
+                        {page.video_url && (
+                          <a
+                            href={page.video_url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="flex items-center gap-0.5 text-blue-400 hover:text-blue-300 transition-colors font-medium"
+                            title="Watch failure replay video"
+                          >
+                            <Video className="h-3 w-3" />
+                            Replay
+                          </a>
                         )}
                       </div>
                     </div>
@@ -476,6 +755,37 @@ export function ResultsDashboard({ scanId }: ResultsDashboardProps) {
           <ScreenshotViewer pages={pages} />
         </TabsContent>
       </Tabs>
+    </div>
+  )
+}
+
+// ── IssueSection — renders grouped issues under a severity heading ─────────────
+
+interface IssueSectionProps {
+  label: string
+  groups: GroupedIssue[]
+  iconColor: string
+  Icon: React.ElementType
+}
+
+function IssueSection({ label, groups, iconColor, Icon }: IssueSectionProps) {
+  const totalRaw = groups.reduce((s, g) => s + g.totalCount, 0)
+  return (
+    <div>
+      <h3 className={`flex items-center gap-2 text-sm font-semibold ${iconColor} mb-3`}>
+        <Icon className="h-4 w-4" />
+        {label} ({totalRaw})
+      </h3>
+      <div className="space-y-2">
+        {groups.map((g) => (
+          <IssueCard
+            key={`${g.type}-${g.severity}`}
+            issue={g.representative}
+            pageCount={g.pageCount > 1 ? g.pageCount : undefined}
+            totalCount={g.totalCount > 1 ? g.totalCount : undefined}
+          />
+        ))}
+      </div>
     </div>
   )
 }

@@ -28,16 +28,20 @@ CREATE INDEX IF NOT EXISTS idx_scans_created_at ON scans(created_at DESC);
 -- SCANNED PAGES
 -- ============================================================
 CREATE TABLE IF NOT EXISTS scanned_pages (
-  id                  UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  scan_id             UUID NOT NULL REFERENCES scans(id) ON DELETE CASCADE,
-  url                 TEXT NOT NULL,
-  status_code         INTEGER,
-  load_time_ms        INTEGER,
-  title               TEXT,
-  has_console_errors  BOOLEAN NOT NULL DEFAULT false,
-  has_network_failures BOOLEAN NOT NULL DEFAULT false,
-  screenshot_url      TEXT,
-  created_at          TIMESTAMPTZ NOT NULL DEFAULT NOW()
+  id                    UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  scan_id               UUID NOT NULL REFERENCES scans(id) ON DELETE CASCADE,
+  url                   TEXT NOT NULL,
+  status_code           INTEGER,
+  load_time_ms          INTEGER,
+  title                 TEXT,
+  has_console_errors    BOOLEAN NOT NULL DEFAULT false,
+  has_network_failures  BOOLEAN NOT NULL DEFAULT false,
+  has_mobile_issues     BOOLEAN NOT NULL DEFAULT false,
+  screenshot_url        TEXT,
+  mobile_screenshot_url TEXT,
+  video_url             TEXT,
+  network_details       JSONB,
+  created_at            TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
 CREATE INDEX IF NOT EXISTS idx_scanned_pages_scan_id ON scanned_pages(scan_id);
@@ -65,22 +69,24 @@ CREATE INDEX IF NOT EXISTS idx_issues_page_id ON issues(page_id);
 -- PAGE LOGS (console messages, errors)
 -- ============================================================
 CREATE TABLE IF NOT EXISTS page_logs (
-  id         UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  page_id    UUID NOT NULL REFERENCES scanned_pages(id) ON DELETE CASCADE,
-  level      TEXT NOT NULL CHECK (level IN ('error', 'warning', 'info', 'log')),
-  message    TEXT NOT NULL,
-  source     TEXT,
-  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+  id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  page_id     UUID NOT NULL REFERENCES scanned_pages(id) ON DELETE CASCADE,
+  level       TEXT NOT NULL CHECK (level IN ('error', 'warning', 'info', 'log')),
+  message     TEXT NOT NULL,
+  source      TEXT,
+  stack_trace TEXT,
+  created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
 CREATE INDEX IF NOT EXISTS idx_page_logs_page_id ON page_logs(page_id);
 CREATE INDEX IF NOT EXISTS idx_page_logs_level ON page_logs(level);
 
 -- ============================================================
--- STORAGE BUCKET (run separately or via Supabase dashboard)
+-- STORAGE BUCKETS (run separately or via Supabase dashboard)
 -- ============================================================
 -- In Supabase dashboard: Storage > New Bucket > "screenshots" > Public
--- OR via SQL:
+-- Same bucket is used for videos (stored under videos/{scanId}/{pageId}.webm)
+-- and mobile screenshots (stored under {scanId}/{pageId}-mobile.png)
 --
 -- INSERT INTO storage.buckets (id, name, public)
 -- VALUES ('screenshots', 'screenshots', true)
@@ -105,3 +111,12 @@ CREATE POLICY "Public access to scans" ON scans FOR ALL USING (true);
 CREATE POLICY "Public access to scanned_pages" ON scanned_pages FOR ALL USING (true);
 CREATE POLICY "Public access to issues" ON issues FOR ALL USING (true);
 CREATE POLICY "Public access to page_logs" ON page_logs FOR ALL USING (true);
+
+-- ============================================================
+-- MIGRATION: run these if upgrading an existing database
+-- ============================================================
+-- ALTER TABLE scanned_pages ADD COLUMN IF NOT EXISTS has_mobile_issues BOOLEAN NOT NULL DEFAULT false;
+-- ALTER TABLE scanned_pages ADD COLUMN IF NOT EXISTS mobile_screenshot_url TEXT;
+-- ALTER TABLE scanned_pages ADD COLUMN IF NOT EXISTS video_url TEXT;
+-- ALTER TABLE scanned_pages ADD COLUMN IF NOT EXISTS network_details JSONB;
+-- ALTER TABLE page_logs ADD COLUMN IF NOT EXISTS stack_trace TEXT;

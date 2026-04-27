@@ -13,6 +13,19 @@ export type IssueType =
   | 'broken_form'
   | 'slow_load'
   | 'console_warning'
+  | 'mobile_layout'
+  | 'large_asset'
+
+export interface NetworkRequest {
+  url: string
+  method: string
+  resourceType: string
+  statusCode: number | null
+  responseTimeMs: number
+  responseSizeBytes: number | null
+  failed: boolean
+  errorText: string | null
+}
 
 export interface Scan {
   id: string
@@ -36,7 +49,11 @@ export interface ScannedPage {
   title: string | null
   has_console_errors: boolean
   has_network_failures: boolean
+  has_mobile_issues: boolean
   screenshot_url: string | null
+  mobile_screenshot_url: string | null
+  video_url: string | null
+  network_details: NetworkRequest[] | null
   created_at: string
 }
 
@@ -58,6 +75,7 @@ export interface PageLog {
   level: string
   message: string
   source: string | null
+  stack_trace: string | null
   created_at: string
 }
 
@@ -69,12 +87,9 @@ export interface PageTestResult {
   title: string
   consoleErrors: Array<{ level: string; message: string }>
   consoleWarnings: Array<{ level: string; message: string }>
-  networkFailures: Array<{
-    url: string
-    status: number | null
-    method: string
-    resourceType: string
-  }>
+  /** Uncaught JS exceptions captured via page.on('pageerror') — always have stack traces */
+  jsErrors: Array<{ message: string; stackTrace: string | null; timestamp: number }>
+  networkRequests: NetworkRequest[]
   failedImages: string[]
   forms: Array<{
     action: string | null
@@ -82,6 +97,10 @@ export interface PageTestResult {
     hasSubmitButton: boolean
   }>
   screenshot: Buffer | null
+  mobileScreenshot: Buffer | null
+  hasMobileLayoutIssues: boolean
+  /** Local file path to the recorded video (only set when context has recordVideo enabled) */
+  videoPath: string | null
   error: string | null
   /** Absolute same-origin links discovered on this page */
   links: string[]

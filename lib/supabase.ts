@@ -29,23 +29,43 @@ export const getAdminClient = makeLazySingleton(() =>
   )
 )
 
+async function uploadToStorage(
+  path: string,
+  buffer: Buffer,
+  contentType: string
+): Promise<string | null> {
+  const admin = getAdminClient()
+  const { error } = await admin.storage
+    .from('screenshots')
+    .upload(path, buffer, { contentType, upsert: true })
+  if (error) {
+    console.error('Storage upload error:', error.message)
+    return null
+  }
+  const { data } = admin.storage.from('screenshots').getPublicUrl(path)
+  return data.publicUrl
+}
+
 export async function uploadScreenshot(
   scanId: string,
   pageId: string,
   buffer: Buffer
 ): Promise<string | null> {
-  const admin = getAdminClient()
-  const path = `${scanId}/${pageId}.png`
+  return uploadToStorage(`${scanId}/${pageId}.png`, buffer, 'image/png')
+}
 
-  const { error } = await admin.storage
-    .from('screenshots')
-    .upload(path, buffer, { contentType: 'image/png', upsert: true })
+export async function uploadMobileScreenshot(
+  scanId: string,
+  pageId: string,
+  buffer: Buffer
+): Promise<string | null> {
+  return uploadToStorage(`${scanId}/${pageId}-mobile.png`, buffer, 'image/png')
+}
 
-  if (error) {
-    console.error('Screenshot upload error:', error.message)
-    return null
-  }
-
-  const { data } = admin.storage.from('screenshots').getPublicUrl(path)
-  return data.publicUrl
+export async function uploadVideo(
+  scanId: string,
+  pageId: string,
+  buffer: Buffer
+): Promise<string | null> {
+  return uploadToStorage(`videos/${scanId}/${pageId}.webm`, buffer, 'video/webm')
 }
