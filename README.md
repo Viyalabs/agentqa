@@ -21,7 +21,7 @@ Paste a deployed URL. AgentQA launches a real Chromium browser, crawls up to 10 
 
 | Layer | Technology |
 |---|---|
-| Frontend | Next.js 15 App Router, TypeScript, Tailwind CSS |
+| Frontend | Next.js 16 App Router, TypeScript, Tailwind CSS |
 | UI Components | Shadcn-style Radix UI components |
 | Testing Engine | Playwright (real Chromium) |
 | Database | Supabase (PostgreSQL) |
@@ -114,8 +114,10 @@ agentqa/
 │   └── page.tsx                  # Results dashboard page
 ├── components/
 │   ├── ui/                       # Primitive UI components
-│   ├── hero.tsx                  # Homepage hero
-│   ├── how-it-works.tsx          # Steps section
+│   ├── hero.tsx                  # Homepage hero + scan form
+│   ├── how-it-works.tsx          # 3-step explainer
+│   ├── report-preview.tsx        # Static mock report preview
+│   ├── demo-scan.tsx             # One-click demo scan cards
 │   ├── features.tsx              # Features grid
 │   ├── pricing.tsx               # Pricing section
 │   ├── footer.tsx                # Site footer
