@@ -36,8 +36,17 @@ export function Footer() {
         <div className="flex flex-col sm:flex-row items-center justify-between gap-4 mt-8 text-xs text-zinc-600">
           <p>© {new Date().getFullYear()} AgentQA. All rights reserved.</p>
           <p>
-            Built with{' '}
-            <span className="text-zinc-500">Next.js 16 · Playwright · Supabase</span>
+            A product by{' '}
+            <a
+              href="https://viyalabs.com"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-zinc-400 hover:text-white transition-colors font-medium"
+            >
+              Viyalabs
+            </a>
+            {' '}· Built with{' '}
+            <span className="text-zinc-500">Next.js · Playwright · Supabase</span>
           </p>
         </div>
       </div>

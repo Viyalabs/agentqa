@@ -113,6 +113,22 @@ CREATE POLICY "Public access to issues" ON issues FOR ALL USING (true);
 CREATE POLICY "Public access to page_logs" ON page_logs FOR ALL USING (true);
 
 -- ============================================================
+-- WAITLIST
+-- ============================================================
+CREATE TABLE IF NOT EXISTS waitlist (
+  id         UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  email      TEXT NOT NULL UNIQUE,
+  name       TEXT,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_waitlist_email ON waitlist(email);
+CREATE INDEX IF NOT EXISTS idx_waitlist_created_at ON waitlist(created_at DESC);
+
+ALTER TABLE waitlist ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Service role only on waitlist" ON waitlist FOR ALL USING (false);
+
+-- ============================================================
 -- MIGRATION: run these if upgrading an existing database
 -- ============================================================
 -- ALTER TABLE scanned_pages ADD COLUMN IF NOT EXISTS has_mobile_issues BOOLEAN NOT NULL DEFAULT false;
@@ -120,3 +136,4 @@ CREATE POLICY "Public access to page_logs" ON page_logs FOR ALL USING (true);
 -- ALTER TABLE scanned_pages ADD COLUMN IF NOT EXISTS video_url TEXT;
 -- ALTER TABLE scanned_pages ADD COLUMN IF NOT EXISTS network_details JSONB;
 -- ALTER TABLE page_logs ADD COLUMN IF NOT EXISTS stack_trace TEXT;
+-- CREATE TABLE IF NOT EXISTS waitlist ( id UUID PRIMARY KEY DEFAULT gen_random_uuid(), email TEXT NOT NULL UNIQUE, name TEXT, created_at TIMESTAMPTZ NOT NULL DEFAULT NOW() );

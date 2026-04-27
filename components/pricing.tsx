@@ -1,4 +1,7 @@
-﻿import { Check, Sparkles } from 'lucide-react'
+'use client'
+
+import { useState, useTransition } from 'react'
+import { Check, Sparkles, Loader2, CheckCircle2, AlertCircle } from 'lucide-react'
 import { Button } from './ui/button'
 
 const freeTierFeatures = [
@@ -20,7 +23,42 @@ const proTierFeatures = [
   'Priority support',
 ]
 
+type FormState = 'idle' | 'open' | 'loading' | 'success' | 'error'
+
 export function Pricing() {
+  const [formState, setFormState] = useState<FormState>('idle')
+  const [email, setEmail] = useState('')
+  const [name, setName] = useState('')
+  const [message, setMessage] = useState('')
+  const [isPending, startTransition] = useTransition()
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!email) return
+
+    setFormState('loading')
+    startTransition(async () => {
+      try {
+        const res = await fetch('/api/waitlist', {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ email, name: name || undefined }),
+        })
+        const data = await res.json()
+        if (res.ok) {
+          setMessage(data.message ?? "You're on the list!")
+          setFormState('success')
+        } else {
+          setMessage(data.error ?? 'Something went wrong. Please try again.')
+          setFormState('error')
+        }
+      } catch {
+        setMessage('Could not connect. Please try again.')
+        setFormState('error')
+      }
+    })
+  }
+
   return (
     <section className="py-24 px-4" id="pricing">
       <div className="max-w-4xl mx-auto">
@@ -61,18 +99,84 @@ export function Pricing() {
 
           {/* Pro tier */}
           <div className="relative p-8 rounded-2xl border border-blue-500/40 bg-blue-950/20">
-            {/* Coming soon overlay */}
-            <div className="absolute inset-0 rounded-2xl bg-zinc-950/60 backdrop-blur-[2px] flex flex-col items-center justify-center z-10">
-              <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full border border-blue-500/40 bg-blue-500/10 text-blue-400 font-medium">
+            {/* Overlay */}
+            <div className="absolute inset-0 rounded-2xl bg-zinc-950/60 backdrop-blur-[2px] flex flex-col items-center justify-center z-10 p-6">
+              <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full border border-blue-500/40 bg-blue-500/10 text-blue-400 font-medium mb-3">
                 <Sparkles className="h-4 w-4" />
                 Coming Soon
               </div>
-              <p className="text-zinc-400 text-sm mt-3">Join the waitlist for early access</p>
-              <Button size="sm" className="mt-4">
-                Join waitlist
-              </Button>
+
+              {formState === 'success' ? (
+                <div className="flex flex-col items-center gap-2 text-center">
+                  <CheckCircle2 className="h-8 w-8 text-green-400" />
+                  <p className="text-green-300 font-medium text-sm">{message}</p>
+                  <p className="text-zinc-500 text-xs">We'll reach out to {email}</p>
+                </div>
+              ) : formState === 'idle' ? (
+                <>
+                  <p className="text-zinc-400 text-sm mb-4 text-center">
+                    Join the waitlist for early access
+                  </p>
+                  <Button
+                    size="sm"
+                    onClick={() => setFormState('open')}
+                  >
+                    Join waitlist
+                  </Button>
+                </>
+              ) : (
+                <form
+                  onSubmit={handleSubmit}
+                  className="w-full max-w-xs flex flex-col gap-3"
+                >
+                  <input
+                    type="text"
+                    placeholder="Your name (optional)"
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    className="w-full px-3 py-2 rounded-lg bg-zinc-900 border border-zinc-700 text-white text-sm placeholder-zinc-500 focus:outline-none focus:border-blue-500 transition-colors"
+                  />
+                  <input
+                    type="email"
+                    placeholder="Your email address"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    required
+                    autoFocus
+                    className="w-full px-3 py-2 rounded-lg bg-zinc-900 border border-zinc-700 text-white text-sm placeholder-zinc-500 focus:outline-none focus:border-blue-500 transition-colors"
+                  />
+
+                  {formState === 'error' && (
+                    <div className="flex items-center gap-2 text-red-400 text-xs">
+                      <AlertCircle className="h-3.5 w-3.5 shrink-0" />
+                      {message}
+                    </div>
+                  )}
+
+                  <div className="flex gap-2">
+                    <button
+                      type="button"
+                      onClick={() => { setFormState('idle'); setEmail(''); setName('') }}
+                      className="flex-1 px-3 py-2 rounded-lg border border-zinc-700 text-zinc-400 text-sm hover:text-zinc-200 transition-colors"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="submit"
+                      disabled={!email || formState === 'loading'}
+                      className="flex-1 flex items-center justify-center gap-2 px-3 py-2 rounded-lg bg-blue-600 hover:bg-blue-500 text-white text-sm font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      {formState === 'loading' || isPending ? (
+                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                      ) : null}
+                      {formState === 'loading' || isPending ? 'Joining…' : 'Join waitlist'}
+                    </button>
+                  </div>
+                </form>
+              )}
             </div>
 
+            {/* Background content (blurred) */}
             <div className="mb-6 opacity-40">
               <div className="flex items-center gap-2 mb-1">
                 <h3 className="text-lg font-semibold text-white">Pro</h3>
