@@ -346,7 +346,8 @@ export function ResultsDashboard({ scanId }: ResultsDashboardProps) {
                     <button
                       key={f}
                       onClick={() => setSeverityFilter(f)}
-                      className={`px-3 py-1 rounded-lg border text-xs font-medium transition-colors capitalize ${colorClass}`}
+                      aria-pressed={isActive}
+                      className={`px-3 py-1 rounded-lg border text-xs font-medium transition-colors capitalize focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 ${colorClass}`}
                     >
                       {f === 'all' ? 'All' : f.charAt(0).toUpperCase() + f.slice(1)} ({count})
                     </button>

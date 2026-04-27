@@ -89,7 +89,7 @@ export function DemoScan() {
                 key={demo.url}
                 onClick={() => startScan(demo.url)}
                 disabled={isPending}
-                className={`group relative text-left p-6 rounded-xl border transition-all disabled:opacity-60 disabled:cursor-not-allowed ${demo.bg}`}
+                className={`group relative text-left p-6 rounded-xl border transition-all disabled:opacity-60 disabled:cursor-not-allowed focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 ${demo.bg}`}
               >
                 <div className="flex items-start justify-between mb-4">
                   <div className="w-10 h-10 rounded-lg bg-zinc-900/60 border border-zinc-800 flex items-center justify-center">

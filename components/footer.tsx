@@ -1,4 +1,4 @@
-﻿import { Separator } from './ui/separator'
+import { Separator } from './ui/separator'
 import { Activity } from 'lucide-react'
 
 export function Footer() {
@@ -14,17 +14,17 @@ export function Footer() {
 
           {/* Links */}
           <nav className="flex flex-wrap items-center gap-6 text-sm text-zinc-500">
-            <a href="#how-it-works" className="hover:text-zinc-300 transition-colors">
+            <a href="#how-it-works" className="hover:text-zinc-300 focus-visible:text-zinc-300 transition-colors">
               How it works
             </a>
-            <a href="#pricing" className="hover:text-zinc-300 transition-colors">
+            <a href="#pricing" className="hover:text-zinc-300 focus-visible:text-zinc-300 transition-colors">
               Pricing
             </a>
             <a
-              href="https://github.com"
+              href="https://github.com/PraveenPerfeito/agentqa"
               target="_blank"
               rel="noopener noreferrer"
-              className="hover:text-zinc-300 transition-colors"
+              className="hover:text-zinc-300 focus-visible:text-zinc-300 transition-colors"
             >
               GitHub
             </a>
@@ -37,7 +37,7 @@ export function Footer() {
           <p>© {new Date().getFullYear()} AgentQA. All rights reserved.</p>
           <p>
             Built with{' '}
-            <span className="text-zinc-500">Next.js 15 · Playwright · Supabase</span>
+            <span className="text-zinc-500">Next.js 16 · Playwright · Supabase</span>
           </p>
         </div>
       </div>
