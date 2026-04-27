@@ -1,0 +1,14 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(rm -f tsconfig.tsbuildinfo)",
+      "Bash(node --max-old-space-size=1024 ./node_modules/.bin/tsc --noEmit)",
+      "Bash(npx --max-old-space-size=2048 tsc --noEmit --skipLibCheck)",
+      "Bash(npx jest *)",
+      "Bash(git -C d:/AgentQA status)",
+      "Bash(git -C d:/AgentQA init)",
+      "Bash(git -C d:/AgentQA add .)",
+      "Bash(git -C d:/AgentQA status --short)"
+    ]
+  }
+}
