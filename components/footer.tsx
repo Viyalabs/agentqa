@@ -45,8 +45,13 @@ export function Footer() {
             >
               Viyalabs
             </a>
-            {' '}· Built with{' '}
-            <span className="text-zinc-500">Next.js · Playwright · Supabase</span>
+            {' '}·{' '}
+            <a
+              href="mailto:support@viyalabs.com"
+              className="text-zinc-400 hover:text-white transition-colors"
+            >
+              support@viyalabs.com
+            </a>
           </p>
         </div>
       </div>

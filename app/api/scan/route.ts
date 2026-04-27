@@ -8,6 +8,9 @@ import { runScan } from '@/services/scanner'
 export const runtime = 'nodejs'
 export const maxDuration = 120
 
+const NOTIFY_EMAIL = 'support@viyalabs.com'
+const NOTIFY_WHATSAPP = '9600190022'
+
 const RequestSchema = z.object({
   url: z.string().min(1, 'URL is required').max(2048, 'URL is too long'),
 })
@@ -55,6 +58,12 @@ export async function POST(req: NextRequest) {
 
   const scanId: string = scan.id
 
+  // Notify on every scan submission — best-effort, don't block response
+  void Promise.allSettled([
+    notifyScanEmail(url, scanId),
+    notifyScanWhatsApp(url, scanId),
+  ])
+
   // Fire-and-forget: start the scan without blocking the HTTP response.
   // The scan writes results to Supabase progressively.
   // The frontend polls GET /api/scan/[id] for status.
@@ -63,4 +72,44 @@ export async function POST(req: NextRequest) {
   })
 
   return NextResponse.json({ scanId }, { status: 202 })
+}
+
+async function notifyScanEmail(url: string, scanId: string): Promise<void> {
+  const apiKey = process.env.RESEND_API_KEY
+  if (!apiKey) return
+
+  await fetch('https://api.resend.com/emails', {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${apiKey}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      from: process.env.RESEND_FROM_EMAIL ?? 'AgentQA <noreply@agentqa.dev>',
+      to: [NOTIFY_EMAIL],
+      subject: `New scan started: ${url}`,
+      html: `
+        <h2>New AgentQA Scan Started</h2>
+        <p><strong>URL:</strong> ${url}</p>
+        <p><strong>Scan ID:</strong> ${scanId}</p>
+        <p><strong>Time:</strong> ${new Date().toISOString()}</p>
+        <hr/>
+        <p style="color:#888;font-size:12px">Sent by AgentQA — a Viyalabs product</p>
+      `,
+    }),
+  }).then(async (res) => {
+    if (!res.ok) console.error('[scan] Resend error:', await res.text())
+  }).catch(() => {})
+}
+
+async function notifyScanWhatsApp(url: string, scanId: string): Promise<void> {
+  const apiKey = process.env.CALLMEBOT_API_KEY
+  if (!apiKey) return
+
+  const text = encodeURIComponent(`🔍 New AgentQA scan!\nURL: ${url}\nScan ID: ${scanId}`)
+  const endpoint = `https://api.callmebot.com/whatsapp.php?phone=${NOTIFY_WHATSAPP}&text=${text}&apikey=${apiKey}`
+
+  await fetch(endpoint).then(async (res) => {
+    if (!res.ok) console.error('[scan] CallMeBot error:', await res.text())
+  }).catch(() => {})
 }

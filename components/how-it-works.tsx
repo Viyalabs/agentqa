@@ -15,7 +15,7 @@ const steps = [
     icon: ScanSearch,
     title: 'We crawl & test',
     description:
-      'A real Chromium browser visits up to 10 pages, tests user flows, detects 404s, console errors, broken images, and failed network requests.',
+      'A real Chrome browser visits every page — testing desktop and mobile layouts, catching JS errors with stack traces, inspecting network requests, and recording video of any failures.',
     color: 'text-blue-400',
     bg: 'bg-blue-500/10 border-blue-500/20',
   },
@@ -24,7 +24,7 @@ const steps = [
     icon: FileBarChart,
     title: 'Get your report',
     description:
-      'Receive a scored QA report with severity-classified issues, page screenshots, and a timeline of everything tested.',
+      'Receive a 0–100 QA score with severity-classified issues, page screenshots, video replays, and a network debugging tab — shareable via a single link.',
     color: 'text-blue-400',
     bg: 'bg-blue-500/10 border-blue-500/20',
   },
