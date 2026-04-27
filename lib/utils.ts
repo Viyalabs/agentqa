@@ -5,7 +5,7 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
 }
 
-export const MAX_PAGES_PER_SCAN = 10
+export const MAX_PAGES_PER_SCAN = 5
 
 export function normalizeUrl(url: string): string {
   try {

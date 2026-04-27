@@ -31,7 +31,7 @@ import { Progress } from './ui/progress'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs'
 import { IssueCard } from './issue-card'
 import { ScreenshotViewer } from './screenshot-viewer'
-import type { Issue, IssueSeverity, IssueType, NetworkRequest, ScanStatusResponse } from '@/types'
+import type { Issue, IssueSeverity, IssueType, NetworkRequest, ScanLog, ScanStatusResponse } from '@/types'
 import {
   getScoreColor,
   getScoreBgColor,
@@ -251,7 +251,7 @@ export function ResultsDashboard({ scanId }: ResultsDashboardProps) {
     )
   }
 
-  const { scan, pages, issues } = data
+  const { scan, pages, issues, logs } = data
   const isRunning = scan.status === 'running' || scan.status === 'pending'
   const isFailed = scan.status === 'failed'
   const isComplete = scan.status === 'completed'
@@ -385,6 +385,19 @@ export function ResultsDashboard({ scanId }: ResultsDashboardProps) {
             <span>{scan.total_pages} / {MAX_PAGES_PER_SCAN}</span>
           </div>
           <Progress value={scanProgress} className="h-1.5" />
+        </div>
+      )}
+
+      {/* Real-time scan log terminal */}
+      {(isRunning || (isComplete && logs.length > 0)) && (
+        <ScanLogTerminal logs={logs} isRunning={isRunning} />
+      )}
+
+      {/* Partial results warning */}
+      {isComplete && scan.error_message?.includes('partial') && (
+        <div className="p-3 rounded-lg bg-yellow-950/20 border border-yellow-500/20 text-yellow-400 text-sm flex items-start gap-2">
+          <AlertTriangle className="h-4 w-4 shrink-0 mt-0.5" />
+          {scan.error_message}
         </div>
       )}
 
@@ -755,6 +768,51 @@ export function ResultsDashboard({ scanId }: ResultsDashboardProps) {
           <ScreenshotViewer pages={pages} />
         </TabsContent>
       </Tabs>
+    </div>
+  )
+}
+
+// ── ScanLogTerminal — real-time scan log feed ─────────────────────────────────
+
+function ScanLogTerminal({ logs, isRunning }: { logs: ScanLog[]; isRunning: boolean }) {
+  const visibleLogs = logs.slice(-12) // show last 12 entries
+  return (
+    <div className="rounded-lg border border-zinc-800 bg-zinc-950 overflow-hidden">
+      <div className="flex items-center gap-2 px-3 py-2 border-b border-zinc-800 bg-zinc-900/50">
+        <div className="flex gap-1.5">
+          <span className="w-2.5 h-2.5 rounded-full bg-zinc-700" />
+          <span className="w-2.5 h-2.5 rounded-full bg-zinc-700" />
+          <span className="w-2.5 h-2.5 rounded-full bg-zinc-700" />
+        </div>
+        <span className="text-xs text-zinc-500 font-mono ml-1">scan log</span>
+        {isRunning && <Loader2 className="h-3 w-3 text-blue-400 animate-spin ml-auto" />}
+      </div>
+      <div className="p-3 font-mono text-xs space-y-1 min-h-[80px]">
+        {visibleLogs.length === 0 ? (
+          <span className="text-zinc-600">Waiting for scan to start…</span>
+        ) : (
+          visibleLogs.map((entry) => (
+            <div key={entry.id} className="flex gap-2 text-zinc-400">
+              <span className="text-zinc-700 shrink-0">
+                {new Date(entry.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+              </span>
+              <span className={
+                entry.message.toLowerCase().includes('complete') ? 'text-green-400' :
+                entry.message.toLowerCase().includes('fail') ? 'text-red-400' :
+                entry.message.toLowerCase().includes('upload') ? 'text-blue-400' :
+                'text-zinc-300'
+              }>
+                {entry.message}
+              </span>
+            </div>
+          ))
+        )}
+        {isRunning && (
+          <div className="flex gap-2 text-zinc-600">
+            <span className="animate-pulse">▋</span>
+          </div>
+        )}
+      </div>
     </div>
   )
 }

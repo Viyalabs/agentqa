@@ -113,6 +113,21 @@ CREATE POLICY "Public access to issues" ON issues FOR ALL USING (true);
 CREATE POLICY "Public access to page_logs" ON page_logs FOR ALL USING (true);
 
 -- ============================================================
+-- SCAN LOGS (real-time progress visible in dashboard)
+-- ============================================================
+CREATE TABLE IF NOT EXISTS scan_logs (
+  id          BIGSERIAL PRIMARY KEY,
+  scan_id     UUID NOT NULL REFERENCES scans(id) ON DELETE CASCADE,
+  message     TEXT NOT NULL,
+  created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_scan_logs_scan_id ON scan_logs(scan_id);
+
+ALTER TABLE scan_logs ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Public access to scan_logs" ON scan_logs FOR ALL USING (true);
+
+-- ============================================================
 -- WAITLIST
 -- ============================================================
 CREATE TABLE IF NOT EXISTS waitlist (
@@ -137,3 +152,7 @@ CREATE POLICY "Service role only on waitlist" ON waitlist FOR ALL USING (false);
 -- ALTER TABLE scanned_pages ADD COLUMN IF NOT EXISTS network_details JSONB;
 -- ALTER TABLE page_logs ADD COLUMN IF NOT EXISTS stack_trace TEXT;
 -- CREATE TABLE IF NOT EXISTS waitlist ( id UUID PRIMARY KEY DEFAULT gen_random_uuid(), email TEXT NOT NULL UNIQUE, name TEXT, created_at TIMESTAMPTZ NOT NULL DEFAULT NOW() );
+-- CREATE TABLE IF NOT EXISTS scan_logs ( id BIGSERIAL PRIMARY KEY, scan_id UUID NOT NULL REFERENCES scans(id) ON DELETE CASCADE, message TEXT NOT NULL, created_at TIMESTAMPTZ NOT NULL DEFAULT NOW() );
+-- CREATE INDEX IF NOT EXISTS idx_scan_logs_scan_id ON scan_logs(scan_id);
+-- ALTER TABLE scan_logs ENABLE ROW LEVEL SECURITY;
+-- CREATE POLICY "Public access to scan_logs" ON scan_logs FOR ALL USING (true);

@@ -2,7 +2,7 @@ import type { BrowserContext } from 'playwright'
 import type { PageTestResult, NetworkRequest } from '@/types'
 import { normalizeUrl } from '@/lib/utils'
 
-const PAGE_TIMEOUT_MS = parseInt(process.env.PLAYWRIGHT_TIMEOUT_MS ?? '30000', 10)
+const PAGE_TIMEOUT_MS = parseInt(process.env.PLAYWRIGHT_TIMEOUT_MS ?? '10000', 10)
 
 const IGNORED_FAILURE_ORIGINS = new Set([
   'youtube.com', 'www.youtube.com', 'youtu.be',
@@ -161,12 +161,6 @@ export async function testPage(
       waitUntil: 'domcontentloaded',
     })
 
-    try {
-      await page.waitForLoadState('networkidle', { timeout: 5000 })
-    } catch {
-      // networkidle timeout is acceptable
-    }
-
     loadTimeMs = Date.now() - startTime
 
     if (response) {
@@ -253,7 +247,7 @@ export async function testPage(
         try {
           await page.setViewportSize({ width: 375, height: 812 })
           // Let layout reflow
-          await page.evaluate(() => new Promise<void>((r) => setTimeout(r, 300)))
+          await page.evaluate(() => new Promise<void>((r) => setTimeout(r, 100)))
           hasMobileLayoutIssues = await page
             .evaluate(
               () => document.documentElement.scrollWidth > document.documentElement.clientWidth + 5

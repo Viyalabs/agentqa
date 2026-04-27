@@ -1,10 +1,15 @@
-import fs from 'fs/promises'
-import os from 'os'
-import path from 'path'
-import { getAdminClient, uploadScreenshot, uploadMobileScreenshot, uploadVideo } from '@/lib/supabase'
+import { getAdminClient, uploadScreenshot, uploadMobileScreenshot } from '@/lib/supabase'
 import { crawlWebsite } from '@/playwright/crawler'
 import { calculateScore } from './scorer'
 import type { IssueClassified, IssueType, IssueSeverity, PageTestResult } from '@/types'
+
+const SCAN_TIMEOUT_MS = 120_000 // 2 minutes
+
+interface UploadJob {
+  pageId: string
+  type: 'screenshot' | 'mobile'
+  buffer: Buffer
+}
 
 export async function runScan(scanId: string, url: string): Promise<void> {
   const db = getAdminClient()
@@ -14,19 +19,33 @@ export async function runScan(scanId: string, url: string): Promise<void> {
     .update({ status: 'running', started_at: new Date().toISOString() })
     .eq('id', scanId)
 
-  // Create a temp dir for Playwright video recordings
-  const videoDir = path.join(os.tmpdir(), 'agentqa-videos', scanId)
-  await fs.mkdir(videoDir, { recursive: true }).catch(() => {})
+  const log = async (message: string): Promise<void> => {
+    console.log(`[scanner:${scanId}] ${message}`)
+    try {
+      await db.from('scan_logs').insert({ scan_id: scanId, message })
+    } catch {
+      // scan_logs table may not exist yet — skip gracefully
+    }
+  }
+
+  const controller = new AbortController()
+  const globalTimer = setTimeout(() => {
+    console.warn(`[scanner:${scanId}] 2-minute timeout — stopping crawl`)
+    controller.abort()
+  }, SCAN_TIMEOUT_MS)
+
+  const uploadJobs: UploadJob[] = []
+  const allIssues: IssueClassified[] = []
+  let totalPages = 0
 
   try {
-    const allIssues: IssueClassified[] = []
-    let totalPages = 0
-
     await crawlWebsite(
       url,
       async ({ result }) => {
-        totalPages++
+        // Respect abort signal — don't process results after timeout
+        if (controller.signal.aborted) return
 
+        totalPages++
         const failedRequests = result.networkRequests.filter((r) => r.failed)
 
         const { data: pageRow, error: pageErr } = await db
@@ -52,23 +71,15 @@ export async function runScan(scanId: string, url: string): Promise<void> {
 
         const pageId: string = pageRow.id
 
-        // Upload desktop screenshot
+        // Queue screenshots for deferred upload — keeps crawl fast
         if (result.screenshot) {
-          const screenshotUrl = await uploadScreenshot(scanId, pageId, result.screenshot)
-          if (screenshotUrl) {
-            await db.from('scanned_pages').update({ screenshot_url: screenshotUrl }).eq('id', pageId)
-          }
+          uploadJobs.push({ pageId, type: 'screenshot', buffer: result.screenshot })
         }
-
-        // Upload mobile screenshot
         if (result.mobileScreenshot) {
-          const mobileUrl = await uploadMobileScreenshot(scanId, pageId, result.mobileScreenshot)
-          if (mobileUrl) {
-            await db.from('scanned_pages').update({ mobile_screenshot_url: mobileUrl }).eq('id', pageId)
-          }
+          uploadJobs.push({ pageId, type: 'mobile', buffer: result.mobileScreenshot })
         }
 
-        // Page logs: console errors + warnings + uncaught JS exceptions with stack traces
+        // Fast DB writes: logs and issues
         const logs = [
           ...result.consoleErrors.map((e) => ({
             page_id: pageId,
@@ -95,35 +106,43 @@ export async function runScan(scanId: string, url: string): Promise<void> {
         allIssues.push(...pageIssues)
         if (pageIssues.length > 0) await db.from('issues').insert(pageIssues)
 
-        // Upload video only for pages that have significant issues
-        if (result.videoPath) {
-          const hasSignificantIssues = pageIssues.some(
-            (i) => i.severity === 'critical' || i.severity === 'medium'
-          )
-          if (hasSignificantIssues) {
-            try {
-              const videoBuffer = await fs.readFile(result.videoPath)
-              const videoUrl = await uploadVideo(scanId, pageId, videoBuffer)
-              if (videoUrl) {
-                await db.from('scanned_pages').update({ video_url: videoUrl }).eq('id', pageId)
-              }
-            } catch (e) {
-              console.error('[scanner] Video upload failed:', e)
-            }
-          }
-          // Always clean up local video file
-          await fs.unlink(result.videoPath).catch(() => {})
-        }
-
         await db
           .from('scans')
           .update({ total_pages: totalPages, total_issues: allIssues.length })
           .eq('id', scanId)
+
+        console.log(
+          `[scanner:${scanId}] page: ${result.url} | ${result.loadTimeMs}ms | ${pageIssues.length} issues`
+        )
       },
-      { videoDir }
+      { signal: controller.signal, onLog: log }
     )
 
+    // Upload all screenshots in parallel after crawl — doesn't block page testing
+    if (uploadJobs.length > 0) {
+      await log(`Uploading ${uploadJobs.length} screenshot(s)...`)
+      const uploadResults = await Promise.allSettled(
+        uploadJobs.map(async (job) => {
+          const uploadedUrl =
+            job.type === 'screenshot'
+              ? await uploadScreenshot(scanId, job.pageId, job.buffer)
+              : await uploadMobileScreenshot(scanId, job.pageId, job.buffer)
+
+          if (uploadedUrl) {
+            const field = job.type === 'screenshot' ? 'screenshot_url' : 'mobile_screenshot_url'
+            await db.from('scanned_pages').update({ [field]: uploadedUrl }).eq('id', job.pageId)
+          }
+        })
+      )
+
+      const failed = uploadResults.filter((r) => r.status === 'rejected')
+      if (failed.length > 0) {
+        console.error(`[scanner:${scanId}] ${failed.length} screenshot upload(s) failed`)
+      }
+    }
+
     const { score } = calculateScore(allIssues)
+    const timedOut = controller.signal.aborted
 
     await db
       .from('scans')
@@ -133,13 +152,26 @@ export async function runScan(scanId: string, url: string): Promise<void> {
         total_pages: totalPages,
         total_issues: allIssues.length,
         completed_at: new Date().toISOString(),
+        ...(timedOut
+          ? { error_message: 'Scan reached the 2-minute time limit — results shown are partial.' }
+          : { error_message: null }),
       })
       .eq('id', scanId)
 
-    console.log(`[scanner] ${scanId} complete — score:${score} pages:${totalPages} issues:${allIssues.length}`)
+    await log(
+      timedOut
+        ? `Partial scan complete (time limit reached). ${totalPages} pages · ${allIssues.length} issues · score: ${score}/100`
+        : `Scan complete. Score: ${score}/100 · ${totalPages} pages · ${allIssues.length} issues`
+    )
+
+    console.log(
+      `[scanner] ${scanId} done — score:${score} pages:${totalPages} issues:${allIssues.length}${timedOut ? ' [PARTIAL]' : ''}`
+    )
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err)
     console.error(`[scanner] ${scanId} failed:`, message)
+
+    await log(`Scan failed: ${categoriseError(message)}`).catch(() => {})
 
     await db
       .from('scans')
@@ -150,12 +182,10 @@ export async function runScan(scanId: string, url: string): Promise<void> {
       })
       .eq('id', scanId)
   } finally {
-    // Best-effort cleanup of the video directory
-    await fs.rm(videoDir, { recursive: true, force: true }).catch(() => {})
+    clearTimeout(globalTimer)
   }
 }
 
-/** Maps raw Playwright/Node error messages to user-friendly descriptions. */
 function categoriseError(raw: string): string {
   if (/timeout/i.test(raw)) {
     return 'The site took too long to respond. It may be slow, unreachable, or protected by a CAPTCHA.'
@@ -225,14 +255,16 @@ function classifyPageIssues(
 
   if (result.is404) {
     issues.push(
-      issue('page_not_found', 'critical', '404 – Page Not Found', `The page at ${result.url} returned a 404 status code.`, {
-        url: result.url,
-        statusCode: result.statusCode,
-      })
+      issue(
+        'page_not_found',
+        'critical',
+        '404 – Page Not Found',
+        `The page at ${result.url} returned a 404 status code.`,
+        { url: result.url, statusCode: result.statusCode }
+      )
     )
   }
 
-  // Use pageerror events (uncaught exceptions) for critical JS error detection
   if (result.jsErrors.length > 0) {
     issues.push(
       issue(
@@ -248,7 +280,6 @@ function classifyPageIssues(
       )
     )
   } else {
-    // Fallback: console errors that look like uncaught exceptions
     const criticalConsoleErrors = result.consoleErrors.filter((e) =>
       /TypeError|ReferenceError|SyntaxError|Uncaught/.test(e.message)
     )
@@ -384,7 +415,6 @@ function classifyPageIssues(
     )
   }
 
-  // Large asset detection — flag scripts or stylesheets over 500 KB
   const largeAssets = result.networkRequests.filter(
     (r) =>
       !r.failed &&

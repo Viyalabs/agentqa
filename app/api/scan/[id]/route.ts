@@ -15,7 +15,6 @@ export async function GET(
 
   const db = getAdminClient()
 
-  // Fetch scan record
   const { data: scan, error: scanError } = await db
     .from('scans')
     .select('*')
@@ -30,24 +29,38 @@ export async function GET(
     return NextResponse.json({ error: 'Failed to fetch scan' }, { status: 500 })
   }
 
-  // Fetch scanned pages
-  const { data: pages } = await db
-    .from('scanned_pages')
-    .select('*')
-    .eq('scan_id', scanId)
-    .order('created_at', { ascending: true })
+  const [{ data: pages }, { data: issues }] = await Promise.all([
+    db
+      .from('scanned_pages')
+      .select('*')
+      .eq('scan_id', scanId)
+      .order('created_at', { ascending: true }),
+    db
+      .from('issues')
+      .select('*')
+      .eq('scan_id', scanId)
+      .order('severity', { ascending: true })
+      .order('created_at', { ascending: true }),
+  ])
 
-  // Fetch issues
-  const { data: issues } = await db
-    .from('issues')
-    .select('*')
-    .eq('scan_id', scanId)
-    .order('severity', { ascending: true }) // critical first
-    .order('created_at', { ascending: true })
+  // Fetch scan logs separately — gracefully returns [] if table doesn't exist
+  let logsData: Array<{ id: number; message: string; created_at: string }> = []
+  try {
+    const { data } = await db
+      .from('scan_logs')
+      .select('id, message, created_at')
+      .eq('scan_id', scanId)
+      .order('created_at', { ascending: true })
+      .limit(100)
+    logsData = data ?? []
+  } catch {
+    // scan_logs table not yet created — omit logs from response
+  }
 
   return NextResponse.json({
     scan,
     pages: pages ?? [],
     issues: issues ?? [],
+    logs: logsData,
   })
 }

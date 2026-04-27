@@ -120,6 +120,7 @@ export interface ScanStatusResponse {
   scan: Scan
   pages: ScannedPage[]
   issues: Issue[]
+  logs: ScanLog[]
 }
 
 export interface IssueClassified {
@@ -130,6 +131,13 @@ export interface IssueClassified {
   title: string
   description: string | null
   details: Record<string, unknown> | null
+}
+
+export interface ScanLog {
+  id: number
+  scan_id: string
+  message: string
+  created_at: string
 }
 
 export interface ScoreBreakdown {
