@@ -46,14 +46,30 @@ export function Navbar() {
           </a>
         </div>
 
-        {/* CTA */}
-        <Button size="sm" className="shrink-0 hidden sm:inline-flex" asChild>
-          <a href="#scan-form">Run Free Scan</a>
+        {/* CTA — focuses the URL input directly */}
+        <Button
+          size="sm"
+          className="shrink-0 hidden sm:inline-flex"
+          onClick={() => {
+            const input = document.querySelector<HTMLInputElement>('#scan-form input[type="text"]')
+            input?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+            input?.focus()
+          }}
+        >
+          Run Free Scan
         </Button>
 
-        {/* Mobile: just the CTA */}
-        <Button size="sm" className="sm:hidden" asChild>
-          <a href="#scan-form">Scan Free</a>
+        {/* Mobile */}
+        <Button
+          size="sm"
+          className="sm:hidden"
+          onClick={() => {
+            const input = document.querySelector<HTMLInputElement>('#scan-form input[type="text"]')
+            input?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+            input?.focus()
+          }}
+        >
+          Scan Free
         </Button>
       </div>
     </nav>
