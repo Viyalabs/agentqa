@@ -4,8 +4,11 @@ import { getAdminClient } from '@/lib/supabase'
 import { runScan } from '@/services/scanner'
 
 export const runtime = 'nodejs'
-export const maxDuration = 300 // Vercel Pro: 5-minute budget for the scan
+export const maxDuration = 300
 
+// Internal endpoint — processes one queued scan.
+// Called manually or by an external scheduler if needed.
+// The primary scan execution path now uses waitUntil in /api/scan directly.
 export async function POST(req: NextRequest) {
   let body: unknown
   try {
@@ -28,23 +31,21 @@ export async function POST(req: NextRequest) {
 
   const db = getAdminClient()
 
-  // Atomic claim: update status from 'pending' → 'running' only if still pending.
-  // If another invocation already claimed it, the WHERE clause returns no rows.
-  const { data: claimed } = await db
+  // Atomic claim: returns rows only when the scan was actually pending.
+  // Using .select() (not .single()) so 0 rows = empty array, not an error.
+  const { data: rows } = await db
     .from('scans')
     .update({ status: 'running', started_at: new Date().toISOString() })
     .eq('id', scanId)
     .eq('status', 'pending')
     .select('id, url')
-    .single()
+
+  const claimed = rows?.[0] ?? null
 
   if (!claimed) {
-    // Scan not found, already running, or already completed — nothing to do
     return NextResponse.json({ ok: true, message: 'scan already claimed or not found' })
   }
 
-  // Respond 202 immediately so the scan route's waitUntil resolves fast.
-  // Vercel keeps this function instance alive via waitUntil until runScan finishes.
   waitUntil(runScan(scanId, claimed.url))
 
   return NextResponse.json({ ok: true }, { status: 202 })

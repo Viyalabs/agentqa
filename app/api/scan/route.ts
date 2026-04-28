@@ -5,9 +5,9 @@ import { getAdminClient } from '@/lib/supabase'
 import { validateUrl, normalizeUrl } from '@/lib/utils'
 import { runScan } from '@/services/scanner'
 
-// Node.js runtime required for Playwright (used in local dev path)
 export const runtime = 'nodejs'
-export const maxDuration = 30
+// 300s so Vercel keeps the function alive for the full scan via waitUntil
+export const maxDuration = 300
 
 const NOTIFY_EMAIL = 'support@viyalabs.com'
 const NOTIFY_WHATSAPP = '9600190022'
@@ -57,32 +57,17 @@ export async function POST(req: NextRequest) {
 
   const scanId: string = scan.id
 
-  // Notifications are best-effort — don't block the response
+  // Notifications — best-effort, non-blocking
   void Promise.allSettled([notifyScanEmail(url, scanId), notifyScanWhatsApp(url, scanId)])
 
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? ''
-  const isLocal = process.env.NODE_ENV === 'development' || appUrl.includes('localhost')
-
-  if (isLocal) {
-    // Local dev: run inline so we don't need a self-referential HTTP call.
-    // void is acceptable here — local process won't be killed mid-scan.
-    void runScan(scanId, url).catch((err: unknown) => {
+  // waitUntil tells Vercel to keep this function alive after the response is
+  // sent — the scan runs to completion without being killed mid-crawl.
+  // In local next dev the Node.js server stays up anyway, so this is safe there too.
+  waitUntil(
+    runScan(scanId, url).catch((err: unknown) => {
       console.error(`[runScan] unhandled error for ${scanId}:`, err)
     })
-  } else {
-    // Production: dispatch to the dedicated worker endpoint.
-    // waitUntil keeps this function alive long enough to fire the HTTP request;
-    // the worker runs as its own Vercel invocation with maxDuration=300.
-    waitUntil(
-      fetch(`${appUrl}/api/scan/worker`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ scanId }),
-      }).catch((err: unknown) => {
-        console.error('[scan] worker dispatch failed:', err)
-      })
-    )
-  }
+  )
 
   return NextResponse.json({ scanId }, { status: 202 })
 }
