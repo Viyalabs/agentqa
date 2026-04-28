@@ -83,7 +83,15 @@ export function Pricing() {
               <p className="text-sm text-zinc-400 mt-2">Perfect for testing your AI projects</p>
             </div>
 
-            <Button variant="outline" className="w-full mb-8">
+            <Button
+              variant="outline"
+              className="w-full mb-8"
+              onClick={() => {
+                const input = document.querySelector<HTMLInputElement>('#scan-form input[type="text"]')
+                input?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+                input?.focus()
+              }}
+            >
               Start testing free
             </Button>
 
