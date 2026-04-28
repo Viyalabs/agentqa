@@ -54,7 +54,7 @@ export function ScanForm() {
   }
 
   return (
-    <form onSubmit={handleSubmit} className="w-full">
+    <form id="scan-form" onSubmit={handleSubmit} className="w-full">
       <div className="flex flex-col sm:flex-row gap-3">
         <div className="flex-1 relative">
           <Input
