@@ -3,17 +3,17 @@ import { Activity } from 'lucide-react'
 
 export function Footer() {
   return (
-    <footer className="py-12 px-4 border-t border-zinc-800">
-      <div className="max-w-5xl mx-auto">
-        <div className="flex flex-col sm:flex-row items-center justify-between gap-6 mb-8">
+    <footer className="py-16 px-4 border-t border-zinc-800">
+      <div className="max-w-6xl mx-auto">
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-6 mb-10">
           {/* Logo */}
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2.5">
             <Activity className="h-5 w-5 text-blue-400" />
-            <span className="font-bold text-white">AgentQA</span>
+            <span className="font-bold text-lg text-white">AgentQA</span>
           </div>
 
           {/* Links */}
-          <nav className="flex flex-wrap items-center gap-6 text-sm text-zinc-500">
+          <nav className="flex flex-wrap items-center gap-7 text-sm font-medium text-zinc-500">
             <a href="#how-it-works" className="hover:text-zinc-300 focus-visible:text-zinc-300 transition-colors">
               How it works
             </a>
