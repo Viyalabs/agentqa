@@ -70,7 +70,7 @@ async function sendEmailNotification(email: string, name?: string): Promise<void
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({
-      from: process.env.RESEND_FROM_EMAIL ?? 'AgentQA <noreply@agentqa.dev>',
+      from: process.env.RESEND_FROM_EMAIL ?? 'AgentQA <noreply@viyalabs.com>',
       to: [NOTIFY_EMAIL],
       subject: `New waitlist signup: ${email}`,
       html: `

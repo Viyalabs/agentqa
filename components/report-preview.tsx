@@ -52,7 +52,7 @@ export function ReportPreview() {
           {/* Toolbar */}
           <div className="flex items-center justify-between px-5 py-3 border-b border-zinc-800 bg-zinc-900/60">
             <div className="flex items-center gap-2">
-              <span className="text-xs font-mono text-zinc-500">agentqa.dev/scan/</span>
+              <span className="text-xs font-mono text-zinc-500">qa.viyalabs.com/scan/</span>
               <span className="text-xs font-mono text-zinc-300">a1b2c3d4</span>
             </div>
             <div className="flex items-center gap-2 px-2.5 py-1 rounded-md bg-green-500/10 border border-green-500/20 text-green-400 text-xs">
