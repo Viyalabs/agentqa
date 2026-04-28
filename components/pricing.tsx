@@ -5,7 +5,7 @@ import { Check, Sparkles, Loader2, CheckCircle2, AlertCircle } from 'lucide-reac
 import { Button } from './ui/button'
 
 const freeTierFeatures = [
-  'Up to 10 pages per scan',
+  'Up to 5 pages per scan',
   'Full page screenshots',
   'Issue classification (critical/medium/low)',
   'QA score report',
