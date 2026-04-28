@@ -4,7 +4,8 @@ import { getAdminClient } from '@/lib/supabase'
 
 export const runtime = 'nodejs'
 
-const NOTIFY_EMAIL = 'support@viyalabs.com'
+// Override via RESEND_NOTIFY_EMAIL env var (useful when using onboarding@resend.dev sender without domain verification)
+const NOTIFY_EMAIL = process.env.RESEND_NOTIFY_EMAIL ?? 'support@viyalabs.com'
 const NOTIFY_WHATSAPP = '9600190022'
 
 const RequestSchema = z.object({
@@ -61,8 +62,11 @@ async function sendEmailNotification(email: string, name?: string): Promise<void
     return
   }
 
+  // Without domain verification in Resend, use 'onboarding@resend.dev' as from
+  // and set RESEND_NOTIFY_EMAIL to your Resend account email (the one you signed up with)
   const from = process.env.RESEND_FROM_EMAIL ?? 'AgentQA <noreply@viyalabs.com>'
-  console.log(`[waitlist:email] Sending to ${NOTIFY_EMAIL} from ${from}`)
+  console.log(`[waitlist:email] Sending from="${from}" to="${NOTIFY_EMAIL}"`)
+
 
   try {
     const res = await fetch('https://api.resend.com/emails', {
