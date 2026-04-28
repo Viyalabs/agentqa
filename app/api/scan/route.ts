@@ -1,12 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { waitUntil } from '@vercel/functions'
 import { z } from 'zod'
 import { getAdminClient } from '@/lib/supabase'
 import { validateUrl, normalizeUrl } from '@/lib/utils'
 import { runScan } from '@/services/scanner'
 
-// Use Node.js runtime — required for Playwright
+// Node.js runtime required for Playwright (used in local dev path)
 export const runtime = 'nodejs'
-export const maxDuration = 120
+export const maxDuration = 30
 
 const NOTIFY_EMAIL = 'support@viyalabs.com'
 const NOTIFY_WHATSAPP = '9600190022'
@@ -16,7 +17,6 @@ const RequestSchema = z.object({
 })
 
 export async function POST(req: NextRequest) {
-  // Parse body
   let body: unknown
   try {
     body = await req.json()
@@ -40,7 +40,6 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: urlError }, { status: 422 })
   }
 
-  // Create the scan record
   const db = getAdminClient()
   const { data: scan, error: dbError } = await db
     .from('scans')
@@ -58,18 +57,32 @@ export async function POST(req: NextRequest) {
 
   const scanId: string = scan.id
 
-  // Notify on every scan submission — best-effort, don't block response
-  void Promise.allSettled([
-    notifyScanEmail(url, scanId),
-    notifyScanWhatsApp(url, scanId),
-  ])
+  // Notifications are best-effort — don't block the response
+  void Promise.allSettled([notifyScanEmail(url, scanId), notifyScanWhatsApp(url, scanId)])
 
-  // Fire-and-forget: start the scan without blocking the HTTP response.
-  // The scan writes results to Supabase progressively.
-  // The frontend polls GET /api/scan/[id] for status.
-  void runScan(scanId, url).catch((err) => {
-    console.error(`[runScan] Unhandled error for scan ${scanId}:`, err)
-  })
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? ''
+  const isLocal = process.env.NODE_ENV === 'development' || appUrl.includes('localhost')
+
+  if (isLocal) {
+    // Local dev: run inline so we don't need a self-referential HTTP call.
+    // void is acceptable here — local process won't be killed mid-scan.
+    void runScan(scanId, url).catch((err: unknown) => {
+      console.error(`[runScan] unhandled error for ${scanId}:`, err)
+    })
+  } else {
+    // Production: dispatch to the dedicated worker endpoint.
+    // waitUntil keeps this function alive long enough to fire the HTTP request;
+    // the worker runs as its own Vercel invocation with maxDuration=300.
+    waitUntil(
+      fetch(`${appUrl}/api/scan/worker`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ scanId }),
+      }).catch((err: unknown) => {
+        console.error('[scan] worker dispatch failed:', err)
+      })
+    )
+  }
 
   return NextResponse.json({ scanId }, { status: 202 })
 }
@@ -97,19 +110,23 @@ async function notifyScanEmail(url: string, scanId: string): Promise<void> {
         <p style="color:#888;font-size:12px">Sent by AgentQA — a Viyalabs product</p>
       `,
     }),
-  }).then(async (res) => {
-    if (!res.ok) console.error('[scan] Resend error:', await res.text())
-  }).catch(() => {})
+  })
+    .then(async (res) => {
+      if (!res.ok) console.error('[scan] Resend error:', await res.text())
+    })
+    .catch(() => {})
 }
 
 async function notifyScanWhatsApp(url: string, scanId: string): Promise<void> {
   const apiKey = process.env.CALLMEBOT_API_KEY
   if (!apiKey) return
 
-  const text = encodeURIComponent(`🔍 New AgentQA scan!\nURL: ${url}\nScan ID: ${scanId}`)
+  const text = encodeURIComponent(`New AgentQA scan!\nURL: ${url}\nScan ID: ${scanId}`)
   const endpoint = `https://api.callmebot.com/whatsapp.php?phone=${NOTIFY_WHATSAPP}&text=${text}&apikey=${apiKey}`
 
-  await fetch(endpoint).then(async (res) => {
-    if (!res.ok) console.error('[scan] CallMeBot error:', await res.text())
-  }).catch(() => {})
+  await fetch(endpoint)
+    .then(async (res) => {
+      if (!res.ok) console.error('[scan] CallMeBot error:', await res.text())
+    })
+    .catch(() => {})
 }

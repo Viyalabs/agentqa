@@ -10,7 +10,8 @@
     "test": "jest --testEnvironment node",
     "test:watch": "jest --watch --testEnvironment node",
     "install:browsers": "playwright install chromium --with-deps",
-    "db:setup": "node scripts/setup-db.js"
+    "db:setup": "node scripts/setup-db.js",
+    "postinstall": "playwright install chromium"
   },
   "dependencies": {
     "@radix-ui/react-alert-dialog": "^1.1.4",
