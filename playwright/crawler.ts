@@ -1,9 +1,35 @@
 import { chromium } from 'playwright'
+import type { LaunchOptions } from 'playwright'
 import type { PageTestResult } from '@/types'
 import { normalizeUrl, MAX_PAGES_PER_SCAN } from '@/lib/utils'
 import { testPage } from './page-tester'
 
 const MAX_PAGES = parseInt(process.env.MAX_PAGES_PER_SCAN ?? String(MAX_PAGES_PER_SCAN), 10)
+
+const BASE_ARGS = [
+  '--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage',
+  '--disable-gpu', '--no-zygote', '--single-process',
+  '--disable-extensions', '--disable-background-networking',
+  '--disable-background-timer-throttling', '--disable-renderer-backgrounding',
+]
+
+async function getBrowserLaunchOptions(): Promise<LaunchOptions> {
+  // On Vercel (production) use @sparticuz/chromium — its binary is bundled inside
+  // the npm package and extracted to /tmp at runtime. No download needed.
+  if (process.env.VERCEL || process.env.NODE_ENV === 'production') {
+    const chromiumLambda = (await import('@sparticuz/chromium')).default
+    return {
+      args: [...chromiumLambda.args, ...BASE_ARGS],
+      executablePath: await chromiumLambda.executablePath(),
+      headless: true,
+    }
+  }
+  // Local dev — use Playwright's own managed Chromium
+  return {
+    headless: process.env.PLAYWRIGHT_HEADLESS !== 'false',
+    args: BASE_ARGS,
+  }
+}
 const MAX_DEPTH = parseInt(process.env.MAX_CRAWL_DEPTH ?? '1', 10)
 
 // Paths that are slow, auth-gated, or cause infinite loops
@@ -71,15 +97,7 @@ export async function crawlWebsite(
 
   log('Launching browser...')
 
-  const browser = await chromium.launch({
-    headless: process.env.PLAYWRIGHT_HEADLESS !== 'false',
-    args: [
-      '--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage',
-      '--disable-gpu', '--no-zygote', '--single-process',
-      '--disable-extensions', '--disable-background-networking',
-      '--disable-background-timer-throttling', '--disable-renderer-backgrounding',
-    ],
-  })
+  const browser = await chromium.launch(await getBrowserLaunchOptions())
 
   const context = await browser.newContext({
     viewport: { width: 1280, height: 800 },

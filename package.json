@@ -11,7 +11,7 @@
     "test:watch": "jest --watch --testEnvironment node",
     "install:browsers": "playwright install chromium --with-deps",
     "db:setup": "node scripts/setup-db.js",
-    "postinstall": "playwright install chromium"
+    "postinstall": "node -e \"if(!process.env.VERCEL) require('child_process').execSync('playwright install chromium', {stdio:'inherit'});\""
   },
   "dependencies": {
     "@radix-ui/react-alert-dialog": "^1.1.4",
@@ -20,6 +20,7 @@
     "@radix-ui/react-separator": "^1.1.1",
     "@radix-ui/react-slot": "^1.1.1",
     "@radix-ui/react-tabs": "^1.1.2",
+    "@sparticuz/chromium": "^147.0.0",
     "@supabase/supabase-js": "^2.47.10",
     "@vercel/functions": "^3.4.4",
     "class-variance-authority": "^0.7.1",
