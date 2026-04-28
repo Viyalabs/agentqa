@@ -74,32 +74,44 @@ export async function POST(req: NextRequest) {
 
 async function notifyScanEmail(url: string, scanId: string): Promise<void> {
   const apiKey = process.env.RESEND_API_KEY
-  if (!apiKey) return
+  if (!apiKey) {
+    console.warn('[scan:email] RESEND_API_KEY not set — skipping email')
+    return
+  }
 
-  await fetch('https://api.resend.com/emails', {
-    method: 'POST',
-    headers: {
-      Authorization: `Bearer ${apiKey}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      from: process.env.RESEND_FROM_EMAIL ?? 'AgentQA <noreply@viyalabs.com>',
-      to: [NOTIFY_EMAIL],
-      subject: `New scan started: ${url}`,
-      html: `
-        <h2>New AgentQA Scan Started</h2>
-        <p><strong>URL:</strong> ${url}</p>
-        <p><strong>Scan ID:</strong> ${scanId}</p>
-        <p><strong>Time:</strong> ${new Date().toISOString()}</p>
-        <hr/>
-        <p style="color:#888;font-size:12px">Sent by AgentQA — a Viyalabs product</p>
-      `,
-    }),
-  })
-    .then(async (res) => {
-      if (!res.ok) console.error('[scan] Resend error:', await res.text())
+  const from = process.env.RESEND_FROM_EMAIL ?? 'AgentQA <noreply@viyalabs.com>'
+  console.log(`[scan:email] Sending to ${NOTIFY_EMAIL} from ${from}`)
+
+  try {
+    const res = await fetch('https://api.resend.com/emails', {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        from,
+        to: [NOTIFY_EMAIL],
+        subject: `New scan started: ${url}`,
+        html: `
+          <h2>New AgentQA Scan Started</h2>
+          <p><strong>URL:</strong> ${url}</p>
+          <p><strong>Scan ID:</strong> ${scanId}</p>
+          <p><strong>Time:</strong> ${new Date().toISOString()}</p>
+          <hr/>
+          <p style="color:#888;font-size:12px">Sent by AgentQA — a Viyalabs product</p>
+        `,
+      }),
     })
-    .catch(() => {})
+    const body = await res.text()
+    if (!res.ok) {
+      console.error(`[scan:email] Resend rejected (${res.status}):`, body)
+    } else {
+      console.log('[scan:email] Sent successfully:', body)
+    }
+  } catch (err) {
+    console.error('[scan:email] Network error:', err)
+  }
 }
 
 async function notifyScanWhatsApp(url: string, scanId: string): Promise<void> {

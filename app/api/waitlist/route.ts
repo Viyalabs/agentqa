@@ -57,39 +57,43 @@ export async function POST(req: NextRequest) {
 async function sendEmailNotification(email: string, name?: string): Promise<void> {
   const apiKey = process.env.RESEND_API_KEY
   if (!apiKey) {
-    console.warn('[waitlist] RESEND_API_KEY not set — skipping email notification')
+    console.warn('[waitlist:email] RESEND_API_KEY not set — skipping email')
     return
   }
 
-  const displayName = name ? `${name} (${email})` : email
+  const from = process.env.RESEND_FROM_EMAIL ?? 'AgentQA <noreply@viyalabs.com>'
+  console.log(`[waitlist:email] Sending to ${NOTIFY_EMAIL} from ${from}`)
 
-  await fetch('https://api.resend.com/emails', {
-    method: 'POST',
-    headers: {
-      Authorization: `Bearer ${apiKey}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      from: process.env.RESEND_FROM_EMAIL ?? 'AgentQA <noreply@viyalabs.com>',
-      to: [NOTIFY_EMAIL],
-      subject: `New waitlist signup: ${email}`,
-      html: `
-        <h2>New AgentQA Pro Waitlist Signup</h2>
-        <p><strong>Name:</strong> ${name ?? '—'}</p>
-        <p><strong>Email:</strong> ${email}</p>
-        <p><strong>Time:</strong> ${new Date().toISOString()}</p>
-        <hr/>
-        <p style="color:#888;font-size:12px">Sent by AgentQA — a Viyalabs product</p>
-      `,
-    }),
-  }).then(async (res) => {
+  try {
+    const res = await fetch('https://api.resend.com/emails', {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        from,
+        to: [NOTIFY_EMAIL],
+        subject: `New waitlist signup: ${email}`,
+        html: `
+          <h2>New AgentQA Pro Waitlist Signup</h2>
+          <p><strong>Name:</strong> ${name ?? '—'}</p>
+          <p><strong>Email:</strong> ${email}</p>
+          <p><strong>Time:</strong> ${new Date().toISOString()}</p>
+          <hr/>
+          <p style="color:#888;font-size:12px">Sent by AgentQA — a Viyalabs product</p>
+        `,
+      }),
+    })
+    const body = await res.text()
     if (!res.ok) {
-      const err = await res.text()
-      console.error('[waitlist] Resend error:', err)
+      console.error(`[waitlist:email] Resend rejected (${res.status}):`, body)
     } else {
-      console.log(`[waitlist] Email sent for ${displayName}`)
+      console.log(`[waitlist:email] Sent successfully for ${email}`)
     }
-  })
+  } catch (err) {
+    console.error('[waitlist:email] Network error:', err)
+  }
 }
 
 async function sendWhatsAppNotification(email: string, name?: string): Promise<void> {
