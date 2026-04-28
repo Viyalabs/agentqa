@@ -83,7 +83,7 @@ export function ScanForm() {
             </>
           ) : (
             <>
-              Test Your App
+              Scan My App Free
               <ArrowRight className="h-4 w-4" />
             </>
           )}
