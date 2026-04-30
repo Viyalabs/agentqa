@@ -3,6 +3,8 @@
 import { useState, useEffect } from 'react'
 import { Chrome, Zap, Smartphone, AlertCircle, AlertTriangle, WifiOff, ShieldCheck } from 'lucide-react'
 import { ScanForm } from './scan-form'
+import type { HomeStats } from '@/lib/stats'
+import { formatStat } from '@/lib/stats'
 
 const LOGS: Array<{ text: string; color: string }> = [
   { text: 'Launching Chrome browser...', color: 'text-zinc-400' },
@@ -156,7 +158,7 @@ function FloatingCard({
   )
 }
 
-export function Hero() {
+export function Hero({ stats }: { stats?: HomeStats }) {
   return (
     <>
       <style>{`
@@ -220,12 +222,18 @@ export function Hero() {
               {/* Social proof */}
               <div className="flex items-center justify-center lg:justify-start gap-8 mt-8 pt-8 border-t border-zinc-800/60">
                 <div>
-                  <div className="text-2xl font-bold text-white">1,200<span className="text-blue-400">+</span></div>
+                  <div className="text-2xl font-bold text-white">
+                    {formatStat(stats?.appsScanned ?? 0, '1,200')}
+                    <span className="text-blue-400">+</span>
+                  </div>
                   <div className="text-xs text-zinc-500 mt-0.5">apps scanned</div>
                 </div>
                 <div className="w-px h-8 bg-zinc-800" />
                 <div>
-                  <div className="text-2xl font-bold text-white">8,400<span className="text-blue-400">+</span></div>
+                  <div className="text-2xl font-bold text-white">
+                    {formatStat(stats?.bugsCaught ?? 0, '8,400')}
+                    <span className="text-blue-400">+</span>
+                  </div>
                   <div className="text-xs text-zinc-500 mt-0.5">bugs caught</div>
                 </div>
                 <div className="w-px h-8 bg-zinc-800" />

@@ -1,5 +1,6 @@
 import { Hero } from '@/components/hero'
 import { Navbar } from '@/components/navbar'
+import { getHomeStats } from '@/lib/stats'
 import { ProblemNarrative } from '@/components/problem-narrative'
 import { HowItWorks } from '@/components/how-it-works'
 import { Comparison } from '@/components/comparison'
@@ -44,7 +45,11 @@ const jsonLd = {
   ],
 }
 
-export default function HomePage() {
+export const revalidate = 3600
+
+export default async function HomePage() {
+  const stats = await getHomeStats()
+
   return (
     <div className="min-h-screen bg-[#0A0A0F]">
       <script
@@ -55,7 +60,7 @@ export default function HomePage() {
 
       <main>
         {/* 1. Hero + Who Is This For */}
-        <Hero />
+        <Hero stats={stats} />
 
         {/* 2. Problem narrative + AI builders wedge */}
         <ProblemNarrative />
