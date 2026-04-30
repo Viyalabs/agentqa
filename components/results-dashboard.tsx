@@ -32,6 +32,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs'
 import { IssueCard } from './issue-card'
 import { ScreenshotViewer } from './screenshot-viewer'
 import { ReportEmailCapture } from './report-email-capture'
+import { NotifyWhenDone } from './notify-when-done'
 import type { Issue, IssueSeverity, IssueType, NetworkRequest, ScanLog, ScanStatusResponse } from '@/types'
 import {
   getScoreColor,
@@ -408,6 +409,8 @@ export function ResultsDashboard({ scanId }: ResultsDashboardProps) {
           <Progress value={scanProgress} className="h-1.5" />
         </div>
       )}
+
+      {isRunning && <NotifyWhenDone scanId={scanId} />}
 
       {/* Real-time scan log terminal */}
       {(isRunning || (isComplete && logs.length > 0)) && (

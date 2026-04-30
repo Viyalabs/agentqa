@@ -141,6 +141,13 @@ export async function runScan(scanId: string, url: string): Promise<void> {
       }
     }
 
+    const { data: scanMeta } = await db
+      .from('scans')
+      .select('notify_email')
+      .eq('id', scanId)
+      .single()
+    const notifyEmail = (scanMeta as { notify_email?: string | null } | null)?.notify_email ?? null
+
     const { score } = calculateScore(allIssues)
     const timedOut = controller.signal.aborted
 
@@ -167,6 +174,12 @@ export async function runScan(scanId: string, url: string): Promise<void> {
     console.log(
       `[scanner] ${scanId} done — score:${score} pages:${totalPages} issues:${allIssues.length}${timedOut ? ' [PARTIAL]' : ''}`
     )
+
+    if (notifyEmail) {
+      await sendScanCompletionEmail(notifyEmail, scanId, url, score).catch((err: unknown) => {
+        console.error(`[scanner] Failed to send notify email for ${scanId}:`, err)
+      })
+    }
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err)
     console.error(`[scanner] ${scanId} failed:`, message)
@@ -203,6 +216,58 @@ function categoriseError(raw: string): string {
     return 'A network-level error occurred. The site may be down or blocking automated requests.'
   }
   return raw
+}
+
+const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? 'https://qa.viyalabs.com'
+
+async function resendPost(payload: Record<string, unknown>): Promise<void> {
+  const apiKey = process.env.RESEND_API_KEY
+  if (!apiKey) return
+  const from = process.env.RESEND_FROM_EMAIL ?? 'AgentQA <noreply@viyalabs.com>'
+  const res = await fetch('https://api.resend.com/emails', {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ from, ...payload }),
+  })
+  if (!res.ok) {
+    const text = await res.text()
+    throw new Error(`Resend rejected (${res.status}): ${text}`)
+  }
+}
+
+async function sendScanCompletionEmail(
+  email: string,
+  scanId: string,
+  scannedUrl: string,
+  score: number,
+): Promise<void> {
+  const reportLink = `${APP_URL}/report/${scanId}`
+  console.log(`[scanner] Sending completion email to ${email} for ${scanId}`)
+  await resendPost({
+    to: [email],
+    subject: `Your AgentQA scan is done — score: ${score}/100`,
+    html: `
+      <div style="font-family:system-ui,sans-serif;max-width:560px;margin:0 auto;background:#0A0A0F;color:#fff;padding:40px 32px;border-radius:12px">
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:32px">
+          <span style="font-size:20px">⚡</span>
+          <span style="font-weight:700;font-size:18px;color:#fff">AgentQA</span>
+        </div>
+        <h1 style="font-size:22px;font-weight:700;color:#fff;margin:0 0 8px">Your QA scan is complete</h1>
+        <p style="color:#71717a;margin:0 0 8px;font-size:14px">Scanned: <span style="color:#a1a1aa">${scannedUrl}</span></p>
+        <p style="color:#71717a;margin:0 0 24px;font-size:14px">Score: <span style="color:#fff;font-weight:700">${score}/100</span></p>
+        <a href="${reportLink}" style="display:inline-block;background:#2563eb;color:#fff;text-decoration:none;padding:12px 24px;border-radius:8px;font-weight:600;font-size:15px;margin-bottom:32px">
+          View Full Report →
+        </a>
+        <p style="color:#52525b;font-size:13px;margin:0 0 8px">
+          This link is permanent — bookmark it or share it with your team.
+        </p>
+        <hr style="border:none;border-top:1px solid #27272a;margin:24px 0"/>
+        <p style="color:#3f3f46;font-size:12px;margin:0">
+          AgentQA by <a href="https://viyalabs.com" style="color:#3f3f46">Viyalabs</a>
+        </p>
+      </div>
+    `,
+  })
 }
 
 function classifyPageIssues(
