@@ -53,7 +53,8 @@ export function DemoScan() {
           setActiveUrl(null)
           return
         }
-        router.push(`/scan/${data.scanId}`)
+        const dest = data.cached ? `/report/${data.scanId}` : `/scan/${data.scanId}`
+        router.push(dest)
       } catch {
         setError('Network error. Please check your connection.')
         setActiveUrl(null)

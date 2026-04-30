@@ -46,7 +46,9 @@ export function ScanForm() {
           return
         }
 
-        router.push(`/scan/${data.scanId}`)
+        // cached: true means this URL was scanned recently — route to report directly
+        const dest = data.cached ? `/report/${data.scanId}` : `/scan/${data.scanId}`
+        router.push(dest)
       } catch {
         setError('Network error. Please check your connection and try again.')
       }
@@ -79,7 +81,7 @@ export function ScanForm() {
           {isPending ? (
             <>
               <Loader2 className="h-4 w-4 animate-spin" />
-              Starting scan…
+              Loading…
             </>
           ) : (
             <>

@@ -6,11 +6,12 @@ import { validateUrl, normalizeUrl } from '@/lib/utils'
 import { runScan } from '@/services/scanner'
 
 export const runtime = 'nodejs'
-// 300s so Vercel keeps the function alive for the full scan via waitUntil
 export const maxDuration = 300
 
-const NOTIFY_EMAIL = 'support@viyalabs.com'
-const NOTIFY_WHATSAPP = '9600190022'
+// Return an existing completed/in-progress scan for the same URL within this window
+const DEDUP_WINDOW_MINUTES = 15
+// Reject new scans when this many are already queued or running
+const MAX_CONCURRENT_SCANS = 20
 
 const RequestSchema = z.object({
   url: z.string().min(1, 'URL is required').max(2048, 'URL is too long'),
@@ -41,6 +42,40 @@ export async function POST(req: NextRequest) {
   }
 
   const db = getAdminClient()
+
+  // ── Deduplication: return an existing recent scan for the same URL ───────────
+  const dedupCutoff = new Date(Date.now() - DEDUP_WINDOW_MINUTES * 60 * 1000).toISOString()
+  const { data: recentRows } = await db
+    .from('scans')
+    .select('id, status')
+    .eq('url', url)
+    .in('status', ['pending', 'running', 'completed'])
+    .gte('created_at', dedupCutoff)
+    .order('created_at', { ascending: false })
+    .limit(1)
+
+  const recent = recentRows?.[0]
+  if (recent) {
+    return NextResponse.json(
+      { scanId: recent.id, cached: true },
+      { status: 200 }
+    )
+  }
+
+  // ── Queue limit: prevent overloading the scanner ─────────────────────────────
+  const { count: activeCount } = await db
+    .from('scans')
+    .select('*', { count: 'exact', head: true })
+    .in('status', ['pending', 'running'])
+
+  if ((activeCount ?? 0) >= MAX_CONCURRENT_SCANS) {
+    return NextResponse.json(
+      { error: 'Scanner is busy right now. Please try again in a few minutes.' },
+      { status: 429 }
+    )
+  }
+
+  // ── Create scan record ───────────────────────────────────────────────────────
   const { data: scan, error: dbError } = await db
     .from('scans')
     .insert({ url, status: 'pending' })
@@ -57,12 +92,6 @@ export async function POST(req: NextRequest) {
 
   const scanId: string = scan.id
 
-  // Notifications — best-effort, non-blocking
-  void Promise.allSettled([notifyScanEmail(url, scanId), notifyScanWhatsApp(url, scanId)])
-
-  // waitUntil tells Vercel to keep this function alive after the response is
-  // sent — the scan runs to completion without being killed mid-crawl.
-  // In local next dev the Node.js server stays up anyway, so this is safe there too.
   waitUntil(
     runScan(scanId, url).catch((err: unknown) => {
       console.error(`[runScan] unhandled error for ${scanId}:`, err)
@@ -70,60 +99,4 @@ export async function POST(req: NextRequest) {
   )
 
   return NextResponse.json({ scanId }, { status: 202 })
-}
-
-async function notifyScanEmail(url: string, scanId: string): Promise<void> {
-  const apiKey = process.env.RESEND_API_KEY
-  if (!apiKey) {
-    console.warn('[scan:email] RESEND_API_KEY not set — skipping email')
-    return
-  }
-
-  const from = process.env.RESEND_FROM_EMAIL ?? 'AgentQA <noreply@viyalabs.com>'
-  console.log(`[scan:email] Sending to ${NOTIFY_EMAIL} from ${from}`)
-
-  try {
-    const res = await fetch('https://api.resend.com/emails', {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${apiKey}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        from,
-        to: [NOTIFY_EMAIL],
-        subject: `New scan started: ${url}`,
-        html: `
-          <h2>New AgentQA Scan Started</h2>
-          <p><strong>URL:</strong> ${url}</p>
-          <p><strong>Scan ID:</strong> ${scanId}</p>
-          <p><strong>Time:</strong> ${new Date().toISOString()}</p>
-          <hr/>
-          <p style="color:#888;font-size:12px">Sent by AgentQA — a Viyalabs product</p>
-        `,
-      }),
-    })
-    const body = await res.text()
-    if (!res.ok) {
-      console.error(`[scan:email] Resend rejected (${res.status}):`, body)
-    } else {
-      console.log('[scan:email] Sent successfully:', body)
-    }
-  } catch (err) {
-    console.error('[scan:email] Network error:', err)
-  }
-}
-
-async function notifyScanWhatsApp(url: string, scanId: string): Promise<void> {
-  const apiKey = process.env.CALLMEBOT_API_KEY
-  if (!apiKey) return
-
-  const text = encodeURIComponent(`New AgentQA scan!\nURL: ${url}\nScan ID: ${scanId}`)
-  const endpoint = `https://api.callmebot.com/whatsapp.php?phone=${NOTIFY_WHATSAPP}&text=${text}&apikey=${apiKey}`
-
-  await fetch(endpoint)
-    .then(async (res) => {
-      if (!res.ok) console.error('[scan] CallMeBot error:', await res.text())
-    })
-    .catch(() => {})
 }
