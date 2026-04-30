@@ -1,7 +1,7 @@
 import { ImageResponse } from 'next/og'
 
 export const runtime = 'edge'
-export const alt = 'AgentQA — Catch Bugs Before Your Users Do'
+export const alt = 'AgentQA — AI QA Agent. Catch Bugs Before Your Users Do'
 export const size = { width: 1200, height: 630 }
 export const contentType = 'image/png'
 
@@ -67,7 +67,7 @@ export default function OGImage() {
               marginLeft: 4,
             }}
           >
-            by Viyalabs
+            AI QA Agent
           </span>
         </div>
 
@@ -106,8 +106,8 @@ export default function OGImage() {
             marginBottom: 52,
           }}
         >
-          Automated QA for web apps — real browser testing, JS error detection,
-          mobile responsiveness, screenshots in under 2 minutes.
+          Your autonomous QA engineer. Paste a URL — get a full QA report in under 2 minutes.
+          Zero setup. No QA team required.
         </div>
 
         {/* Stats row */}

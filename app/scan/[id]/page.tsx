@@ -11,6 +11,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   const { id } = await params
   return {
     title: `Scan ${id.slice(0, 8)} — QA Report`,
+    robots: { index: false },
   }
 }
 
@@ -32,7 +33,7 @@ export default async function ScanResultsPage({ params }: PageProps) {
             className="flex items-center gap-1.5 text-sm text-zinc-400 hover:text-zinc-200 transition-colors"
           >
             <ArrowLeft className="h-4 w-4" />
-            New scan
+            Scan your app free
           </Link>
         </div>
       </nav>

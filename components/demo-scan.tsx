@@ -65,12 +65,12 @@ export function DemoScan() {
     <section className="py-24 px-4">
       <div className="max-w-5xl mx-auto">
         <div className="text-center mb-12">
+          <p className="text-xs font-mono text-blue-400 tracking-widest uppercase mb-4">Live demo</p>
           <h2 className="text-3xl sm:text-4xl font-bold text-white mb-4">
-            Try a demo scan
+            See AgentQA run on a real site
           </h2>
           <p className="text-zinc-400 max-w-xl mx-auto">
-            See AgentQA in action on a real site. Pick one of these and get a live report
-            in under 2 minutes.
+            Pick any of these and watch the AI QA agent crawl, test, and report — live, in your browser, right now.
           </p>
         </div>
 
