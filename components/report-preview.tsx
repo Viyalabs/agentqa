@@ -38,12 +38,12 @@ export function ReportPreview() {
     <section className="py-24 px-4 bg-zinc-950/50 border-y border-zinc-800/50">
       <div className="max-w-5xl mx-auto">
         <div className="text-center mb-14">
+          <p className="text-xs font-mono text-blue-400 tracking-widest uppercase mb-4">Real output from AgentQA</p>
           <h2 className="text-3xl sm:text-4xl font-bold text-white mb-4">
-            See your QA report
+            This is what your report looks like
           </h2>
           <p className="text-zinc-400 max-w-xl mx-auto">
-            Every scan produces a full breakdown — score, severity-classified issues, per-page
-            status, and screenshots.
+            Every scan produces a QA score, severity-classified issues, per-page status, and screenshots — shareable via a single link.
           </p>
         </div>
 
@@ -53,11 +53,12 @@ export function ReportPreview() {
           <div className="flex items-center justify-between px-5 py-3 border-b border-zinc-800 bg-zinc-900/60">
             <div className="flex items-center gap-2">
               <span className="text-xs font-mono text-zinc-500">qa.viyalabs.com/scan/</span>
-              <span className="text-xs font-mono text-zinc-300">a1b2c3d4</span>
+              <span className="text-xs font-mono text-blue-400">a1b2c3d4</span>
+              <span className="text-xs text-zinc-600 hidden sm:inline">— shareable link</span>
             </div>
             <div className="flex items-center gap-2 px-2.5 py-1 rounded-md bg-green-500/10 border border-green-500/20 text-green-400 text-xs">
               <CheckCircle2 className="h-3 w-3" />
-              Scan complete
+              Scan complete · 1m 43s
             </div>
           </div>
 

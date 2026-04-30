@@ -1,19 +1,19 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { Chrome, Zap, Smartphone, AlertCircle, AlertTriangle, WifiOff } from 'lucide-react'
+import { Chrome, Zap, Smartphone, AlertCircle, AlertTriangle, WifiOff, ShieldCheck } from 'lucide-react'
 import { ScanForm } from './scan-form'
 
 const LOGS: Array<{ text: string; color: string }> = [
-  { text: 'Launching browser...', color: 'text-zinc-400' },
-  { text: 'Scanning homepage...', color: 'text-blue-400' },
+  { text: 'Launching Chrome browser...', color: 'text-zinc-400' },
+  { text: 'Crawling homepage...', color: 'text-blue-400' },
   { text: '✓ Page loaded in 1.3s', color: 'text-green-400' },
-  { text: 'Scanning /dashboard...', color: 'text-blue-400' },
+  { text: 'Crawling /dashboard...', color: 'text-blue-400' },
   { text: '✗ API request failed (401)', color: 'text-red-400' },
-  { text: 'Scanning /pricing...', color: 'text-blue-400' },
+  { text: 'Crawling /pricing...', color: 'text-blue-400' },
   { text: '⚠ TypeError: Cannot read null', color: 'text-yellow-400' },
-  { text: '✓ Mobile layout checked', color: 'text-green-400' },
-  { text: 'Uploading screenshots...', color: 'text-zinc-400' },
+  { text: '✓ Mobile layout verified', color: 'text-green-400' },
+  { text: 'Capturing screenshots...', color: 'text-zinc-400' },
   { text: 'Score: 68/100 · 3 issues found', color: 'text-blue-300' },
 ]
 
@@ -60,7 +60,6 @@ function ScanTerminal() {
       if (i < LOGS.length) {
         setTimeout(tick, 650)
       } else {
-        // restart after pause
         setTimeout(() => {
           i = 0
           setVisibleCount(0)
@@ -75,17 +74,14 @@ function ScanTerminal() {
 
   return (
     <div className="relative w-full max-w-md mx-auto lg:mx-0">
-      {/* Terminal window */}
       <div className="rounded-xl border border-zinc-700/60 bg-zinc-900/80 backdrop-blur-sm shadow-2xl overflow-hidden">
-        {/* Title bar */}
         <div className="flex items-center gap-2 px-4 py-3 border-b border-zinc-800 bg-zinc-900">
           <span className="h-3 w-3 rounded-full bg-red-500/80" />
           <span className="h-3 w-3 rounded-full bg-yellow-500/80" />
           <span className="h-3 w-3 rounded-full bg-green-500/80" />
-          <span className="ml-3 text-xs text-zinc-500 font-mono">agentqa — scan log</span>
+          <span className="ml-3 text-xs text-zinc-500 font-mono">agentqa — live scan</span>
         </div>
 
-        {/* Log lines */}
         <div className="p-4 font-mono text-xs space-y-1.5 min-h-[220px]">
           {LOGS.slice(0, visibleCount).map((log, i) => (
             <div
@@ -96,7 +92,6 @@ function ScanTerminal() {
               <span>{log.text}</span>
             </div>
           ))}
-          {/* Blinking cursor */}
           {visibleCount < LOGS.length && (
             <div className="flex items-center gap-2 text-zinc-600">
               <span>›</span>
@@ -105,7 +100,6 @@ function ScanTerminal() {
           )}
         </div>
 
-        {/* Progress bar */}
         <div className="px-4 pb-4">
           <div className="flex items-center justify-between text-xs text-zinc-600 mb-1.5">
             <span>Scanning pages</span>
@@ -120,7 +114,6 @@ function ScanTerminal() {
         </div>
       </div>
 
-      {/* Floating issue cards */}
       {ISSUE_CARDS.map((card, i) => (
         <FloatingCard key={i} card={card} index={i} />
       ))}
@@ -174,7 +167,6 @@ export function Hero() {
       `}</style>
 
       <section className="relative overflow-hidden pt-24 pb-16 px-4">
-        {/* Background glows */}
         <div className="absolute inset-0 -z-10 pointer-events-none">
           <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[900px] h-[500px] bg-blue-600/10 blur-[140px] rounded-full" />
           <div className="absolute top-1/2 left-1/4 w-[400px] h-[300px] bg-cyan-600/5 blur-[100px] rounded-full" />
@@ -183,7 +175,6 @@ export function Hero() {
         <div className="max-w-6xl mx-auto">
           <div className="grid lg:grid-cols-2 gap-12 lg:gap-16 items-center">
 
-            {/* Left: copy + form */}
             <div className="text-center lg:text-left">
               {/* Badge */}
               <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full border border-blue-500/30 bg-blue-500/10 text-blue-400 text-xs font-medium mb-8">
@@ -191,7 +182,7 @@ export function Hero() {
                   <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75" />
                   <span className="relative inline-flex rounded-full h-2 w-2 bg-blue-500" />
                 </span>
-                Free automated QA — no setup required
+                AI QA agent — zero setup, real browser
               </div>
 
               {/* Headline */}
@@ -202,12 +193,10 @@ export function Hero() {
                 </span>
               </h1>
 
-              <p className="text-lg text-zinc-400 mb-10 leading-relaxed max-w-xl mx-auto lg:mx-0">
-                Paste your URL. A real Chrome browser crawls every page, tests mobile and desktop,
-                captures screenshots, catches JS errors, and delivers a scored QA report — in under 2 minutes.
+              <p className="text-xl text-zinc-400 mb-10 leading-relaxed max-w-xl mx-auto lg:mx-0">
+                Your autonomous QA engineer. Paste a URL and get a complete QA report in under 2&nbsp;minutes — no setup, no configuration, no QA team required.
               </p>
 
-              {/* Scan form */}
               <div className="max-w-xl mx-auto lg:mx-0">
                 <ScanForm />
               </div>
@@ -223,12 +212,12 @@ export function Hero() {
                   Results in &lt;2 min
                 </div>
                 <div className="flex items-center gap-2">
-                  <Smartphone className="h-4 w-4 text-blue-500" />
-                  Mobile + desktop
+                  <ShieldCheck className="h-4 w-4 text-blue-500" />
+                  No QA team needed
                 </div>
               </div>
 
-              {/* Social proof metrics */}
+              {/* Social proof */}
               <div className="flex items-center justify-center lg:justify-start gap-8 mt-8 pt-8 border-t border-zinc-800/60">
                 <div>
                   <div className="text-2xl font-bold text-white">1,200<span className="text-blue-400">+</span></div>
@@ -237,7 +226,7 @@ export function Hero() {
                 <div className="w-px h-8 bg-zinc-800" />
                 <div>
                   <div className="text-2xl font-bold text-white">8,400<span className="text-blue-400">+</span></div>
-                  <div className="text-xs text-zinc-500 mt-0.5">bugs found</div>
+                  <div className="text-xs text-zinc-500 mt-0.5">bugs caught</div>
                 </div>
                 <div className="w-px h-8 bg-zinc-800" />
                 <div>
@@ -247,7 +236,6 @@ export function Hero() {
               </div>
             </div>
 
-            {/* Right: terminal animation */}
             <div className="flex justify-center lg:justify-end">
               <ScanTerminal />
             </div>
@@ -255,7 +243,6 @@ export function Hero() {
         </div>
       </section>
 
-      {/* Who is this for? */}
       <ForWhoSection />
     </>
   )
@@ -263,24 +250,24 @@ export function Hero() {
 
 const FOR_WHO = [
   {
+    emoji: '⚡',
+    title: 'AI Builders',
+    description: 'Using Cursor, Replit, or Lovable? AI writes the code. AgentQA catches what the LLM missed.',
+  },
+  {
     emoji: '🚀',
     title: 'Indie Hackers',
-    description: 'Ship fast without breaking things. Catch regressions before your users notice.',
+    description: 'Ship fast without a QA bottleneck. Get a scored report on every deploy, not just bug reports from users.',
+  },
+  {
+    emoji: '⚙️',
+    title: 'Startups',
+    description: "Move at startup speed without hiring a QA team. Know your app's health before every launch.",
   },
   {
     emoji: '🏢',
     title: 'Agencies',
-    description: 'QA every client delivery automatically. Generate reports in seconds, not hours.',
-  },
-  {
-    emoji: '🤖',
-    title: 'AI App Builders',
-    description: 'AI-generated code needs real testing. Catch the bugs LLMs leave behind.',
-  },
-  {
-    emoji: '⚡',
-    title: 'Startups',
-    description: "Move fast without a QA team. Get a scored report on every deploy.",
+    description: 'Deliver client projects with a professional QA report, not just a Loom walkthrough.',
   },
 ]
 
@@ -290,10 +277,10 @@ function ForWhoSection() {
       <div className="max-w-5xl mx-auto">
         <div className="text-center mb-10">
           <h2 className="text-2xl sm:text-3xl font-bold text-white mb-3">
-            Who is this for?
+            Built for teams that ship fast
           </h2>
           <p className="text-zinc-400">
-            Built for teams that ship fast and can&apos;t afford broken experiences.
+            AgentQA replaces the QA step that most fast-moving teams skip entirely.
           </p>
         </div>
 

@@ -1,9 +1,13 @@
 import { Hero } from '@/components/hero'
 import { Navbar } from '@/components/navbar'
+import { ProblemNarrative } from '@/components/problem-narrative'
 import { HowItWorks } from '@/components/how-it-works'
+import { Comparison } from '@/components/comparison'
 import { ReportPreview } from '@/components/report-preview'
 import { DemoScan } from '@/components/demo-scan'
 import { Features } from '@/components/features'
+import { FutureOfQA } from '@/components/future-of-qa'
+import { CtaBanner } from '@/components/cta-banner'
 import { Pricing } from '@/components/pricing'
 import { Footer } from '@/components/footer'
 
@@ -14,7 +18,7 @@ const jsonLd = {
   applicationCategory: 'DeveloperApplication',
   operatingSystem: 'Web',
   description:
-    'AgentQA automatically tests your website or web app using a real browser, detects bugs, captures screenshots, finds JS errors, tests mobile responsiveness, and delivers a QA report in under 2 minutes.',
+    'AgentQA is an autonomous AI QA agent that tests your web app using a real browser, detects bugs, captures screenshots, finds JS errors, tests mobile responsiveness, and delivers a QA report in under 2 minutes.',
   url: 'https://qa.viyalabs.com',
   offers: {
     '@type': 'Offer',
@@ -27,6 +31,7 @@ const jsonLd = {
     url: 'https://viyalabs.com',
   },
   featureList: [
+    'Autonomous AI QA agent',
     'Automated website testing',
     'Real browser Playwright testing',
     'JavaScript error detection',
@@ -34,7 +39,8 @@ const jsonLd = {
     'Screenshot capture',
     'QA score report',
     'Bug detection',
-    'Web app QA automation',
+    'No setup required',
+    'Works with Cursor, Replit, Lovable',
   ],
 }
 
@@ -47,13 +53,35 @@ export default function HomePage() {
       />
       <Navbar />
 
-      {/* Main content */}
       <main>
+        {/* 1. Hero + Who Is This For */}
         <Hero />
+
+        {/* 2. Problem narrative + AI builders wedge */}
+        <ProblemNarrative />
+
+        {/* 3. How it works */}
         <HowItWorks />
+
+        {/* 4. Traditional QA vs AgentQA */}
+        <Comparison />
+
+        {/* 5. Real report output */}
         <ReportPreview />
+
+        {/* 6. Live demo scan */}
         <DemoScan />
+
+        {/* 7. Full feature set */}
         <Features />
+
+        {/* 8. Vision: Today / Next / Soon */}
+        <FutureOfQA />
+
+        {/* 9. CTA before pricing */}
+        <CtaBanner />
+
+        {/* 10. Pricing */}
         <Pricing />
       </main>
 

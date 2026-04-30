@@ -8,11 +8,9 @@ const nextConfig: NextConfig = {
   // Tell Next.js file-tracing to include the @sparticuz/chromium binary files
   // in the Vercel deployment bundle. Without this, the /bin directory is excluded
   // and the browser fails to launch with "input directory does not exist".
-  experimental: {
-    outputFileTracingIncludes: {
-      '/api/scan': ['./node_modules/@sparticuz/chromium/**/*'],
-      '/api/scan/worker': ['./node_modules/@sparticuz/chromium/**/*'],
-    },
+  outputFileTracingIncludes: {
+    '/api/scan': ['./node_modules/@sparticuz/chromium/**/*'],
+    '/api/scan/worker': ['./node_modules/@sparticuz/chromium/**/*'],
   },
 
   typescript: { ignoreBuildErrors: true },
