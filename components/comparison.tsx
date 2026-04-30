@@ -1,5 +1,3 @@
-import { Check, X } from 'lucide-react'
-
 const ROWS = [
   { aspect: 'How to start',       traditional: 'Write test scripts',          agentqa: 'Paste a URL' },
   { aspect: 'Testing method',     traditional: 'Manual click-through',        agentqa: 'Autonomous agent' },

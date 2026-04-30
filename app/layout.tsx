@@ -6,9 +6,9 @@ import './globals.css'
 const inter = Inter({ subsets: ['latin'] })
 
 const APP_URL = 'https://qa.viyalabs.com'
-const TITLE = 'AgentQA — Catch Bugs Before Your Users Do'
+const TITLE = 'AgentQA — AI QA Agent. Catch Bugs Before Your Users Do'
 const DESCRIPTION =
-  'AgentQA automatically tests your website or web app using a real browser, detects bugs, captures screenshots, finds JS errors, tests mobile responsiveness, and delivers a QA report in under 2 minutes.'
+  'AgentQA is your autonomous AI QA engineer. Paste a URL and get a full QA report in under 2 minutes — real Chrome browser, zero setup, no QA team required. Works with Cursor, Replit, Lovable, and any web app.'
 
 export const metadata: Metadata = {
   metadataBase: new URL(APP_URL),
@@ -21,12 +21,18 @@ export const metadata: Metadata = {
   description: DESCRIPTION,
 
   keywords: [
+    'AI QA agent',
+    'autonomous QA',
+    'automated QA tool',
     'AI app testing',
     'website testing',
     'automated QA',
     'Playwright testing',
     'bug detection',
-    'AI generated apps',
+    'AI generated app testing',
+    'Cursor app testing',
+    'Replit app testing',
+    'Lovable app testing',
     'website scanner',
     'QA automation',
     'web app testing',
@@ -34,6 +40,7 @@ export const metadata: Metadata = {
     'web app QA',
     'JavaScript error detection',
     'mobile responsiveness testing',
+    'no setup QA',
   ],
 
   authors: [{ name: 'Viyalabs', url: 'https://viyalabs.com' }],
