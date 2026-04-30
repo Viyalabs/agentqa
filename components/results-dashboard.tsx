@@ -31,6 +31,7 @@ import { Progress } from './ui/progress'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs'
 import { IssueCard } from './issue-card'
 import { ScreenshotViewer } from './screenshot-viewer'
+import { ReportEmailCapture } from './report-email-capture'
 import type { Issue, IssueSeverity, IssueType, NetworkRequest, ScanLog, ScanStatusResponse } from '@/types'
 import {
   getScoreColor,
@@ -769,19 +770,19 @@ export function ResultsDashboard({ scanId }: ResultsDashboardProps) {
         </TabsContent>
       </Tabs>
 
-      {/* Post-scan conversion nudge */}
+      {/* Post-scan conversion: email capture + secondary CTA */}
       {isComplete && (
-        <div className="mt-10 p-6 rounded-2xl border border-zinc-800 bg-zinc-900/30 flex flex-col sm:flex-row items-center justify-between gap-4">
-          <div>
-            <p className="text-white font-semibold mb-1">Scan another app</p>
-            <p className="text-zinc-400 text-sm">AgentQA is free. Paste any URL for a full QA report in under 2 minutes.</p>
+        <div className="mt-10 space-y-3">
+          <ReportEmailCapture scanId={scanId} scannedUrl={scan.url} />
+          <div className="flex items-center justify-between px-1">
+            <p className="text-zinc-600 text-xs">AgentQA is free — no account required.</p>
+            <Link
+              href="/"
+              className="text-sm text-zinc-400 hover:text-white transition-colors underline underline-offset-2"
+            >
+              Scan another app →
+            </Link>
           </div>
-          <Link
-            href="/"
-            className="shrink-0 flex items-center gap-2 px-5 py-2.5 rounded-lg bg-blue-600 hover:bg-blue-500 text-white text-sm font-medium transition-colors"
-          >
-            Scan My App Free
-          </Link>
         </div>
       )}
     </div>
