@@ -24,13 +24,13 @@ const PHASES = [
 
 export function FutureOfQA() {
   return (
-    <section className="py-24 px-4 border-t border-zinc-800/40">
+    <section className="py-16 px-4 border-t border-zinc-800/40">
       <div className="max-w-3xl mx-auto text-center">
-        <p className="text-xs font-mono text-blue-400 tracking-widest uppercase mb-4">The Vision</p>
+        <p className="text-xs font-mono text-blue-400 tracking-widest uppercase mb-3">The Vision</p>
         <h2 className="text-3xl sm:text-4xl font-bold text-white mb-4">
           The fully autonomous QA engineer
         </h2>
-        <p className="text-zinc-400 mb-12 max-w-xl mx-auto">
+        <p className="text-zinc-400 mb-8 max-w-xl mx-auto">
           We&apos;re building toward QA that requires zero human involvement — from detection to deployed fix.
         </p>
 

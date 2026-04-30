@@ -60,9 +60,10 @@ export function Pricing() {
   }
 
   return (
-    <section className="py-24 px-4" id="pricing">
+    <section className="py-16 px-4" id="pricing">
       <div className="max-w-4xl mx-auto">
-        <div className="text-center mb-16">
+        <div className="text-center mb-10">
+          <p className="text-xs font-mono text-blue-400 tracking-widest uppercase mb-3">Pricing</p>
           <h2 className="text-3xl sm:text-4xl font-bold text-white mb-4">
             Simple pricing
           </h2>

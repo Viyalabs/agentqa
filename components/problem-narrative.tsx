@@ -4,11 +4,11 @@ export function ProblemNarrative() {
   return (
     <>
       {/* Why AgentQA Exists */}
-      <section className="py-24 px-4 border-t border-zinc-800/40">
+      <section className="py-14 px-4 border-t border-zinc-800/40">
         <div className="max-w-4xl mx-auto">
-          <div className="text-center mb-14">
-            <p className="text-xs font-mono text-blue-400 tracking-widest uppercase mb-4">The Problem</p>
-            <h2 className="text-3xl sm:text-5xl font-bold text-white mb-6 leading-tight">
+          <div className="text-center mb-10">
+            <p className="text-xs font-mono text-blue-400 tracking-widest uppercase mb-3">The Problem</p>
+            <h2 className="text-3xl sm:text-5xl font-bold text-white mb-4 leading-tight">
               AI ships code in minutes.
               <br />
               <span className="text-zinc-500">Testing is still done by hand.</span>
@@ -18,7 +18,7 @@ export function ProblemNarrative() {
             </p>
           </div>
 
-          <div className="grid sm:grid-cols-3 gap-5 mb-14">
+          <div className="grid sm:grid-cols-3 gap-5 mb-10">
             {[
               {
                 Icon: TrendingUp,
@@ -102,11 +102,11 @@ const AI_TOOLS = [
 
 function AiAppsSection() {
   return (
-    <section className="py-20 px-4 border-t border-zinc-800/40">
+    <section className="py-14 px-4 border-t border-zinc-800/40">
       <div className="max-w-5xl mx-auto">
         <div className="grid lg:grid-cols-2 gap-12 items-center">
           <div>
-            <p className="text-xs font-mono text-blue-400 tracking-widest uppercase mb-4">Built for the new stack</p>
+            <p className="text-xs font-mono text-blue-400 tracking-widest uppercase mb-3">Built for the new stack</p>
             <h2 className="text-3xl sm:text-4xl font-bold text-white mb-5 leading-tight">
               Apps built with AI break differently
             </h2>

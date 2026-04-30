@@ -11,7 +11,7 @@ function focusScanInput() {
 
 export function CtaBanner() {
   return (
-    <section className="py-20 px-4 border-t border-zinc-800/40">
+    <section className="py-14 px-4 border-t border-zinc-800/40">
       <div className="max-w-3xl mx-auto text-center">
         <h2 className="text-3xl sm:text-4xl font-bold text-white mb-4">
           Run your first scan in under 2 minutes

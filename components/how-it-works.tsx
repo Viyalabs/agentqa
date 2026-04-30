@@ -32,15 +32,15 @@ const steps = [
 
 export function HowItWorks() {
   return (
-    <section className="py-24 px-4" id="how-it-works">
+    <section className="py-16 px-4" id="how-it-works">
       <div className="max-w-5xl mx-auto">
-        <div className="text-center mb-16">
+        <div className="text-center mb-10">
+          <p className="text-xs font-mono text-blue-400 tracking-widest uppercase mb-3">How it works</p>
           <h2 className="text-3xl sm:text-4xl font-bold text-white mb-4">
-            How it works
+            From URL to report in 3 steps
           </h2>
           <p className="text-zinc-400 max-w-xl mx-auto">
-            From URL to full QA report in three steps. No configuration, no setup, no
-            waiting for CI.
+            No configuration, no setup, no waiting for CI. Paste a URL and get a full QA report in under 2 minutes.
           </p>
         </div>
 

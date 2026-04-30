@@ -12,10 +12,10 @@ const ROWS = [
 
 export function Comparison() {
   return (
-    <section className="py-24 px-4 border-t border-zinc-800/40">
+    <section className="py-16 px-4 border-t border-zinc-800/40">
       <div className="max-w-4xl mx-auto">
-        <div className="text-center mb-12">
-          <p className="text-xs font-mono text-blue-400 tracking-widest uppercase mb-4">Why AgentQA</p>
+        <div className="text-center mb-10">
+          <p className="text-xs font-mono text-blue-400 tracking-widest uppercase mb-3">Why AgentQA</p>
           <h2 className="text-3xl sm:text-4xl font-bold text-white mb-4">
             Traditional QA vs AgentQA
           </h2>
