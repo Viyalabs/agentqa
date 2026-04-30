@@ -36,6 +36,9 @@ export function Navbar() {
           <a href="#pricing" className="hover:text-white transition-colors">
             Pricing
           </a>
+          <a href="/docs" className="hover:text-white transition-colors">
+            Docs
+          </a>
           <a
             href="https://github.com/PraveenPerfeito/agentqa"
             target="_blank"

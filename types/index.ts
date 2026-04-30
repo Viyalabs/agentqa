@@ -35,6 +35,7 @@ export interface Scan {
   total_pages: number
   total_issues: number
   error_message: string | null
+  notify_email: string | null
   started_at: string | null
   completed_at: string | null
   created_at: string

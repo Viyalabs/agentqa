@@ -410,7 +410,7 @@ export function ResultsDashboard({ scanId }: ResultsDashboardProps) {
         </div>
       )}
 
-      {isRunning && <NotifyWhenDone scanId={scanId} />}
+      {isRunning && <NotifyWhenDone scanId={scanId} alreadySet={Boolean(scan.notify_email)} />}
 
       {/* Real-time scan log terminal */}
       {(isRunning || (isComplete && logs.length > 0)) && (

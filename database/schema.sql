@@ -17,6 +17,7 @@ CREATE TABLE IF NOT EXISTS scans (
   total_issues INTEGER NOT NULL DEFAULT 0,
   error_message TEXT,
   notify_email TEXT,
+  ip           TEXT,
   started_at  TIMESTAMPTZ,
   completed_at TIMESTAMPTZ,
   created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
@@ -148,6 +149,7 @@ CREATE POLICY "Service role only on waitlist" ON waitlist FOR ALL USING (false);
 -- MIGRATION: run these if upgrading an existing database
 -- ============================================================
 -- ALTER TABLE scans ADD COLUMN IF NOT EXISTS notify_email TEXT;
+-- ALTER TABLE scans ADD COLUMN IF NOT EXISTS ip TEXT;
 -- ALTER TABLE scanned_pages ADD COLUMN IF NOT EXISTS has_mobile_issues BOOLEAN NOT NULL DEFAULT false;
 -- ALTER TABLE scanned_pages ADD COLUMN IF NOT EXISTS mobile_screenshot_url TEXT;
 -- ALTER TABLE scanned_pages ADD COLUMN IF NOT EXISTS video_url TEXT;

@@ -5,14 +5,15 @@ import { Bell, CheckCircle2, AlertCircle, Loader2 } from 'lucide-react'
 
 interface Props {
   scanId: string
+  alreadySet?: boolean
 }
 
 type State = 'idle' | 'loading' | 'success' | 'error'
 
-export function NotifyWhenDone({ scanId }: Props) {
-  const [state, setState] = useState<State>('idle')
+export function NotifyWhenDone({ scanId, alreadySet = false }: Props) {
+  const [state, setState] = useState<State>(alreadySet ? 'success' : 'idle')
   const [email, setEmail] = useState('')
-  const [msg, setMsg] = useState('')
+  const [msg, setMsg] = useState(alreadySet ? "You'll be emailed when the scan is done." : '')
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
