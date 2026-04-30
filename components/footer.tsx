@@ -1,3 +1,4 @@
+import Link from 'next/link'
 import { Separator } from './ui/separator'
 import { Activity } from 'lucide-react'
 
@@ -20,6 +21,9 @@ export function Footer() {
             <a href="#pricing" className="hover:text-zinc-300 focus-visible:text-zinc-300 transition-colors">
               Pricing
             </a>
+            <Link href="/privacy" className="hover:text-zinc-300 focus-visible:text-zinc-300 transition-colors">
+              Privacy
+            </Link>
             <a
               href="https://github.com/PraveenPerfeito/agentqa"
               target="_blank"

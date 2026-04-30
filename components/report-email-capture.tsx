@@ -101,6 +101,14 @@ export function ReportEmailCapture({ scanId, scannedUrl }: Props) {
           {msg}
         </div>
       )}
+
+      <p className="mt-3 text-xs text-zinc-600">
+        No spam. Unsubscribe any time.{' '}
+        <a href="/privacy" className="underline underline-offset-2 hover:text-zinc-400 transition-colors">
+          Privacy policy
+        </a>
+        .
+      </p>
     </div>
   )
 }
