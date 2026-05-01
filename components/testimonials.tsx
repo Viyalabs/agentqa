@@ -32,7 +32,7 @@ export function Testimonials() {
   return (
     <section className="py-16 border-t border-zinc-800/40">
       <div className="max-w-6xl mx-auto px-6">
-        <div className="text-center mb-6">
+        <div className="text-center mb-10">
           <p className="text-xs font-mono text-blue-400 tracking-widest uppercase mb-3">Real teams · Early access 2025</p>
           <h2 className="text-3xl md:text-4xl font-semibold tracking-tight text-white mb-4">
             Teams that replaced manual QA with AgentQA
@@ -40,7 +40,7 @@ export function Testimonials() {
         </div>
 
         {/* Featured testimonial */}
-        <div className="mb-5 p-6 sm:p-8 rounded-2xl border border-zinc-700/60 bg-zinc-900/60">
+        <div className="mb-4 p-6 sm:p-8 rounded-2xl border border-zinc-700/60 bg-zinc-900/60">
           <div className="flex gap-1 mb-4">
             {[...Array(5)].map((_, i) => (
               <svg key={i} className="h-4 w-4 text-yellow-400 fill-yellow-400" viewBox="0 0 20 20">
@@ -68,7 +68,7 @@ export function Testimonials() {
         </div>
 
         {/* Secondary testimonials */}
-        <div className="grid md:grid-cols-2 gap-5">
+        <div className="grid md:grid-cols-2 gap-4">
           {rest.map((t) => (
             <div
               key={t.initials}

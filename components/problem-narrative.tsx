@@ -23,7 +23,7 @@ const BUG_EXAMPLES = [
 
 export function ProblemNarrative() {
   return (
-    <section className="py-20 border-t border-zinc-800/40">
+    <section className="py-16 border-t border-zinc-800/40">
       <div className="max-w-6xl mx-auto px-6">
 
         {/* Macro problem — centered */}
