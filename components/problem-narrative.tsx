@@ -1,4 +1,4 @@
-import { Zap, Wrench, TrendingUp, AlertTriangle, AlertCircle, ArrowRight } from 'lucide-react'
+import { AlertTriangle, AlertCircle, ArrowRight } from 'lucide-react'
 
 export function ProblemNarrative() {
   return (
@@ -11,45 +11,11 @@ export function ProblemNarrative() {
               <AlertTriangle className="h-3 w-3 shrink-0" />
               30M+ developers now use AI coding tools. Bugs ship faster than ever.
             </div>
-            <h2 className="text-4xl sm:text-5xl font-bold text-white mb-0 leading-tight">
+            <h2 className="text-3xl md:text-4xl font-semibold tracking-tight text-white mb-0 leading-tight">
               AI ships code in minutes.
               <br />
               <span className="text-zinc-500">Testing is still done by hand.</span>
             </h2>
-          </div>
-
-          <div className="grid sm:grid-cols-3 gap-4 mb-10">
-            {[
-              {
-                Icon: TrendingUp,
-                color: 'text-yellow-400',
-                bg: 'bg-yellow-500/10',
-                label: 'Building is 10× faster',
-                body: 'AI ships full web apps in under an hour — but the QA process hasn\'t changed since 2005.',
-              },
-              {
-                Icon: Wrench,
-                color: 'text-red-400',
-                bg: 'bg-red-500/10',
-                label: 'QA is still manual',
-                body: 'Click every page, maintain scripts that go stale, repeat after every deploy. A process built for 2005.',
-              },
-              {
-                Icon: Zap,
-                color: 'text-blue-400',
-                bg: 'bg-blue-500/10',
-                label: 'Most teams skip it entirely',
-                body: 'Can\'t afford a QA team? Bugs reach users. Users churn. Your reputation takes the hit.',
-              },
-            ].map((item) => (
-              <div key={item.label} className="p-6 rounded-xl border border-zinc-800 bg-zinc-900/40">
-                <div className={`w-10 h-10 rounded-lg ${item.bg} flex items-center justify-center mb-4`}>
-                  <item.Icon className={`h-5 w-5 ${item.color}`} />
-                </div>
-                <h3 className="text-white font-semibold mb-2">{item.label}</h3>
-                <p className="text-zinc-400 text-sm leading-relaxed">{item.body}</p>
-              </div>
-            ))}
           </div>
 
           <div className="p-8 sm:p-10 rounded-2xl border border-blue-500/20 bg-blue-500/5 text-center">
@@ -138,7 +104,7 @@ function AiAppsSection() {
           {/* Left: copy */}
           <div>
             <p className="text-xs font-mono text-blue-400 tracking-widest uppercase mb-3">Built for the new stack</p>
-            <h2 className="text-3xl sm:text-4xl font-bold text-white mb-5 leading-tight">
+            <h2 className="text-3xl md:text-4xl font-semibold tracking-tight text-white mb-5 leading-tight">
               Apps built with AI<br />break differently
             </h2>
             <p className="text-zinc-400 text-base leading-relaxed mb-6">

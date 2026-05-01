@@ -42,7 +42,7 @@ export function ReportPreview() {
       <div className="max-w-6xl mx-auto px-6">
         <div className="text-center mb-10">
           <p className="text-xs font-mono text-blue-400 tracking-widest uppercase mb-3">Real output from AgentQA</p>
-          <h2 className="text-3xl sm:text-4xl font-bold text-white mb-4">
+          <h2 className="text-3xl md:text-4xl font-semibold tracking-tight text-white mb-4">
             This is what your report looks like
           </h2>
           <p className="text-zinc-400 max-w-xl mx-auto">

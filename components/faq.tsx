@@ -43,8 +43,8 @@ export function FAQ() {
         <div className="max-w-3xl mx-auto">
           <div className="text-center mb-10">
             <p className="text-xs font-mono text-blue-400 tracking-widest uppercase mb-3">FAQ</p>
-            <h2 className="text-3xl sm:text-4xl font-bold text-white mb-4">
-              Common questions
+            <h2 className="text-3xl md:text-4xl font-semibold tracking-tight text-white mb-4">
+              Everything you need to know
             </h2>
             <p className="text-zinc-400">
               Everything you need to know before running your first scan.

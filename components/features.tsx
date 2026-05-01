@@ -160,7 +160,7 @@ export function Features() {
       <div className="max-w-6xl mx-auto px-6">
         <div className="text-center mb-12">
           <p className="text-xs font-mono text-blue-400 tracking-widest uppercase mb-3">Complete QA coverage</p>
-          <h2 className="text-3xl sm:text-4xl font-bold text-white mb-4">
+          <h2 className="text-3xl md:text-4xl font-semibold tracking-tight text-white mb-4">
             Everything tested. Nothing missed.
           </h2>
           <p className="text-zinc-400 max-w-xl mx-auto">
@@ -168,7 +168,9 @@ export function Features() {
           </p>
         </div>
 
-        <div className="space-y-10">
+        <AIInsightsBlock />
+
+        <div className="space-y-10 mt-10">
           {GROUPS.map((group) => (
             <div key={group.category}>
               <div className="flex items-center gap-3 mb-5">
@@ -195,8 +197,6 @@ export function Features() {
             </div>
           ))}
         </div>
-
-        <AIInsightsBlock />
       </div>
     </section>
   )

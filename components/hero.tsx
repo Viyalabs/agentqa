@@ -219,7 +219,7 @@ export function Hero({ stats }: { stats?: HomeStats }) {
               </div>
 
               {/* Headline */}
-              <h1 className="text-5xl sm:text-6xl font-bold tracking-tight text-white mb-6 leading-[1.1]">
+              <h1 className="text-5xl md:text-6xl font-semibold tracking-tight text-white mb-6 leading-[1.1]">
                 Catch bugs before{' '}
                 <span className="bg-gradient-to-r from-blue-400 via-cyan-400 to-blue-500 bg-clip-text text-transparent">
                   your users do
@@ -227,7 +227,7 @@ export function Hero({ stats }: { stats?: HomeStats }) {
               </h1>
 
               <p className="text-xl text-zinc-400 mb-10 leading-relaxed max-w-xl mx-auto lg:mx-0">
-                Paste a URL. A real Chrome browser crawls every page, catches every bug, and delivers a QA report with AI&nbsp;root-cause analysis in under 2&nbsp;minutes. No setup. No QA team.
+                Paste a URL. AgentQA crawls every page, catches every bug, and delivers a QA report with AI&nbsp;root-cause analysis — in under 2&nbsp;minutes.
               </p>
 
               <div className="max-w-xl mx-auto lg:mx-0">
@@ -330,7 +330,7 @@ function ForWhoSection() {
       <div className="max-w-6xl mx-auto px-6">
         <div className="text-center mb-10">
           <p className="text-xs font-mono text-blue-400 tracking-widest uppercase mb-3">Who it&apos;s for</p>
-          <h2 className="text-2xl sm:text-3xl font-bold text-white mb-3">
+          <h2 className="text-2xl md:text-3xl font-semibold tracking-tight text-white mb-3">
             Who AgentQA is built for
           </h2>
           <p className="text-zinc-500 text-sm max-w-lg mx-auto">

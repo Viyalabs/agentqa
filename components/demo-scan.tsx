@@ -67,11 +67,11 @@ export function DemoScan() {
       <div className="max-w-6xl mx-auto px-6">
         <div className="text-center mb-10">
           <p className="text-xs font-mono text-blue-400 tracking-widest uppercase mb-3">Live demo</p>
-          <h2 className="text-3xl sm:text-4xl font-bold text-white mb-4">
+          <h2 className="text-3xl md:text-4xl font-semibold tracking-tight text-white mb-4">
             See AgentQA run on a real site
           </h2>
           <p className="text-zinc-400 max-w-xl mx-auto mb-4">
-            Pick any site below — a real Chrome browser will crawl it, find bugs, and generate a report live in your browser.
+            Pick any site below — it will crawl every page, find bugs, and generate a full report live in your browser.
           </p>
           <p className="text-sm text-zinc-600">
             Takes ~90 seconds · No signup · No credit card

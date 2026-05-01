@@ -1,6 +1,6 @@
 'use client'
 
-import { ArrowRight, Chrome, Zap, ShieldCheck } from 'lucide-react'
+import { ArrowRight } from 'lucide-react'
 import { Button } from './ui/button'
 
 function focusScanInput() {
@@ -14,14 +14,14 @@ export function CtaBanner() {
     <section className="py-16 border-t border-blue-500/15 bg-blue-950/10">
       <div className="max-w-6xl mx-auto px-6">
       <div className="max-w-3xl mx-auto text-center">
-        <p className="text-xs font-mono text-blue-400 tracking-widest uppercase mb-4">Free — no account required</p>
-        <h2 className="text-4xl sm:text-5xl font-bold text-white mb-5 leading-tight">
-          Run your first scan now.
+        <p className="text-xs font-mono text-blue-400 tracking-widest uppercase mb-4">Free forever · No credit card</p>
+        <h2 className="text-3xl md:text-4xl font-semibold tracking-tight text-white mb-5">
+          Your app has bugs.
           <br />
-          <span className="text-zinc-500">It takes 2 minutes.</span>
+          <span className="text-zinc-500">Find them before your users do.</span>
         </h2>
         <p className="text-zinc-400 mb-8 text-lg max-w-xl mx-auto">
-          Paste your URL. A real browser tests every page. You get a scored report with every bug, screenshot, and JS error — shareable with a single link.
+          Most broken pages are never found by the team that built them — they&apos;re found by users. One URL. 90 seconds. Know exactly what&apos;s broken.
         </p>
         <Button
           size="lg"
@@ -31,23 +31,7 @@ export function CtaBanner() {
           Scan My App Free
           <ArrowRight className="h-4 w-4" />
         </Button>
-        <div className="flex flex-wrap items-center justify-center gap-x-6 gap-y-2 mt-8 text-sm text-zinc-600">
-          <span className="flex items-center gap-1.5">
-            <Chrome className="h-3.5 w-3.5" />
-            Real Chrome browser
-          </span>
-          <span>·</span>
-          <span className="flex items-center gap-1.5">
-            <Zap className="h-3.5 w-3.5" />
-            Results in &lt;2 minutes
-          </span>
-          <span>·</span>
-          <span className="flex items-center gap-1.5">
-            <ShieldCheck className="h-3.5 w-3.5" />
-            Works with any framework
-          </span>
-        </div>
-        <p className="text-zinc-700 text-xs mt-5">
+        <p className="text-zinc-700 text-xs mt-6">
           No credit card. No sign-up. No setup. Just paste a URL.
         </p>
       </div>

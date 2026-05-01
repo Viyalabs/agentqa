@@ -47,11 +47,11 @@ export function HowItWorks() {
       <div className="max-w-6xl mx-auto px-6">
         <div className="text-center mb-12">
           <p className="text-xs font-mono text-blue-400 tracking-widest uppercase mb-3">How it works</p>
-          <h2 className="text-3xl sm:text-4xl font-bold text-white mb-4">
+          <h2 className="text-3xl md:text-4xl font-semibold tracking-tight text-white mb-4">
             From URL to full QA report in 4 steps
           </h2>
           <p className="text-zinc-400 max-w-xl mx-auto">
-            No configuration, no CI setup, no waiting. Paste a URL — get a complete report with AI analysis in under 2 minutes.
+            Paste a URL and get a complete QA report with AI analysis in under 2 minutes.
           </p>
         </div>
 
