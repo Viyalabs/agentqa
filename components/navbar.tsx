@@ -62,7 +62,7 @@ export function Navbar() {
             input?.focus()
           }}
         >
-          Run Free Scan
+          Scan My App Free
         </Button>
 
         {/* Mobile */}

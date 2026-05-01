@@ -1,4 +1,4 @@
-import { CheckCircle2, XCircle, ArrowRight } from 'lucide-react'
+import { CheckCircle2, XCircle } from 'lucide-react'
 
 const ROWS = [
   {
@@ -153,20 +153,13 @@ export function Comparison() {
 
         {/* Bottom callout */}
         <div className="mt-6 p-6 rounded-xl border border-zinc-800 bg-zinc-900/30 text-center">
-          <p className="text-zinc-300 text-sm font-medium">
+          <p className="text-base text-zinc-400 leading-relaxed">
             A QA engineer costs{' '}
             <span className="text-red-400 font-semibold">$80k–$150k per year</span>{' '}
             and still misses bugs.
             AgentQA finds them in{' '}
             <span className="text-green-400 font-semibold">under 2 minutes</span>, free to start.
           </p>
-          <a
-            href="#scan-form"
-            className="inline-flex items-center gap-2 mt-4 px-5 py-2.5 rounded-lg bg-blue-600 hover:bg-blue-500 text-white font-medium text-sm transition-colors"
-          >
-            Try AgentQA Free
-            <ArrowRight className="h-4 w-4" />
-          </a>
         </div>
       </div>
     </section>

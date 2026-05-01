@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { ChevronDown, ArrowRight } from 'lucide-react'
+import { ChevronDown } from 'lucide-react'
 
 const FAQS = [
   {
@@ -62,18 +62,6 @@ export function FAQ() {
             ))}
           </div>
 
-          <div className="mt-10 pt-8 border-t border-zinc-800/60 text-center">
-            <p className="text-zinc-400 text-sm mb-4">
-              Still unsure? Just try it — takes 90 seconds, no account needed.
-            </p>
-            <a
-              href="#scan-form"
-              className="inline-flex items-center gap-2 px-6 py-2.5 rounded-lg bg-blue-600 hover:bg-blue-500 text-white font-medium text-sm transition-colors"
-            >
-              Scan My App Free
-              <ArrowRight className="h-4 w-4" />
-            </a>
-          </div>
         </div>
       </div>
     </section>

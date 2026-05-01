@@ -96,7 +96,7 @@ export function Pricing() {
                 input?.focus()
               }}
             >
-              Start testing free
+              Scan My App Free
             </Button>
 
             <ul className="space-y-3">
