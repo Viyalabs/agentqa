@@ -242,7 +242,7 @@ export function Hero({ stats }: { stats?: HomeStats }) {
               </h1>
 
               <p className="text-base text-zinc-400 mb-10 leading-relaxed max-w-xl mx-auto lg:mx-0">
-                Paste a URL. AgentQA crawls every page, catches every bug, and delivers a QA report with AI&nbsp;root-cause analysis — in under 2&nbsp;minutes.
+                Manual QA is being replaced. AgentQA is the replacement — paste a URL, and your AI QA engineer delivers a complete report with root-cause analysis in under 2&nbsp;minutes.
               </p>
 
               <div className="max-w-xl mx-auto lg:mx-0">

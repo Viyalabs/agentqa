@@ -37,6 +37,9 @@ export function ProblemNarrative() {
             <br />
             <span className="text-zinc-500">Manual QA is being replaced.</span>
           </h2>
+          <p className="text-lg font-semibold text-blue-300 mt-4">
+            Every app will have an AI QA agent.
+          </p>
         </div>
 
         {/* The wedge — 2-col */}
