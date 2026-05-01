@@ -168,7 +168,7 @@ export function Hero({ stats }: { stats?: HomeStats }) {
         }
       `}</style>
 
-      <section className="relative overflow-hidden pt-24 pb-16 px-4">
+      <section className="relative overflow-hidden pt-24 pb-16 px-6">
         <div className="absolute inset-0 -z-10 pointer-events-none">
           <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[900px] h-[500px] bg-blue-600/10 blur-[140px] rounded-full" />
           <div className="absolute top-1/2 left-1/4 w-[400px] h-[300px] bg-cyan-600/5 blur-[100px] rounded-full" />
@@ -290,8 +290,8 @@ const FOR_WHO = [
 
 function ForWhoSection() {
   return (
-    <section className="py-16 px-4 border-t border-zinc-800/40">
-      <div className="max-w-5xl mx-auto">
+    <section className="py-16 px-6 border-t border-zinc-800/40">
+      <div className="max-w-6xl mx-auto">
         <div className="text-center mb-10">
           <p className="text-xs font-mono text-blue-400 tracking-widest uppercase mb-3">Who it&apos;s for</p>
           <h2 className="text-2xl sm:text-3xl font-bold text-white mb-3">

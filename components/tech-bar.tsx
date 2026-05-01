@@ -12,8 +12,8 @@ const TOOLS = [
 
 export function TechBar() {
   return (
-    <section className="py-10 px-4 border-t border-zinc-800/40 bg-zinc-950/40">
-      <div className="max-w-5xl mx-auto">
+    <section className="py-10 px-6 border-t border-zinc-800/40 bg-zinc-950/40">
+      <div className="max-w-6xl mx-auto">
         <p className="text-center text-xs text-zinc-600 uppercase tracking-widest font-mono mb-5">
           Works with apps built using
         </p>

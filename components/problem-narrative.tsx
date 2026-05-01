@@ -4,8 +4,8 @@ export function ProblemNarrative() {
   return (
     <>
       {/* Why AgentQA Exists */}
-      <section className="py-16 px-4 border-t border-zinc-800/40">
-        <div className="max-w-4xl mx-auto">
+      <section className="py-16 px-6 border-t border-zinc-800/40">
+        <div className="max-w-6xl mx-auto">
           <div className="text-center mb-12">
             <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full border border-yellow-500/20 bg-yellow-500/5 text-yellow-400 text-xs font-mono mb-5">
               <AlertTriangle className="h-3 w-3 shrink-0" />
@@ -130,8 +130,8 @@ const BUG_EXAMPLES = [
 
 function AiAppsSection() {
   return (
-    <section className="py-16 px-4 border-t border-zinc-800/40">
-      <div className="max-w-5xl mx-auto">
+    <section className="py-16 px-6 border-t border-zinc-800/40">
+      <div className="max-w-6xl mx-auto">
         <div className="grid lg:grid-cols-2 gap-12 items-start">
           {/* Left: copy */}
           <div>

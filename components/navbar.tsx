@@ -21,7 +21,7 @@ export function Navbar() {
           : 'border-zinc-800/40 bg-[#0A0A0F]/70 backdrop-blur-md'
       }`}
     >
-      <div className="max-w-6xl mx-auto px-4 h-16 flex items-center justify-between">
+      <div className="max-w-6xl mx-auto px-6 h-16 flex items-center justify-between">
         {/* Brand */}
         <a href="/" className="flex items-center gap-2.5 text-white font-bold text-lg hover:opacity-90 transition-opacity">
           <Activity className="h-5 w-5 text-blue-400" />

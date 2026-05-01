@@ -63,8 +63,8 @@ const ROWS = [
 
 export function Comparison() {
   return (
-    <section className="py-16 px-4 border-t border-zinc-800/40">
-      <div className="max-w-4xl mx-auto">
+    <section className="py-16 px-6 border-t border-zinc-800/40">
+      <div className="max-w-6xl mx-auto">
         <div className="text-center mb-10">
           <p className="text-xs font-mono text-blue-400 tracking-widest uppercase mb-3">Why AgentQA</p>
           <h2 className="text-3xl sm:text-4xl font-bold text-white mb-4">

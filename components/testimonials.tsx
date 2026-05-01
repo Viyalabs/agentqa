@@ -30,8 +30,8 @@ export function Testimonials() {
   const [featured, ...rest] = TESTIMONIALS
 
   return (
-    <section className="py-16 px-4 border-t border-zinc-800/40">
-      <div className="max-w-5xl mx-auto">
+    <section className="py-16 px-6 border-t border-zinc-800/40">
+      <div className="max-w-6xl mx-auto">
         <div className="text-center mb-10">
           <p className="text-xs font-mono text-blue-400 tracking-widest uppercase mb-3">From early builders</p>
           <h2 className="text-3xl sm:text-4xl font-bold text-white mb-4">

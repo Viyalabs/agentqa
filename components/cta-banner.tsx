@@ -11,7 +11,8 @@ function focusScanInput() {
 
 export function CtaBanner() {
   return (
-    <section className="py-16 px-4 border-t border-zinc-800/40">
+    <section className="py-16 px-6 border-t border-zinc-800/40">
+      <div className="max-w-6xl mx-auto">
       <div className="max-w-3xl mx-auto text-center">
         <p className="text-xs font-mono text-blue-400 tracking-widest uppercase mb-4">Free — no account required</p>
         <h2 className="text-4xl sm:text-5xl font-bold text-white mb-5 leading-tight">
@@ -49,6 +50,7 @@ export function CtaBanner() {
         <p className="text-zinc-700 text-xs mt-5">
           No credit card. No sign-up. No setup. Just paste a URL.
         </p>
+      </div>
       </div>
     </section>
   )
