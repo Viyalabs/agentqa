@@ -6,20 +6,22 @@ import { Button } from './ui/button'
 
 const freeTierFeatures = [
   'Up to 5 pages per scan',
+  'Real Chrome browser — desktop & mobile',
   'Full page screenshots',
-  'Issue classification (critical/medium/low)',
+  'Issue classification (critical / medium / low)',
+  'AI root cause analysis + fix suggestions',
   'QA score report',
-  'Console & network error detection',
-  '30-day scan history',
+  'Console, JS, and network error detection',
+  'Permanent shareable report link',
 ]
 
 const proTierFeatures = [
   'Everything in Free',
   'Unlimited pages per scan',
-  'CI/CD integration (GitHub Actions)',
+  'CI/CD integration (GitHub Actions / Vercel)',
   'Slack & email notifications',
-  'Custom test scenarios',
-  'API access',
+  'API access + webhook triggers',
+  'Team seat sharing',
   'Priority support',
 ]
 

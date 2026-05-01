@@ -27,7 +27,10 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
       return {
         title: `QA Report: ${displayHost}${scoreText} | AgentQA`,
         description: `AgentQA scanned ${displayHost}${scoreText}${issueText}. Real browser QA testing — no setup required.`,
-        robots: { index: false },
+        openGraph: {
+          title: `QA Report: ${displayHost}${scoreText}`,
+          description: `${scan.total_issues} issue${scan.total_issues !== 1 ? 's' : ''} found. See the full AI-powered QA report.`,
+        },
       }
     }
   } catch { /* fallback below */ }
@@ -35,7 +38,6 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   return {
     title: `QA Report — AgentQA`,
     description: 'Automated QA report — real browser testing, QA score, screenshots, and issue breakdown.',
-    robots: { index: false },
   }
 }
 

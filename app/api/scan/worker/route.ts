@@ -10,6 +10,11 @@ export const maxDuration = 300
 // Called manually or by an external scheduler if needed.
 // The primary scan execution path now uses waitUntil in /api/scan directly.
 export async function POST(req: NextRequest) {
+  const workerSecret = process.env.WORKER_SECRET
+  if (workerSecret && req.headers.get('x-worker-secret') !== workerSecret) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  }
+
   let body: unknown
   try {
     body = await req.json()
