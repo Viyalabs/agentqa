@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { AlertTriangle, AlertCircle, Info, ExternalLink, ChevronDown, ChevronUp, Layers } from 'lucide-react'
+import { AlertTriangle, AlertCircle, Info, ExternalLink, ChevronDown, ChevronUp, Layers, Sparkles } from 'lucide-react'
 import { Badge } from './ui/badge'
 import { Card, CardContent } from './ui/card'
 import type { Issue } from '@/types'
@@ -163,6 +163,29 @@ export function IssueCard({ issue, pageCount, totalCount }: IssueCardProps) {
                         {stack}
                       </pre>
                     ))}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* AI Analysis */}
+            {issue.ai_summary && (
+              <div className="mt-3 pt-3 border-t border-zinc-800/60">
+                <div className="flex items-center gap-1.5 mb-2">
+                  <Sparkles className="h-3 w-3 text-blue-400" />
+                  <span className="text-xs font-semibold text-blue-400 tracking-wide">AI Analysis</span>
+                </div>
+                <p className="text-xs text-zinc-300 leading-relaxed mb-2">{issue.ai_summary}</p>
+                {issue.root_cause && (
+                  <p className="text-xs text-zinc-500 leading-relaxed mb-2">
+                    <span className="text-zinc-600 font-medium">Root cause: </span>
+                    {issue.root_cause}
+                  </p>
+                )}
+                {issue.fix_suggestion && (
+                  <div className="p-2 rounded-md bg-green-950/20 border border-green-500/15">
+                    <p className="text-xs text-zinc-500 font-medium mb-0.5">Fix</p>
+                    <p className="text-xs text-green-300 leading-relaxed">{issue.fix_suggestion}</p>
                   </div>
                 )}
               </div>

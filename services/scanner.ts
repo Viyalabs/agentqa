@@ -1,6 +1,7 @@
 import { getAdminClient, uploadScreenshot, uploadMobileScreenshot } from '@/lib/supabase'
 import { crawlWebsite } from '@/playwright/crawler'
 import { calculateScore } from './scorer'
+import { analyzeIssues, generateScanOverview } from './ai-analyzer'
 import type { IssueClassified, IssueType, IssueSeverity, PageTestResult } from '@/types'
 
 const SCAN_TIMEOUT_MS = 120_000 // 2 minutes
@@ -149,6 +150,8 @@ export async function runScan(scanId: string, url: string): Promise<void> {
     const notifyEmail = (scanMeta as { notify_email?: string | null } | null)?.notify_email ?? null
 
     const { score } = calculateScore(allIssues)
+    const criticalCount = allIssues.filter((i) => i.severity === 'critical').length
+    const mediumCount = allIssues.filter((i) => i.severity === 'medium').length
     const timedOut = controller.signal.aborted
 
     await db
@@ -174,6 +177,14 @@ export async function runScan(scanId: string, url: string): Promise<void> {
     console.log(
       `[scanner] ${scanId} done — score:${score} pages:${totalPages} issues:${allIssues.length}${timedOut ? ' [PARTIAL]' : ''}`
     )
+
+    // Post-scan AI analysis — runs after scan marks complete, never blocks scan speed
+    await analyzeIssues(scanId, url).catch((err: unknown) => {
+      console.error(`[scanner] AI issue analysis failed for ${scanId}:`, err)
+    })
+    await generateScanOverview(scanId, url, score, criticalCount, mediumCount).catch((err: unknown) => {
+      console.error(`[scanner] AI overview failed for ${scanId}:`, err)
+    })
 
     if (notifyEmail) {
       await sendScanCompletionEmail(notifyEmail, scanId, url, score).catch((err: unknown) => {

@@ -36,6 +36,7 @@ export interface Scan {
   total_issues: number
   error_message: string | null
   notify_email: string | null
+  ai_overview: string | null
   started_at: string | null
   completed_at: string | null
   created_at: string
@@ -67,6 +68,9 @@ export interface Issue {
   title: string
   description: string | null
   details: Record<string, unknown> | null
+  ai_summary: string | null
+  root_cause: string | null
+  fix_suggestion: string | null
   created_at: string
 }
 

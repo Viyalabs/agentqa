@@ -8,19 +8,20 @@ CREATE EXTENSION IF NOT EXISTS "pgcrypto";
 -- SCANS
 -- ============================================================
 CREATE TABLE IF NOT EXISTS scans (
-  id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  url         TEXT NOT NULL,
-  status      TEXT NOT NULL DEFAULT 'pending'
-                CHECK (status IN ('pending', 'running', 'completed', 'failed')),
-  score       INTEGER CHECK (score >= 0 AND score <= 100),
-  total_pages INTEGER NOT NULL DEFAULT 0,
-  total_issues INTEGER NOT NULL DEFAULT 0,
+  id            UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  url           TEXT NOT NULL,
+  status        TEXT NOT NULL DEFAULT 'pending'
+                  CHECK (status IN ('pending', 'running', 'completed', 'failed')),
+  score         INTEGER CHECK (score >= 0 AND score <= 100),
+  total_pages   INTEGER NOT NULL DEFAULT 0,
+  total_issues  INTEGER NOT NULL DEFAULT 0,
   error_message TEXT,
-  notify_email TEXT,
-  ip           TEXT,
-  started_at  TIMESTAMPTZ,
-  completed_at TIMESTAMPTZ,
-  created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
+  notify_email  TEXT,
+  ip            TEXT,
+  ai_overview   TEXT,
+  started_at    TIMESTAMPTZ,
+  completed_at  TIMESTAMPTZ,
+  created_at    TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
 CREATE INDEX IF NOT EXISTS idx_scans_status ON scans(status);
@@ -52,15 +53,18 @@ CREATE INDEX IF NOT EXISTS idx_scanned_pages_scan_id ON scanned_pages(scan_id);
 -- ISSUES
 -- ============================================================
 CREATE TABLE IF NOT EXISTS issues (
-  id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  scan_id     UUID NOT NULL REFERENCES scans(id) ON DELETE CASCADE,
-  page_id     UUID REFERENCES scanned_pages(id) ON DELETE SET NULL,
-  type        TEXT NOT NULL,
-  severity    TEXT NOT NULL CHECK (severity IN ('critical', 'medium', 'low')),
-  title       TEXT NOT NULL,
-  description TEXT,
-  details     JSONB,
-  created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
+  id             UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  scan_id        UUID NOT NULL REFERENCES scans(id) ON DELETE CASCADE,
+  page_id        UUID REFERENCES scanned_pages(id) ON DELETE SET NULL,
+  type           TEXT NOT NULL,
+  severity       TEXT NOT NULL CHECK (severity IN ('critical', 'medium', 'low')),
+  title          TEXT NOT NULL,
+  description    TEXT,
+  details        JSONB,
+  ai_summary     TEXT,
+  root_cause     TEXT,
+  fix_suggestion TEXT,
+  created_at     TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
 CREATE INDEX IF NOT EXISTS idx_issues_scan_id ON issues(scan_id);
@@ -148,6 +152,12 @@ CREATE POLICY "Service role only on waitlist" ON waitlist FOR ALL USING (false);
 -- ============================================================
 -- MIGRATION: run these if upgrading an existing database
 -- ============================================================
+-- Phase 2 — AI Intelligence Layer
+-- ALTER TABLE scans ADD COLUMN IF NOT EXISTS ai_overview TEXT;
+-- ALTER TABLE issues ADD COLUMN IF NOT EXISTS ai_summary TEXT;
+-- ALTER TABLE issues ADD COLUMN IF NOT EXISTS root_cause TEXT;
+-- ALTER TABLE issues ADD COLUMN IF NOT EXISTS fix_suggestion TEXT;
+--
 -- ALTER TABLE scans ADD COLUMN IF NOT EXISTS notify_email TEXT;
 -- ALTER TABLE scans ADD COLUMN IF NOT EXISTS ip TEXT;
 -- ALTER TABLE scanned_pages ADD COLUMN IF NOT EXISTS has_mobile_issues BOOLEAN NOT NULL DEFAULT false;

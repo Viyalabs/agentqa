@@ -24,6 +24,7 @@ import {
   Wifi,
   WifiOff,
   Layers,
+  Sparkles,
 } from 'lucide-react'
 import { Card, CardContent } from './ui/card'
 import { Badge } from './ui/badge'
@@ -524,6 +525,17 @@ export function ResultsDashboard({ scanId }: ResultsDashboardProps) {
               </div>
             </CardContent>
           </Card>
+        </div>
+      )}
+
+      {/* AI Overview */}
+      {isComplete && scan.ai_overview && (
+        <div className="p-4 rounded-xl border border-blue-500/20 bg-blue-500/5">
+          <div className="flex items-center gap-2 mb-2">
+            <Sparkles className="h-4 w-4 text-blue-400" />
+            <span className="text-xs font-semibold text-blue-400 uppercase tracking-wider">AI Overview</span>
+          </div>
+          <p className="text-sm text-zinc-300 leading-relaxed">{scan.ai_overview}</p>
         </div>
       )}
 
