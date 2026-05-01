@@ -54,7 +54,7 @@ export function FutureOfQA() {
               <div className="flex items-center justify-between mb-4">
                 <div className="flex items-center gap-2">
                   <span className="text-xs font-mono text-zinc-600">{phase.step}</span>
-                  <span className={`text-lg font-bold ${phase.status === 'live' ? 'text-white' : 'text-zinc-500'}`}>
+                  <span className={`text-lg font-semibold ${phase.status === 'live' ? 'text-white' : 'text-zinc-500'}`}>
                     {phase.verb}
                   </span>
                 </div>

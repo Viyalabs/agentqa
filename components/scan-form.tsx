@@ -119,11 +119,11 @@ export function ScanForm() {
         ))}
       </p>
       <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-2">
-        <span className="text-xs text-zinc-700">You&apos;ll get:</span>
+        <span className="text-xs text-zinc-500">You&apos;ll get:</span>
         {['QA Score', 'Screenshots', 'JS Errors', 'AI Analysis'].map((item) => (
           <span
             key={item}
-            className="text-xs px-2 py-0.5 rounded-full border border-zinc-800 text-zinc-600"
+            className="text-xs px-2 py-0.5 rounded-full border border-zinc-700 text-zinc-500"
           >
             {item}
           </span>

@@ -331,7 +331,7 @@ function ForWhoSection() {
         <div className="text-center mb-10">
           <p className="text-xs font-mono text-blue-400 tracking-widest uppercase mb-3">Who it&apos;s for</p>
           <h2 className="text-2xl md:text-3xl font-semibold tracking-tight text-white mb-3">
-            Who AgentQA is built for
+            The QA layer for teams that ship fast
           </h2>
           <p className="text-zinc-500 text-sm max-w-lg mx-auto">
             Built for the way modern teams ship — fast, lean, and without a dedicated QA department.

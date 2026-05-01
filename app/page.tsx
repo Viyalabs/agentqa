@@ -84,17 +84,17 @@ export default async function HomePage() {
         {/* 7. Live demo scan */}
         <DemoScan />
 
-        {/* 8. Social proof — early builder quotes */}
-        <Testimonials />
-
-        {/* 9. Full feature set */}
+        {/* 8. Full feature set */}
         <Features />
 
-        {/* 10. Vision: Today / Next / Soon */}
+        {/* 9. Vision: Today / Next / Soon */}
         <FutureOfQA />
 
-        {/* 11. FAQ — handles objections before pricing */}
+        {/* 10. FAQ — handles objections before close */}
         <FAQ />
+
+        {/* 11. Social proof — right before pricing decision */}
+        <Testimonials />
 
         {/* 12. CTA before pricing */}
         <CtaBanner />
