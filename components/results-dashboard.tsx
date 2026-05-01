@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState, useCallback, useTransition } from 'react'
+import { useEffect, useState, useCallback, useTransition, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import {
@@ -160,6 +160,7 @@ export function ResultsDashboard({ scanId }: ResultsDashboardProps) {
   const [fetchError, setFetchError] = useState<string | null>(null)
   const [isPolling, setIsPolling] = useState(true)
   const [severityFilter, setSeverityFilter] = useState<SeverityFilter>('all')
+  const stopPollingTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const [copied, setCopied] = useState(false)
   const [rescanPending, startRescan] = useTransition()
 
@@ -174,8 +175,17 @@ export function ResultsDashboard({ scanId }: ResultsDashboardProps) {
       }
       const json: ScanStatusResponse = await res.json()
       setData(json)
-      if (json.scan.status === 'completed' || json.scan.status === 'failed') {
+      if (json.scan.status === 'failed') {
         setIsPolling(false)
+      } else if (json.scan.status === 'completed') {
+        if (json.scan.ai_overview) {
+          // AI results are in — stop polling
+          if (stopPollingTimer.current) clearTimeout(stopPollingTimer.current)
+          setIsPolling(false)
+        } else if (!stopPollingTimer.current) {
+          // Keep polling up to 20s to catch AI analysis results
+          stopPollingTimer.current = setTimeout(() => setIsPolling(false), 20000)
+        }
       }
     } catch (err) {
       console.error('Poll error:', err)
@@ -183,6 +193,10 @@ export function ResultsDashboard({ scanId }: ResultsDashboardProps) {
   }, [scanId])
 
   useEffect(() => { fetchResults() }, [fetchResults])
+
+  useEffect(() => {
+    return () => { if (stopPollingTimer.current) clearTimeout(stopPollingTimer.current) }
+  }, [])
 
   useEffect(() => {
     if (!isPolling) return

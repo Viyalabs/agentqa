@@ -7,15 +7,15 @@ const PHASES = [
       'Real Chrome browser. Every page. Desktop and mobile. Screenshots, JS errors, network failures, and a QA score — in under 2 minutes.',
   },
   {
-    time: 'Next',
-    status: 'building' as const,
+    time: 'Also live',
+    status: 'live' as const,
     title: 'Explain root causes with AI',
     description:
       "Not just what broke — but why it broke and how to fix it. AI analysis on every issue so you don't have to guess.",
   },
   {
-    time: 'Soon',
-    status: 'planned' as const,
+    time: 'Next',
+    status: 'building' as const,
     title: 'Fix them automatically',
     description:
       'AgentQA opens a pull request with the fix. Detect, diagnose, and resolve — fully autonomous.',
