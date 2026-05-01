@@ -54,7 +54,7 @@ export function Footer() {
               href="https://viyalabs.com"
               target="_blank"
               rel="noopener noreferrer"
-              className="text-zinc-400 hover:text-white transition-colors font-medium"
+              className="text-zinc-400 hover:text-white transition-colors font-medium underline underline-offset-2"
             >
               Viyalabs
             </a>
