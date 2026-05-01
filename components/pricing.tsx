@@ -79,7 +79,7 @@ export function Pricing() {
           {/* Free tier */}
           <div className="p-8 rounded-2xl border border-zinc-800 bg-zinc-900/40">
             <div className="mb-6">
-              <h3 className="text-lg font-semibold text-white mb-1">Free</h3>
+              <h3 className="text-xl font-semibold text-white mb-1">Free</h3>
               <div className="flex items-baseline gap-1">
                 <span className="text-4xl font-bold text-white">$0</span>
                 <span className="text-zinc-500">/month</span>
@@ -194,7 +194,7 @@ export function Pricing() {
             {/* Background content (blurred) */}
             <div className="mb-6 opacity-40">
               <div className="flex items-center gap-2 mb-1">
-                <h3 className="text-lg font-semibold text-white">Pro</h3>
+                <h3 className="text-xl font-semibold text-white">Pro</h3>
                 <span className="text-xs px-2 py-0.5 rounded-full bg-blue-600 text-white font-medium">Early Access</span>
               </div>
               <div className="flex items-baseline gap-1">

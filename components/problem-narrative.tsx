@@ -51,7 +51,7 @@ export function ProblemNarrative() {
             <p className="text-base text-zinc-400 leading-relaxed mb-4">
               LLMs produce code that looks right and breaks at runtime. Auth flows redirect to blank screens. Mobile viewports overflow at 375px. API calls return 401s. The model doesn&apos;t run your app — it doesn&apos;t know.
             </p>
-            <p className="text-sm text-zinc-500 leading-relaxed">
+            <p className="text-base text-zinc-400 leading-relaxed">
               AgentQA is the real-browser QA layer that catches what AI coding tools leave behind. No QA experience required.
             </p>
           </div>

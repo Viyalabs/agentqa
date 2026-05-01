@@ -48,7 +48,7 @@ export function Testimonials() {
               </svg>
             ))}
           </div>
-          <p className="text-zinc-200 text-base sm:text-lg leading-relaxed mb-6">
+          <p className="text-base text-zinc-200 leading-relaxed mb-6">
             &ldquo;{featured.quote}&rdquo;
           </p>
           <div className="flex items-center justify-between flex-wrap gap-4">
@@ -81,7 +81,7 @@ export function Testimonials() {
                   </svg>
                 ))}
               </div>
-              <p className="text-zinc-300 text-sm leading-relaxed flex-1 mb-5">
+              <p className="text-base text-zinc-400 leading-relaxed flex-1 mb-5">
                 &ldquo;{t.quote}&rdquo;
               </p>
               <div className="border-t border-zinc-800 pt-4 flex items-center justify-between flex-wrap gap-2">

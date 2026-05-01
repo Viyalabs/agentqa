@@ -226,7 +226,7 @@ export function Hero({ stats }: { stats?: HomeStats }) {
                 </span>
               </h1>
 
-              <p className="text-xl text-zinc-400 mb-10 leading-relaxed max-w-xl mx-auto lg:mx-0">
+              <p className="text-base text-zinc-400 mb-10 leading-relaxed max-w-xl mx-auto lg:mx-0">
                 Paste a URL. AgentQA crawls every page, catches every bug, and delivers a QA report with AI&nbsp;root-cause analysis — in under 2&nbsp;minutes.
               </p>
 
@@ -330,10 +330,10 @@ function ForWhoSection() {
       <div className="max-w-6xl mx-auto px-6">
         <div className="text-center mb-10">
           <p className="text-xs font-mono text-blue-400 tracking-widest uppercase mb-3">Who it&apos;s for</p>
-          <h2 className="text-2xl md:text-3xl font-semibold tracking-tight text-white mb-3">
+          <h2 className="text-3xl md:text-4xl font-semibold tracking-tight text-white mb-3">
             The QA layer for teams that ship fast
           </h2>
-          <p className="text-zinc-500 text-sm max-w-lg mx-auto">
+          <p className="text-base text-zinc-400 leading-relaxed max-w-lg mx-auto">
             Built for the way modern teams ship — fast, lean, and without a dedicated QA department.
           </p>
         </div>
@@ -347,7 +347,7 @@ function ForWhoSection() {
                 <h3 className="text-xl font-semibold text-white">AI Builders</h3>
                 <span className="text-[11px] px-2 py-0.5 rounded-full bg-blue-500/20 text-blue-400 border border-blue-500/30 font-medium">Primary audience</span>
               </div>
-              <p className="text-zinc-300 text-sm leading-relaxed">
+              <p className="text-base text-zinc-400 leading-relaxed">
                 Using Cursor, Replit, Lovable, or Bolt? LLMs write plausible-looking code that breaks silently — broken auth flows, mobile overflows, API crashes at runtime. AgentQA is the real-browser QA pass your AI-generated app never ships with.
               </p>
             </div>
@@ -363,7 +363,7 @@ function ForWhoSection() {
             >
               <div className="text-2xl mb-3">{item.emoji}</div>
               <h3 className="text-xl font-semibold text-white mb-1.5">{item.title}</h3>
-              <p className="text-zinc-400 text-sm leading-relaxed">{item.description}</p>
+              <p className="text-base text-zinc-400 leading-relaxed">{item.description}</p>
             </div>
           ))}
         </div>

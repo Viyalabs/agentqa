@@ -20,7 +20,7 @@ export function CtaBanner() {
           <br />
           <span className="text-zinc-500">Find them before your users do.</span>
         </h2>
-        <p className="text-zinc-400 mb-8 text-lg max-w-xl mx-auto">
+        <p className="text-base text-zinc-400 leading-relaxed mb-8 max-w-xl mx-auto">
           Most broken pages are never found by the team that built them — they&apos;re found by users. One URL. 90 seconds. Know exactly what&apos;s broken.
         </p>
         <Button

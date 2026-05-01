@@ -55,7 +55,7 @@ export function FAQ() {
                 </button>
                 {open === i && (
                   <div className="px-5 pb-5">
-                    <p className="text-zinc-400 text-sm leading-relaxed">{faq.a}</p>
+                    <p className="text-base text-zinc-400 leading-relaxed">{faq.a}</p>
                   </div>
                 )}
               </div>

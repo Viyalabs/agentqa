@@ -79,10 +79,10 @@ export function HowItWorks() {
                 <div className={`text-xs font-mono font-bold ${step.color} mb-2 tracking-widest`}>
                   STEP {step.number}
                 </div>
-                <h3 className={`text-base font-semibold mb-2 ${'highlight' in step && step.highlight ? 'text-cyan-100' : 'text-white'}`}>
+                <h3 className={`text-xl font-semibold mb-2 ${'highlight' in step && step.highlight ? 'text-cyan-100' : 'text-white'}`}>
                   {step.title}
                 </h3>
-                <p className={`text-sm leading-relaxed ${'highlight' in step && step.highlight ? 'text-zinc-300' : 'text-zinc-400'}`}>
+                <p className={`text-base leading-relaxed ${'highlight' in step && step.highlight ? 'text-zinc-300' : 'text-zinc-400'}`}>
                   {step.description}
                 </p>
               </div>
