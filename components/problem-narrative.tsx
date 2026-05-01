@@ -6,7 +6,7 @@ export function ProblemNarrative() {
       {/* Why AgentQA Exists */}
       <section className="py-16 border-t border-zinc-800/40">
         <div className="max-w-6xl mx-auto px-6">
-          <div className="text-center mb-12">
+          <div className="text-center mb-8">
             <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full border border-yellow-500/20 bg-yellow-500/5 text-yellow-400 text-xs font-mono mb-5">
               <AlertTriangle className="h-3 w-3 shrink-0" />
               30M+ developers now use AI coding tools. Bugs ship faster than ever.
@@ -19,7 +19,7 @@ export function ProblemNarrative() {
           </div>
 
           <div className="p-8 sm:p-10 rounded-2xl border border-blue-500/20 bg-blue-500/5 text-center">
-            <p className="text-2xl sm:text-3xl font-bold text-white leading-snug">
+            <p className="text-2xl md:text-3xl font-semibold text-white leading-snug">
               AI-generated code needs AI-powered QA.
             </p>
             <p className="text-zinc-400 mt-3 text-lg max-w-xl mx-auto">

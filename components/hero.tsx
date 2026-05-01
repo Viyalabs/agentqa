@@ -344,7 +344,7 @@ function ForWhoSection() {
             <div className="text-2xl shrink-0 mt-0.5">⚡</div>
             <div>
               <div className="flex items-center gap-2 mb-1.5">
-                <h3 className="text-white font-semibold">AI Builders</h3>
+                <h3 className="text-xl font-semibold text-white">AI Builders</h3>
                 <span className="text-[11px] px-2 py-0.5 rounded-full bg-blue-500/20 text-blue-400 border border-blue-500/30 font-medium">Primary audience</span>
               </div>
               <p className="text-zinc-300 text-sm leading-relaxed">
@@ -362,7 +362,7 @@ function ForWhoSection() {
               className="p-5 rounded-xl border border-zinc-800 bg-zinc-900/40 hover:border-zinc-700 hover:bg-zinc-900/70 transition-all duration-200"
             >
               <div className="text-2xl mb-3">{item.emoji}</div>
-              <h3 className="text-white font-semibold mb-1.5">{item.title}</h3>
+              <h3 className="text-xl font-semibold text-white mb-1.5">{item.title}</h3>
               <p className="text-zinc-400 text-sm leading-relaxed">{item.description}</p>
             </div>
           ))}

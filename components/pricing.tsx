@@ -71,7 +71,7 @@ export function Pricing() {
           </h2>
           <p className="text-zinc-400 max-w-lg mx-auto">
             A QA engineer costs <span className="text-red-400 font-semibold">$80k–$150k/year</span> and still misses bugs.
-            AgentQA is free to start — Pro early access locks in at <span className="text-green-400 font-semibold">$49/mo forever</span>.
+            AgentQA is free to start — Pro locks in at <span className="text-green-400 font-semibold">$49/mo</span> during early access.
           </p>
         </div>
 
