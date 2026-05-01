@@ -3,9 +3,10 @@ import { createClient } from '@supabase/supabase-js'
 export interface HomeStats {
   appsScanned: number
   bugsCaught: number
+  pagesScanned: number
 }
 
-const FALLBACK: HomeStats = { appsScanned: 0, bugsCaught: 0 }
+const FALLBACK: HomeStats = { appsScanned: 0, bugsCaught: 0, pagesScanned: 0 }
 
 export async function getHomeStats(): Promise<HomeStats> {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL
@@ -15,7 +16,7 @@ export async function getHomeStats(): Promise<HomeStats> {
   try {
     const db = createClient(url, key)
 
-    const [{ count }, { data }] = await Promise.all([
+    const [{ count: scanCount }, { data: issueData }, { count: pageCount }] = await Promise.all([
       db
         .from('scans')
         .select('*', { count: 'exact', head: true })
@@ -24,13 +25,17 @@ export async function getHomeStats(): Promise<HomeStats> {
         .from('scans')
         .select('total_issues')
         .eq('status', 'completed'),
+      db
+        .from('scanned_pages')
+        .select('*', { count: 'exact', head: true }),
     ])
 
-    const bugsCaught = data?.reduce((sum, row) => sum + (row.total_issues ?? 0), 0) ?? 0
+    const bugsCaught = issueData?.reduce((sum, row) => sum + (row.total_issues ?? 0), 0) ?? 0
 
     return {
-      appsScanned: count ?? 0,
+      appsScanned: scanCount ?? 0,
       bugsCaught,
+      pagesScanned: pageCount ?? 0,
     }
   } catch {
     return FALLBACK

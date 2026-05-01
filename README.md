@@ -94,6 +94,7 @@ WEBHOOK_API_KEY=your_secret_key_here         # generate: openssl rand -hex 32
 
 # Optional — WhatsApp notifications via CallMeBot
 CALLMEBOT_API_KEY=your_callmebot_api_key
+CALLMEBOT_PHONE=your_phone_with_country_code   # e.g. 919876543210 (no + prefix)
 ```
 
 > Supabase values: **Settings → API** in your Supabase dashboard.
@@ -291,6 +292,7 @@ agentqa/
 | `RESEND_NOTIFY_EMAIL` | optional | `support@viyalabs.com` | Admin email for waitlist/lead notifications |
 | `WEBHOOK_API_KEY` | optional | — | Secret key for CI/CD webhook. Comma-separate for multiple keys. Generate: `openssl rand -hex 32` |
 | `CALLMEBOT_API_KEY` | optional | — | WhatsApp notification via CallMeBot |
+| `CALLMEBOT_PHONE` | optional | — | WhatsApp recipient phone (country code + number, no `+`). E.g. `919876543210` |
 | `PLAYWRIGHT_HEADLESS` | optional | `true` | Set `false` to see browser window during local dev |
 | `PLAYWRIGHT_TIMEOUT_MS` | optional | `10000` | Per-page navigation timeout in ms |
 | `MAX_PAGES_PER_SCAN` | optional | `5` | Max pages per scan |

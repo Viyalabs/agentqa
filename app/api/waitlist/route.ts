@@ -8,7 +8,7 @@ const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? 'https://qa.viyalabs.com'
 
 // Override via RESEND_NOTIFY_EMAIL env var (useful when using onboarding@resend.dev sender without domain verification)
 const NOTIFY_EMAIL = process.env.RESEND_NOTIFY_EMAIL ?? 'support@viyalabs.com'
-const NOTIFY_WHATSAPP = '9600190022'
+const NOTIFY_WHATSAPP = process.env.CALLMEBOT_PHONE ?? ''
 
 const RequestSchema = z.object({
   email: z.string().email('Please enter a valid email address'),
@@ -162,8 +162,8 @@ async function sendWhatsAppNotification(
   scannedUrl?: string,
 ): Promise<void> {
   const apiKey = process.env.CALLMEBOT_API_KEY
-  if (!apiKey) {
-    console.warn('[waitlist] CALLMEBOT_API_KEY not set — skipping WhatsApp notification')
+  if (!apiKey || !NOTIFY_WHATSAPP) {
+    console.warn('[waitlist] CALLMEBOT_API_KEY or CALLMEBOT_PHONE not set — skipping WhatsApp notification')
     return
   }
 

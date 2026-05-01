@@ -63,10 +63,10 @@ export function DemoScan() {
   }
 
   return (
-    <section className="py-24 px-4">
+    <section className="py-16 px-4">
       <div className="max-w-5xl mx-auto">
-        <div className="text-center mb-12">
-          <p className="text-xs font-mono text-blue-400 tracking-widest uppercase mb-4">Live demo</p>
+        <div className="text-center mb-10">
+          <p className="text-xs font-mono text-blue-400 tracking-widest uppercase mb-3">Live demo</p>
           <h2 className="text-3xl sm:text-4xl font-bold text-white mb-4">
             See AgentQA run on a real site
           </h2>

@@ -238,8 +238,11 @@ export function Hero({ stats }: { stats?: HomeStats }) {
                 </div>
                 <div className="w-px h-8 bg-zinc-800" />
                 <div>
-                  <div className="text-2xl font-bold text-white">100<span className="text-blue-400">%</span></div>
-                  <div className="text-xs text-zinc-500 mt-0.5">free to start</div>
+                  <div className="text-2xl font-bold text-white">
+                    {formatStat(stats?.pagesScanned ?? 0, '6,000')}
+                    <span className="text-blue-400">+</span>
+                  </div>
+                  <div className="text-xs text-zinc-500 mt-0.5">pages tested</div>
                 </div>
               </div>
             </div>
