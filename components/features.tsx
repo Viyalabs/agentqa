@@ -98,7 +98,7 @@ export function Features() {
     <section className="py-16 bg-zinc-950/50 border-y border-zinc-800/50">
       <div className="max-w-6xl mx-auto px-6">
         <div className="text-center mb-12">
-          <p className="text-xs font-mono text-blue-400 tracking-widest uppercase mb-3">What gets tested</p>
+          <p className="text-xs font-mono text-blue-400 tracking-widest uppercase mb-3">What your AI QA engineer covers</p>
           <h2 className="text-3xl md:text-4xl font-semibold tracking-tight text-white mb-4">
             Full-stack coverage, zero configuration
           </h2>

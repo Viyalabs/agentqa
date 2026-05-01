@@ -16,9 +16,9 @@ export function CtaBanner() {
         <div className="max-w-3xl mx-auto text-center">
           <p className="text-xs font-mono text-blue-400 tracking-widest uppercase mb-4">Free forever · No credit card</p>
           <h2 className="text-3xl md:text-4xl font-semibold tracking-tight text-white mb-5">
-            Your app has bugs.
+            You have bugs you don&apos;t know about.
             <br />
-            <span className="text-zinc-500">Find them before your users do.</span>
+            <span className="text-zinc-500">Run your first scan now — takes under 2 minutes.</span>
           </h2>
           <p className="text-base text-zinc-400 leading-relaxed mb-8 max-w-xl mx-auto">
             Most broken pages are never found by the team that built them — they&apos;re found by users. One URL. 90 seconds. Know exactly what&apos;s broken.

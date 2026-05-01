@@ -78,7 +78,7 @@ export function Comparison() {
     <section className="py-16 border-t border-zinc-800/40">
       <div className="max-w-6xl mx-auto px-6">
         <div className="text-center mb-10">
-          <p className="text-xs font-mono text-blue-400 tracking-widest uppercase mb-3">Why AgentQA</p>
+          <p className="text-xs font-mono text-blue-400 tracking-widest uppercase mb-3">The end of manual QA</p>
           <h2 className="text-3xl md:text-4xl font-semibold tracking-tight text-white mb-4">
             Traditional QA vs AgentQA
           </h2>
