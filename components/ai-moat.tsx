@@ -41,7 +41,7 @@ export function AiMoat() {
           <p className="text-base text-zinc-400 max-w-xl mx-auto leading-relaxed mb-3">
             Every issue is analyzed by Claude AI. You get the exact technical reason it broke and a specific fix — ready to paste into your editor.
           </p>
-          <p className="text-base text-blue-300 font-medium">
+          <p className="text-base text-blue-300 leading-relaxed">
             AgentQA learns from every scan. Recurring patterns across the platform mean each new diagnosis is informed by thousands of bugs that came before it — a compounding advantage no manually-maintained test suite can replicate.
           </p>
         </div>

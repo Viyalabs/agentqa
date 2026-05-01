@@ -45,7 +45,7 @@ export function HowItWorks() {
   return (
     <section className="py-16 border-t border-zinc-800/40" id="how-it-works">
       <div className="max-w-6xl mx-auto px-6">
-        <div className="text-center mb-12">
+        <div className="text-center mb-10">
           <p className="text-xs font-mono text-blue-400 tracking-widest uppercase mb-3">How it works</p>
           <h2 className="text-3xl md:text-4xl font-semibold tracking-tight text-white mb-4">
             From URL to full QA report in 4 steps

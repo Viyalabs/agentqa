@@ -27,7 +27,7 @@ export function ProblemNarrative() {
       <div className="max-w-6xl mx-auto px-6">
 
         {/* Macro problem — centered */}
-        <div className="text-center mb-14">
+        <div className="text-center mb-12">
           <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full border border-yellow-500/20 bg-yellow-500/5 text-yellow-400 text-xs font-mono mb-5">
             <AlertTriangle className="h-3 w-3 shrink-0" />
             The QA engineer is the next job automated away
@@ -37,13 +37,13 @@ export function ProblemNarrative() {
             <br />
             <span className="text-zinc-500">Manual QA is being replaced.</span>
           </h2>
-          <p className="text-lg font-semibold text-blue-300 mt-4">
+          <p className="text-xl font-semibold text-blue-300 mt-4">
             Every app will have an AI QA agent.
           </p>
         </div>
 
         {/* The wedge — 2-col */}
-        <div className="grid lg:grid-cols-2 gap-12 items-start pt-10 border-t border-zinc-800/40">
+        <div className="grid lg:grid-cols-2 gap-8 items-start pt-8 border-t border-zinc-800/40">
 
           {/* Left: copy */}
           <div>

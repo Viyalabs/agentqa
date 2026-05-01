@@ -191,7 +191,7 @@ export function ReportPreview() {
 
         {/* Inline CTA */}
         <div className="mt-8 flex flex-col sm:flex-row items-center justify-center gap-4">
-          <p className="text-zinc-500 text-sm">Ready to see your app&apos;s real report?</p>
+          <p className="text-base text-zinc-400 leading-relaxed">Ready to see your app&apos;s real report?</p>
           <a
             href="#scan-form"
             className="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg bg-blue-600 hover:bg-blue-500 text-white font-medium text-sm transition-colors"

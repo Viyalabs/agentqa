@@ -358,7 +358,7 @@ function ForWhoSection() {
         </div>
 
         {/* AI Builders — featured card */}
-        <div className="mb-4 p-5 sm:p-6 rounded-xl border border-blue-500/30 bg-blue-500/5 hover:border-blue-500/50 transition-colors">
+        <div className="mb-4 p-6 rounded-xl border border-blue-500/30 bg-blue-500/5 hover:border-blue-500/50 transition-colors">
           <div className="flex items-start gap-4">
             <div className="text-2xl shrink-0 mt-0.5">⚡</div>
             <div>
