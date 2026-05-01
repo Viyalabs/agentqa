@@ -111,8 +111,8 @@ export function AiMoat() {
           {PILLARS.map((item) => (
             <div key={item.title} className="p-5 rounded-xl border border-zinc-800 bg-zinc-900/30 text-center">
               <item.icon className="h-5 w-5 text-blue-400 mx-auto mb-2" />
-              <p className="text-white font-semibold text-sm mb-1">{item.title}</p>
-              <p className="text-zinc-500 text-xs leading-relaxed">{item.body}</p>
+              <p className="text-white text-xl font-semibold mb-2">{item.title}</p>
+              <p className="text-base text-zinc-400 leading-relaxed">{item.body}</p>
             </div>
           ))}
         </div>

@@ -70,7 +70,7 @@ export function DemoScan() {
           <h2 className="text-3xl md:text-4xl font-semibold tracking-tight text-white mb-4">
             See AgentQA run on a real site
           </h2>
-          <p className="text-zinc-400 max-w-xl mx-auto mb-4">
+          <p className="text-base text-zinc-400 leading-relaxed max-w-xl mx-auto mb-4">
             Pick a site — it runs the exact same scan your users would trigger. Watch it happen live.
           </p>
           <p className="text-sm text-zinc-600">

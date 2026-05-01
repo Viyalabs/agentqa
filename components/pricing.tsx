@@ -68,7 +68,7 @@ export function Pricing() {
           <h2 className="text-3xl md:text-4xl font-semibold tracking-tight text-white mb-4">
             Start free. Upgrade when you need more.
           </h2>
-          <p className="text-zinc-400 max-w-lg mx-auto">
+          <p className="text-base text-zinc-400 leading-relaxed max-w-lg mx-auto">
             A QA engineer costs <span className="text-red-400 font-semibold">$80k–$150k/year</span> and still misses bugs.
             AgentQA is free to start — Pro locks in at <span className="text-green-400 font-semibold">$49/mo</span> during early access.
           </p>
@@ -83,7 +83,7 @@ export function Pricing() {
                 <span className="text-4xl font-bold text-white">$0</span>
                 <span className="text-zinc-500">/month</span>
               </div>
-              <p className="text-sm text-zinc-400 mt-2">Full QA report on every scan — no credit card, no expiry</p>
+              <p className="text-base text-zinc-400 leading-relaxed mt-2">Full QA report on every scan — no credit card, no expiry</p>
             </div>
 
             <Button
@@ -100,7 +100,7 @@ export function Pricing() {
 
             <ul className="space-y-3">
               {freeTierFeatures.map((feature) => (
-                <li key={feature} className="flex items-start gap-3 text-sm text-zinc-300">
+                <li key={feature} className="flex items-start gap-3 text-base text-zinc-400">
                   <Check className="h-4 w-4 text-green-400 mt-0.5 shrink-0" />
                   {feature}
                 </li>
@@ -200,7 +200,7 @@ export function Pricing() {
                 <span className="text-4xl font-bold text-white">$49</span>
                 <span className="text-zinc-500">/month</span>
               </div>
-              <p className="text-sm text-zinc-400 mt-2">For teams shipping AI apps daily</p>
+              <p className="text-base text-zinc-400 leading-relaxed mt-2">For teams shipping AI apps daily</p>
             </div>
 
             <Button className="w-full mb-8 opacity-40" disabled>
@@ -209,7 +209,7 @@ export function Pricing() {
 
             <ul className="space-y-3 opacity-40">
               {proTierFeatures.map((feature) => (
-                <li key={feature} className="flex items-start gap-3 text-sm text-zinc-300">
+                <li key={feature} className="flex items-start gap-3 text-base text-zinc-400">
                   <Check className="h-4 w-4 text-blue-400 mt-0.5 shrink-0" />
                   {feature}
                 </li>

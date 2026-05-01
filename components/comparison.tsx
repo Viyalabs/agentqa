@@ -82,7 +82,7 @@ export function Comparison() {
           <h2 className="text-3xl md:text-4xl font-semibold tracking-tight text-white mb-4">
             Traditional QA vs AgentQA
           </h2>
-          <p className="text-zinc-400 max-w-xl mx-auto">
+          <p className="text-base text-zinc-400 leading-relaxed max-w-xl mx-auto">
             QA hasn&apos;t changed in 20 years. AgentQA replaces the entire process with a single URL.
           </p>
         </div>

@@ -50,7 +50,7 @@ export function HowItWorks() {
           <h2 className="text-3xl md:text-4xl font-semibold tracking-tight text-white mb-4">
             From URL to full QA report in 4 steps
           </h2>
-          <p className="text-zinc-400 max-w-xl mx-auto">
+          <p className="text-base text-zinc-400 leading-relaxed max-w-xl mx-auto">
             Four automated phases — crawl, analyze, classify, report — running in real Chrome while you watch.
           </p>
         </div>

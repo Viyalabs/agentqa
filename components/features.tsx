@@ -102,7 +102,7 @@ export function Features() {
           <h2 className="text-3xl md:text-4xl font-semibold tracking-tight text-white mb-4">
             Full-stack coverage, zero configuration
           </h2>
-          <p className="text-zinc-400 max-w-xl mx-auto">
+          <p className="text-base text-zinc-400 leading-relaxed max-w-xl mx-auto">
             Every scan tests desktop and mobile across all discovered pages — JS errors, network failures, layout breaks, performance, and more.
           </p>
         </div>
@@ -126,8 +126,8 @@ export function Features() {
                     <div className={`w-9 h-9 rounded-lg ${feature.bg} flex items-center justify-center mb-3`}>
                       <feature.icon className={`h-4 w-4 ${feature.color}`} />
                     </div>
-                    <h3 className="text-base font-semibold text-white mb-1.5">{feature.title}</h3>
-                    <p className="text-sm text-zinc-400 leading-relaxed">{feature.description}</p>
+                    <h3 className="text-xl font-semibold text-white mb-1.5">{feature.title}</h3>
+                    <p className="text-base text-zinc-400 leading-relaxed">{feature.description}</p>
                   </div>
                 ))}
               </div>

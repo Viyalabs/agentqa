@@ -45,7 +45,7 @@ export function ReportPreview() {
           <h2 className="text-3xl md:text-4xl font-semibold tracking-tight text-white mb-4">
             This is what your report looks like
           </h2>
-          <p className="text-zinc-400 max-w-xl mx-auto">
+          <p className="text-base text-zinc-400 leading-relaxed max-w-xl mx-auto">
             Every issue ranked by severity, the fix already written. Share your report with a single link — no login required to view it.
           </p>
         </div>

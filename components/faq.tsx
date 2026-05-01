@@ -30,7 +30,7 @@ export function FAQ() {
             <h2 className="text-3xl md:text-4xl font-semibold tracking-tight text-white mb-4">
               Common questions
             </h2>
-            <p className="text-zinc-400">
+            <p className="text-base text-zinc-400 leading-relaxed">
               Quick answers before you run your first scan.
             </p>
           </div>
@@ -46,7 +46,7 @@ export function FAQ() {
                   onClick={() => setOpen(open === i ? null : i)}
                   aria-expanded={open === i}
                 >
-                  <span className="text-white font-medium text-sm leading-snug">{faq.q}</span>
+                  <span className="text-white font-semibold text-xl leading-snug">{faq.q}</span>
                   <ChevronDown
                     className={`h-4 w-4 text-zinc-500 shrink-0 transition-transform duration-200 ${
                       open === i ? 'rotate-180' : ''
