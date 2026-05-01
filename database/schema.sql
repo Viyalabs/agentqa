@@ -152,6 +152,70 @@ ALTER TABLE waitlist ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "Service role only on waitlist" ON waitlist FOR ALL USING (false);
 
 -- ============================================================
+-- AI MOAT: FRAMEWORK DETECTION
+-- ============================================================
+CREATE TABLE IF NOT EXISTS scan_frameworks (
+  id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  scan_id     UUID NOT NULL REFERENCES scans(id) ON DELETE CASCADE,
+  framework   TEXT NOT NULL,
+  confidence  REAL NOT NULL CHECK (confidence >= 0 AND confidence <= 1),
+  signals     TEXT[] NOT NULL DEFAULT '{}',
+  created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_scan_frameworks_scan_id ON scan_frameworks(scan_id);
+
+ALTER TABLE scan_frameworks ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Public access to scan_frameworks" ON scan_frameworks FOR ALL USING (true);
+
+-- ============================================================
+-- AI MOAT: CROSS-SCAN ISSUE PATTERNS
+-- ============================================================
+CREATE TABLE IF NOT EXISTS issue_patterns (
+  id                   UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  fingerprint          TEXT NOT NULL UNIQUE,
+  type                 TEXT NOT NULL,
+  severity             TEXT NOT NULL,
+  title                TEXT NOT NULL,
+  occurrence_count     INTEGER NOT NULL DEFAULT 1,
+  affected_frameworks  TEXT[] NOT NULL DEFAULT '{}',
+  root_cause_template  TEXT,
+  fix_template         TEXT,
+  first_seen_at        TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  last_seen_at         TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_issue_patterns_fingerprint ON issue_patterns(fingerprint);
+CREATE INDEX IF NOT EXISTS idx_issue_patterns_type ON issue_patterns(type);
+CREATE INDEX IF NOT EXISTS idx_issue_patterns_count ON issue_patterns(occurrence_count DESC);
+
+ALTER TABLE issue_patterns ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Public access to issue_patterns" ON issue_patterns FOR ALL USING (true);
+
+-- ============================================================
+-- AI MOAT: ISSUE → PATTERN LINKS
+-- ============================================================
+CREATE TABLE IF NOT EXISTS issue_pattern_matches (
+  id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  issue_id    UUID NOT NULL REFERENCES issues(id) ON DELETE CASCADE,
+  pattern_id  UUID NOT NULL REFERENCES issue_patterns(id) ON DELETE CASCADE,
+  created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  UNIQUE (issue_id, pattern_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_ipm_issue_id    ON issue_pattern_matches(issue_id);
+CREATE INDEX IF NOT EXISTS idx_ipm_pattern_id  ON issue_pattern_matches(pattern_id);
+
+ALTER TABLE issue_pattern_matches ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Public access to issue_pattern_matches" ON issue_pattern_matches FOR ALL USING (true);
+
+-- New columns on issues for moat layer
+ALTER TABLE issues ADD COLUMN IF NOT EXISTS fingerprint TEXT;
+ALTER TABLE issues ADD COLUMN IF NOT EXISTS framework   TEXT;
+
+CREATE INDEX IF NOT EXISTS idx_issues_fingerprint ON issues(fingerprint) WHERE fingerprint IS NOT NULL;
+
+-- ============================================================
 -- MIGRATION: run these if upgrading an existing database
 -- ============================================================
 -- Phase 2 — AI Intelligence Layer
@@ -173,3 +237,9 @@ CREATE POLICY "Service role only on waitlist" ON waitlist FOR ALL USING (false);
 -- ALTER TABLE scan_logs ENABLE ROW LEVEL SECURITY;
 -- CREATE POLICY "Public access to scan_logs" ON scan_logs FOR ALL USING (true);
 -- CREATE INDEX IF NOT EXISTS idx_scans_url_status ON scans(url, status, created_at DESC);
+-- Phase 3 — AI Moat Layer
+-- CREATE TABLE IF NOT EXISTS scan_frameworks (id UUID PRIMARY KEY DEFAULT gen_random_uuid(), scan_id UUID NOT NULL REFERENCES scans(id) ON DELETE CASCADE, framework TEXT NOT NULL, confidence REAL NOT NULL CHECK (confidence >= 0 AND confidence <= 1), signals TEXT[] NOT NULL DEFAULT '{}', created_at TIMESTAMPTZ NOT NULL DEFAULT NOW());
+-- CREATE TABLE IF NOT EXISTS issue_patterns (id UUID PRIMARY KEY DEFAULT gen_random_uuid(), fingerprint TEXT NOT NULL UNIQUE, type TEXT NOT NULL, severity TEXT NOT NULL, title TEXT NOT NULL, occurrence_count INTEGER NOT NULL DEFAULT 1, affected_frameworks TEXT[] NOT NULL DEFAULT '{}', root_cause_template TEXT, fix_template TEXT, first_seen_at TIMESTAMPTZ NOT NULL DEFAULT NOW(), last_seen_at TIMESTAMPTZ NOT NULL DEFAULT NOW());
+-- CREATE TABLE IF NOT EXISTS issue_pattern_matches (id UUID PRIMARY KEY DEFAULT gen_random_uuid(), issue_id UUID NOT NULL REFERENCES issues(id) ON DELETE CASCADE, pattern_id UUID NOT NULL REFERENCES issue_patterns(id) ON DELETE CASCADE, created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(), UNIQUE (issue_id, pattern_id));
+-- ALTER TABLE issues ADD COLUMN IF NOT EXISTS fingerprint TEXT;
+-- ALTER TABLE issues ADD COLUMN IF NOT EXISTS framework TEXT;

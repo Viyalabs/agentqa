@@ -2,6 +2,8 @@ import { getAdminClient, uploadScreenshot, uploadMobileScreenshot } from '@/lib/
 import { crawlWebsite } from '@/playwright/crawler'
 import { calculateScore } from './scorer'
 import { analyzeIssues, generateScanOverview } from './ai-analyzer'
+import { detectAndStoreFrameworks } from './framework-detector'
+import { matchScanIssues } from './pattern-matcher'
 import type { IssueClassified, IssueType, IssueSeverity, PageTestResult } from '@/types'
 
 const SCAN_TIMEOUT_MS = 120_000 // 2 minutes
@@ -178,11 +180,28 @@ export async function runScan(scanId: string, url: string): Promise<void> {
       `[scanner] ${scanId} done — score:${score} pages:${totalPages} issues:${allIssues.length}${timedOut ? ' [PARTIAL]' : ''}`
     )
 
-    // Post-scan AI analysis — runs after scan marks complete, never blocks scan speed
-    await analyzeIssues(scanId, url).catch((err: unknown) => {
+    // ── Post-scan intelligence pipeline (non-blocking, runs after scan completes) ──
+
+    // 1. Detect frameworks from the network requests already stored in scanned_pages
+    const frameworks = await detectAndStoreFrameworks(scanId).catch((err: unknown) => {
+      console.error(`[scanner] Framework detection failed for ${scanId}:`, err)
+      return [] as string[]
+    })
+
+    // 2. Fingerprint issues + match to cross-scan pattern DB
+    //    Returns cached AI templates for known patterns — saves Claude calls below
+    const patternMatches = await matchScanIssues(scanId, frameworks).catch((err: unknown) => {
+      console.error(`[scanner] Pattern matching failed for ${scanId}:`, err)
+      return new Map()
+    })
+
+    // 3. AI analysis — uses cached templates where available, calls Claude for new patterns
+    await analyzeIssues(scanId, url, patternMatches, frameworks).catch((err: unknown) => {
       console.error(`[scanner] AI issue analysis failed for ${scanId}:`, err)
     })
-    await generateScanOverview(scanId, url, score, criticalCount, mediumCount).catch((err: unknown) => {
+
+    // 4. Scan-level overview with framework context
+    await generateScanOverview(scanId, url, score, criticalCount, mediumCount, frameworks).catch((err: unknown) => {
       console.error(`[scanner] AI overview failed for ${scanId}:`, err)
     })
 

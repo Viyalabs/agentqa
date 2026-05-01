@@ -71,6 +71,8 @@ export interface Issue {
   ai_summary: string | null
   root_cause: string | null
   fix_suggestion: string | null
+  fingerprint: string | null
+  framework: string | null
   created_at: string
 }
 
@@ -153,4 +155,35 @@ export interface ScoreBreakdown {
   criticalDeduction: number
   mediumDeduction: number
   lowDeduction: number
+}
+
+// ── AI Moat types ──────────────────────────────────────────────────────────────
+
+export interface DetectedFramework {
+  framework: string
+  confidence: number
+  signals: string[]
+}
+
+export interface IssuePattern {
+  id: string
+  fingerprint: string
+  type: IssueType
+  severity: IssueSeverity
+  title: string
+  occurrence_count: number
+  affected_frameworks: string[]
+  root_cause_template: string | null
+  fix_template: string | null
+  first_seen_at: string
+  last_seen_at: string
+}
+
+export interface PatternMatchResult {
+  patternId: string
+  fingerprint: string
+  isNew: boolean
+  occurrenceCount: number
+  rootCauseTemplate: string | null
+  fixTemplate: string | null
 }
