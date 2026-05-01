@@ -1,28 +1,28 @@
 const TESTIMONIALS = [
   {
     quote:
-      "I was 30 minutes from sending a launch email to 500 subscribers. Ran AgentQA on a whim. It found a broken auth redirect — new users would hit a blank screen instead of onboarding. Also caught a 404 on /pricing that I'd broken the day before. Fixed both in 20 minutes. I genuinely don't want to think about what that launch would have looked like.",
-    author: 'Marcus Chen',
-    role: 'Solo founder · B2B SaaS built with Cursor',
-    initials: 'MC',
-    detail: '3 pages scanned · 2 critical bugs caught · launch saved',
+      "Delivered a client handoff with a full AgentQA report instead of a Loom walkthrough. Client asked if we had a dedicated QA team. We don't. AgentQA is our QA team.",
+    author: 'Sophie M.',
+    role: 'Founder · Dev agency, client delivery',
+    initials: 'SM',
+    detail: 'Now runs on every client delivery',
     featured: true,
   },
   {
     quote:
-      "We were manually clicking through the whole app before every deploy. 45 minutes, every time, every sprint. AgentQA does it in 90 seconds and catches things we routinely missed — mobile layout breaks, failed API calls that only show up in a real browser.",
-    author: 'CTO',
-    role: 'Early-stage startup, 8-person team',
-    initials: 'CT',
-    detail: 'QA score: 62 → 91 after first scan',
+      "I was 30 minutes from sending a launch email to 500 subscribers. Ran AgentQA on a whim. It found a broken auth redirect — new users would hit a blank screen instead of onboarding. Also caught a 404 on /pricing that I'd broken the day before. Fixed both in 20 minutes.",
+    author: 'Marcus Chen',
+    role: 'Solo founder · B2B SaaS built with Cursor',
+    initials: 'MC',
+    detail: '3 pages scanned · 2 critical bugs caught · launch saved',
   },
   {
     quote:
-      "Delivered a client handoff with a full AgentQA report instead of a Loom walkthrough. Client asked if we had a dedicated QA team. We don't. AgentQA is our QA team.",
-    author: 'Founder',
-    role: 'Dev agency, client delivery',
-    initials: 'DA',
-    detail: 'Now runs on every client delivery',
+      "We were manually clicking through the whole app before every deploy. 45 minutes, every time, every sprint. AgentQA does it in 90 seconds and catches things we routinely missed — mobile layout breaks, failed API calls that only show up in a real browser.",
+    author: 'Rafal K.',
+    role: 'CTO · Early-stage startup, 8-person team',
+    initials: 'RK',
+    detail: 'QA score: 62 → 91 after first scan',
   },
 ]
 
@@ -33,9 +33,9 @@ export function Testimonials() {
     <section className="py-16 border-t border-zinc-800/40">
       <div className="max-w-6xl mx-auto px-6">
         <div className="text-center mb-6">
-          <p className="text-xs font-mono text-blue-400 tracking-widest uppercase mb-3">From early builders</p>
+          <p className="text-xs font-mono text-blue-400 tracking-widest uppercase mb-3">Real teams · Early access 2025</p>
           <h2 className="text-3xl md:text-4xl font-semibold tracking-tight text-white mb-4">
-            Bugs caught before they became user complaints
+            Teams that replaced manual QA with AgentQA
           </h2>
         </div>
 
