@@ -50,8 +50,6 @@ export function Footer() {
           <p>© {new Date().getFullYear()} AgentQA. All rights reserved.</p>
           <p>
             Built by{' '}
-            <span className="text-zinc-400 font-medium">Praveen Perfeito</span>
-            {' '}·{' '}
             <a
               href="https://viyalabs.com"
               target="_blank"
