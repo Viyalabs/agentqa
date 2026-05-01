@@ -14,10 +14,10 @@ export function CtaBanner() {
     <section className="py-14 px-4 border-t border-zinc-800/40">
       <div className="max-w-3xl mx-auto text-center">
         <h2 className="text-3xl sm:text-4xl font-bold text-white mb-4">
-          Run your first scan in under 2 minutes
+          Your first QA report in under 2 minutes
         </h2>
         <p className="text-zinc-400 mb-8 text-lg">
-          No credit card. No QA team. Paste your URL and get a full report.
+          No credit card. No setup. No QA team. Just paste your URL and get a scored report with every bug, screenshot, and JS error found.
         </p>
         <Button
           size="lg"

@@ -58,9 +58,12 @@ export function Comparison() {
         </div>
 
         {/* Bottom callout */}
-        <p className="text-center text-zinc-600 text-sm mt-6">
-          AgentQA doesn&apos;t replace your existing stack — it&apos;s the QA layer you were missing.
-        </p>
+        <div className="mt-6 p-5 rounded-xl border border-zinc-800 bg-zinc-900/30 text-center">
+          <p className="text-zinc-300 text-sm font-medium">
+            A QA engineer costs <span className="text-red-400 font-semibold">$80k–$150k per year</span> and still misses bugs.
+            AgentQA finds them in <span className="text-green-400 font-semibold">under 2 minutes</span>, free to start.
+          </p>
+        </div>
       </div>
     </section>
   )

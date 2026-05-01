@@ -184,7 +184,7 @@ export function Hero({ stats }: { stats?: HomeStats }) {
                   <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75" />
                   <span className="relative inline-flex rounded-full h-2 w-2 bg-blue-500" />
                 </span>
-                AI QA agent — zero setup, real browser
+                AI QA agent — replaces manual testing, zero setup
               </div>
 
               {/* Headline */}
@@ -220,30 +220,35 @@ export function Hero({ stats }: { stats?: HomeStats }) {
               </div>
 
               {/* Social proof */}
-              <div className="flex items-center justify-center lg:justify-start gap-8 mt-8 pt-8 border-t border-zinc-800/60">
-                <div>
-                  <div className="text-2xl font-bold text-white">
-                    {formatStat(stats?.appsScanned ?? 0, '1,200')}
-                    <span className="text-blue-400">+</span>
+              <div className="mt-8 pt-8 border-t border-zinc-800/60">
+                <div className="flex items-center justify-center lg:justify-start gap-8">
+                  <div>
+                    <div className="text-2xl font-bold text-white">
+                      {formatStat(stats?.appsScanned ?? 0, '1,200')}
+                      <span className="text-blue-400">+</span>
+                    </div>
+                    <div className="text-xs text-zinc-500 mt-0.5">apps scanned</div>
                   </div>
-                  <div className="text-xs text-zinc-500 mt-0.5">apps scanned</div>
-                </div>
-                <div className="w-px h-8 bg-zinc-800" />
-                <div>
-                  <div className="text-2xl font-bold text-white">
-                    {formatStat(stats?.bugsCaught ?? 0, '8,400')}
-                    <span className="text-blue-400">+</span>
+                  <div className="w-px h-8 bg-zinc-800" />
+                  <div>
+                    <div className="text-2xl font-bold text-white">
+                      {formatStat(stats?.bugsCaught ?? 0, '8,400')}
+                      <span className="text-blue-400">+</span>
+                    </div>
+                    <div className="text-xs text-zinc-500 mt-0.5">bugs caught</div>
                   </div>
-                  <div className="text-xs text-zinc-500 mt-0.5">bugs caught</div>
-                </div>
-                <div className="w-px h-8 bg-zinc-800" />
-                <div>
-                  <div className="text-2xl font-bold text-white">
-                    {formatStat(stats?.pagesScanned ?? 0, '6,000')}
-                    <span className="text-blue-400">+</span>
+                  <div className="w-px h-8 bg-zinc-800" />
+                  <div>
+                    <div className="text-2xl font-bold text-white">
+                      {formatStat(stats?.pagesScanned ?? 0, '6,000')}
+                      <span className="text-blue-400">+</span>
+                    </div>
+                    <div className="text-xs text-zinc-500 mt-0.5">pages tested</div>
                   </div>
-                  <div className="text-xs text-zinc-500 mt-0.5">pages tested</div>
                 </div>
+                <p className="text-xs text-zinc-600 mt-3 text-center lg:text-left">
+                  Trusted by AI builders shipping with Cursor, Replit &amp; Lovable
+                </p>
               </div>
             </div>
 

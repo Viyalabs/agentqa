@@ -109,10 +109,10 @@ export function Pricing() {
           {/* Pro tier */}
           <div className="relative p-8 rounded-2xl border border-blue-500/40 bg-blue-950/20">
             {/* Overlay */}
-            <div className="absolute inset-0 rounded-2xl bg-zinc-950/60 backdrop-blur-[2px] flex flex-col items-center justify-center z-10 p-6">
+            <div className="absolute inset-0 rounded-2xl bg-zinc-950/70 backdrop-blur-[2px] flex flex-col items-center justify-center z-10 p-6">
               <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full border border-blue-500/40 bg-blue-500/10 text-blue-400 font-medium mb-3">
                 <Sparkles className="h-4 w-4" />
-                Coming Soon
+                Early Access
               </div>
 
               {formState === 'success' ? (
@@ -123,14 +123,17 @@ export function Pricing() {
                 </div>
               ) : formState === 'idle' ? (
                 <>
-                  <p className="text-zinc-400 text-sm mb-4 text-center">
-                    Join the waitlist for early access
+                  <p className="text-zinc-400 text-sm mb-1 text-center font-medium">
+                    Pro is in early access
+                  </p>
+                  <p className="text-zinc-600 text-xs mb-4 text-center">
+                    Get notified when it launches + lock in launch pricing
                   </p>
                   <Button
                     size="sm"
                     onClick={() => setFormState('open')}
                   >
-                    Join waitlist
+                    Get early access
                   </Button>
                 </>
               ) : (

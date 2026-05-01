@@ -56,7 +56,14 @@ export function ProblemNarrative() {
             <p className="text-2xl sm:text-3xl font-bold text-white leading-snug">
               AgentQA is the QA engineer you never had to hire.
             </p>
-            <p className="text-zinc-400 mt-3 text-lg">Autonomous. Instant. No setup required.</p>
+            <p className="text-zinc-400 mt-3 text-lg">Autonomous. Instant. Free to start.</p>
+            <div className="flex items-center justify-center gap-6 mt-6 text-sm text-zinc-500">
+              <span>Real Chrome browser</span>
+              <span className="text-zinc-700">·</span>
+              <span>Zero configuration</span>
+              <span className="text-zinc-700">·</span>
+              <span>Works with any framework</span>
+            </div>
           </div>
         </div>
       </section>
@@ -111,10 +118,10 @@ function AiAppsSection() {
               Apps built with AI break differently
             </h2>
             <p className="text-zinc-400 text-lg leading-relaxed mb-5">
-              LLMs write plausible-looking code that passes a visual check — then fails silently in production. Mobile viewports overflow. API calls return 401s. JavaScript crashes at runtime.
+              LLMs write plausible-looking code that passes a visual check — then fails silently in production. Mobile viewports overflow. API calls return 401s. JavaScript crashes at runtime. The LLM doesn&apos;t know.
             </p>
             <p className="text-zinc-400 text-lg leading-relaxed">
-              AgentQA runs the real-browser test suite that AI-generated apps never ship with. It&apos;s the missing QA layer for the way software is built today.
+              AgentQA is the real-browser QA layer that AI-generated apps never ship with. Built for the failure patterns of AI-written code — not the manual scripts of 2005.
             </p>
           </div>
 
