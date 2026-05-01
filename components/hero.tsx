@@ -290,12 +290,12 @@ export function Hero({ stats }: { stats?: HomeStats }) {
                   </div>
                 </div>
                 <div className="flex flex-wrap items-center justify-center lg:justify-start gap-3 mt-3">
-                  <p className="text-xs text-zinc-600">
+                  <p className="text-xs text-zinc-500">
                     Trusted by indie builders, agencies, and AI-first startups shipping daily
                   </p>
                   <a
                     href="/scans"
-                    className="text-xs text-zinc-600 hover:text-blue-400 underline underline-offset-2 transition-colors shrink-0"
+                    className="text-xs text-blue-400/80 hover:text-blue-400 border border-blue-500/20 bg-blue-500/5 px-2.5 py-0.5 rounded-full transition-colors shrink-0"
                   >
                     See recent reports →
                   </a>
