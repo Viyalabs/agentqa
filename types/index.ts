@@ -74,6 +74,9 @@ export interface Issue {
   fingerprint: string | null
   framework: string | null
   created_at: string
+  // Joined from issue_patterns — present in API responses, not in DB rows directly
+  pattern_count?: number
+  pattern_frameworks?: string[]
 }
 
 export interface PageLog {
@@ -128,6 +131,7 @@ export interface ScanStatusResponse {
   pages: ScannedPage[]
   issues: Issue[]
   logs: ScanLog[]
+  frameworks: string[]
 }
 
 export interface IssueClassified {

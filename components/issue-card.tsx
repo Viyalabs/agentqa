@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { AlertTriangle, AlertCircle, Info, ExternalLink, ChevronDown, ChevronUp, Layers, Sparkles } from 'lucide-react'
+import { AlertTriangle, AlertCircle, Info, ExternalLink, ChevronDown, ChevronUp, Layers, Sparkles, TrendingUp } from 'lucide-react'
 import { Badge } from './ui/badge'
 import { Card, CardContent } from './ui/card'
 import type { Issue } from '@/types'
@@ -100,14 +100,30 @@ export function IssueCard({ issue, pageCount, totalCount }: IssueCardProps) {
                       : null}
                   </span>
                 )}
+                {issue.pattern_count != null && issue.pattern_count > 1 && (
+                  <span
+                    className="flex items-center gap-1 text-[10px] text-orange-400 bg-orange-500/10 border border-orange-500/20 rounded px-1.5 py-0.5 font-mono"
+                    title={`This pattern has been seen ${issue.pattern_count} times across all AgentQA scans`}
+                  >
+                    <TrendingUp className="h-2.5 w-2.5" />
+                    {issue.pattern_count >= 100 ? '100+×' : `${issue.pattern_count}×`} known
+                  </span>
+                )}
               </div>
               <Badge variant={config.variant} className="shrink-0">
                 {config.label}
               </Badge>
             </div>
 
-            <div className="text-xs text-zinc-600 mb-2">
-              {ISSUE_TYPE_LABELS[issue.type] ?? issue.type}
+            <div className="flex items-center gap-2 mb-2">
+              <span className="text-xs text-zinc-600">
+                {ISSUE_TYPE_LABELS[issue.type] ?? issue.type}
+              </span>
+              {issue.framework && (
+                <span className="text-[10px] px-1.5 py-0.5 rounded bg-zinc-800 border border-zinc-700 text-zinc-400 font-mono">
+                  {issue.framework}
+                </span>
+              )}
             </div>
 
             {issue.description && (

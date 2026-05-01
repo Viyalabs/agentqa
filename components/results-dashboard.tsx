@@ -268,7 +268,7 @@ export function ResultsDashboard({ scanId }: ResultsDashboardProps) {
     )
   }
 
-  const { scan, pages, issues, logs } = data
+  const { scan, pages, issues, logs, frameworks = [] } = data
   const isRunning = scan.status === 'running' || scan.status === 'pending'
   const isFailed = scan.status === 'failed'
   const isComplete = scan.status === 'completed'
@@ -308,7 +308,7 @@ export function ResultsDashboard({ scanId }: ResultsDashboardProps) {
   const failedNetworkRequests = allNetworkRequests.filter((r) => r.failed)
 
   return (
-    <div className="max-w-6xl mx-auto px-4 py-8 space-y-6">
+    <div className="max-w-6xl mx-auto px-6 py-8 space-y-6">
       {/* Header */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div>
@@ -323,9 +323,24 @@ export function ResultsDashboard({ scanId }: ResultsDashboardProps) {
               <ExternalLink className="h-3 w-3" />
             </a>
           </div>
-          <div className="flex items-center gap-2 text-xs text-zinc-600">
-            <Clock className="h-3 w-3" />
-            Started {formatTimestamp(scan.started_at ?? scan.created_at)}
+          <div className="flex items-center gap-2 flex-wrap mt-1.5">
+            <span className="flex items-center gap-1 text-xs text-zinc-600">
+              <Clock className="h-3 w-3" />
+              Started {formatTimestamp(scan.started_at ?? scan.created_at)}
+            </span>
+            {frameworks.length > 0 && (
+              <>
+                <span className="text-zinc-800">·</span>
+                {frameworks.slice(0, 3).map((fw) => (
+                  <span
+                    key={fw}
+                    className="text-[10px] px-1.5 py-0.5 rounded bg-zinc-800 border border-zinc-700/80 text-zinc-400 font-mono"
+                  >
+                    {fw}
+                  </span>
+                ))}
+              </>
+            )}
           </div>
         </div>
 

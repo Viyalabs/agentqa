@@ -57,10 +57,59 @@ export async function GET(
     // scan_logs table not yet created — omit logs from response
   }
 
+  // Enrich issues with cross-scan pattern data (occurrence_count, affected_frameworks)
+  const issueList = (issues ?? []) as Array<Record<string, unknown>>
+  const fingerprints = [...new Set(
+    issueList.map((i) => i.fingerprint as string | null).filter((f): f is string => !!f)
+  )]
+
+  let patternMap = new Map<string, { occurrence_count: number; affected_frameworks: string[] }>()
+  if (fingerprints.length > 0) {
+    try {
+      const { data: patterns } = await db
+        .from('issue_patterns')
+        .select('fingerprint, occurrence_count, affected_frameworks')
+        .in('fingerprint', fingerprints)
+
+      for (const p of patterns ?? []) {
+        patternMap.set(p.fingerprint, {
+          occurrence_count: p.occurrence_count,
+          affected_frameworks: p.affected_frameworks ?? [],
+        })
+      }
+    } catch {
+      // issue_patterns table not yet migrated — skip enrichment
+    }
+  }
+
+  const enrichedIssues = issueList.map((issue) => {
+    const fp = issue.fingerprint as string | null
+    const pattern = fp ? patternMap.get(fp) : undefined
+    return {
+      ...issue,
+      pattern_count: pattern?.occurrence_count ?? null,
+      pattern_frameworks: pattern?.affected_frameworks ?? [],
+    }
+  })
+
+  // Fetch detected frameworks for this scan
+  let frameworkNames: string[] = []
+  try {
+    const { data: fws } = await db
+      .from('scan_frameworks')
+      .select('framework, confidence')
+      .eq('scan_id', scanId)
+      .order('confidence', { ascending: false })
+    frameworkNames = (fws ?? []).map((f: { framework: string }) => f.framework)
+  } catch {
+    // scan_frameworks table not yet migrated — skip
+  }
+
   return NextResponse.json({
     scan,
     pages: pages ?? [],
-    issues: issues ?? [],
+    issues: enrichedIssues,
     logs: logsData,
+    frameworks: frameworkNames,
   })
 }
