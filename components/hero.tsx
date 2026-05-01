@@ -276,7 +276,7 @@ export function Hero({ stats }: { stats?: HomeStats }) {
                 </div>
                 <div className="flex flex-wrap items-center justify-center lg:justify-start gap-3 mt-3">
                   <p className="text-xs text-zinc-600">
-                    Trusted by AI builders shipping with Cursor, Replit &amp; Lovable
+                    Trusted by indie builders, agencies, and AI-first startups shipping daily
                   </p>
                   <a
                     href="/scans"

@@ -82,7 +82,7 @@ export function ProblemNarrative() {
             The travel agent was replaced by Expedia. The stockbroker by Robinhood.
             The data analyst by Excel, then by AI.{' '}
             <span className="text-white font-medium">The QA engineer is next.</span>{' '}
-            AgentQA is the software that replaces them.
+            Every software company has a QA function. AgentQA is building the category that automates it.
           </p>
         </div>
 
