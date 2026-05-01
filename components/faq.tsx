@@ -13,24 +13,8 @@ const FAQS = [
     a: 'AgentQA currently tests publicly accessible pages — no login flows. It catches the bugs users hit before they even sign up: broken pages, JS crashes, mobile layout failures, slow loads, and bad API responses. Login-protected flows are on the roadmap.',
   },
   {
-    q: 'What exactly does it catch?',
-    a: 'JS exceptions with full stack traces, failed API requests (4xx / 5xx), broken images, horizontal overflow at 375 px mobile, pages loading over 5 seconds, assets over 500 KB, 404 and 5xx page errors — all severity-classified as Critical, Medium, or Low. Plus AI root-cause and fix on every issue.',
-  },
-  {
-    q: 'How many pages can it scan?',
-    a: 'Free tier: up to 5 pages per scan, tested on desktop and mobile. Pro (early access, $49/mo) removes the limit entirely — scan as many pages as your app has.',
-  },
-  {
-    q: 'Is it really free? What\'s the catch?',
+    q: "Is it really free? What's the catch?",
     a: 'No catch. Free means no credit card, no expiry, no watermarked reports. You get a real Chrome browser scan, AI analysis, and a permanent shareable report link — free forever. Pro adds unlimited pages, CI/CD integration, and team features.',
-  },
-  {
-    q: 'Which frameworks and stacks does it support?',
-    a: 'Any web app accessible via a public URL. React, Next.js, Vue, SvelteKit, Remix, plain HTML — it doesn\'t matter. If a browser can open it, AgentQA can test it. Works with apps deployed on Vercel, Netlify, Railway, Render, or any host.',
-  },
-  {
-    q: 'How long does a scan take?',
-    a: 'Typically 60–120 seconds for 5 pages. The exact time depends on page count and how fast your server responds. You\'ll see live progress as each page is crawled, and you can optionally get an email when the report is ready.',
   },
 ]
 
@@ -44,10 +28,10 @@ export function FAQ() {
           <div className="text-center mb-10">
             <p className="text-xs font-mono text-blue-400 tracking-widest uppercase mb-3">FAQ</p>
             <h2 className="text-3xl md:text-4xl font-semibold tracking-tight text-white mb-4">
-              Everything you need to know
+              Common questions
             </h2>
             <p className="text-zinc-400">
-              Everything you need to know before running your first scan.
+              Quick answers before you run your first scan.
             </p>
           </div>
 

@@ -7,8 +7,6 @@ import {
   CodeXml,
   ImageOff,
   Timer,
-  Sparkles,
-  Wrench,
 } from 'lucide-react'
 
 const GROUPS = [
@@ -94,83 +92,22 @@ const GROUPS = [
   },
 ]
 
-function AIInsightsBlock() {
-  return (
-    <div className="mt-12 rounded-2xl border border-blue-500/20 bg-blue-500/5 overflow-hidden">
-      <div className="px-6 py-5 border-b border-blue-500/10 flex items-center gap-3">
-        <Sparkles className="h-5 w-5 text-blue-400" />
-        <div>
-          <p className="text-xs font-mono text-blue-400 tracking-widest uppercase">Powered by Claude AI · Live</p>
-          <p className="text-white font-semibold text-sm mt-0.5">Not just detection — explanation and fix</p>
-        </div>
-      </div>
-
-      <div className="grid md:grid-cols-2 gap-0 divide-y md:divide-y-0 md:divide-x divide-blue-500/10">
-        {/* Left: AI analysis items */}
-        <div className="p-6 space-y-4">
-          <div className="flex items-start gap-3">
-            <div className="w-8 h-8 rounded-lg bg-blue-500/15 flex items-center justify-center shrink-0 mt-0.5">
-              <Sparkles className="h-4 w-4 text-blue-400" />
-            </div>
-            <div>
-              <div className="text-white text-sm font-semibold mb-0.5">AI Root Cause Analysis</div>
-              <div className="text-zinc-400 text-sm leading-relaxed">
-                Every issue is analyzed by Claude AI — not just what broke, but the technical reason it happened.
-              </div>
-            </div>
-          </div>
-          <div className="flex items-start gap-3">
-            <div className="w-8 h-8 rounded-lg bg-green-500/15 flex items-center justify-center shrink-0 mt-0.5">
-              <Wrench className="h-4 w-4 text-green-400" />
-            </div>
-            <div>
-              <div className="text-white text-sm font-semibold mb-0.5">Fix Suggestions</div>
-              <div className="text-zinc-400 text-sm leading-relaxed">
-                Actionable, developer-ready steps to resolve each issue — not generic advice.
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Right: sample AI output */}
-        <div className="p-6">
-          <div className="text-xs text-zinc-600 font-mono uppercase tracking-wider mb-3">Sample AI output</div>
-          <div className="space-y-3">
-            <div className="p-3 rounded-lg bg-zinc-950/80 border border-zinc-800">
-              <div className="flex items-center gap-1.5 mb-1.5">
-                <span className="h-2 w-2 rounded-full bg-red-500" />
-                <span className="text-xs text-zinc-500 font-mono">Critical · Uncaught JS Error</span>
-              </div>
-              <p className="text-xs text-zinc-400 mb-2">TypeError: Cannot read properties of undefined (reading &apos;user&apos;)</p>
-              <div className="text-xs text-zinc-600 font-medium mb-0.5">Root cause</div>
-              <p className="text-xs text-zinc-400 mb-2">The auth context is accessed before the session resolves. <code className="text-blue-400">useUser()</code> returns undefined on first render.</p>
-              <div className="text-xs text-green-600 font-medium mb-0.5">Fix</div>
-              <p className="text-xs text-green-400">Add a loading guard: <code>if (!user) return null</code> before accessing user properties in your auth-protected components.</p>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-  )
-}
 
 export function Features() {
   return (
     <section className="py-16 bg-zinc-950/50 border-y border-zinc-800/50">
       <div className="max-w-6xl mx-auto px-6">
         <div className="text-center mb-12">
-          <p className="text-xs font-mono text-blue-400 tracking-widest uppercase mb-3">Complete QA coverage</p>
+          <p className="text-xs font-mono text-blue-400 tracking-widest uppercase mb-3">What gets tested</p>
           <h2 className="text-3xl md:text-4xl font-semibold tracking-tight text-white mb-4">
-            Everything tested. Nothing missed.
+            Full-stack coverage, zero configuration
           </h2>
           <p className="text-zinc-400 max-w-xl mx-auto">
-            Every scan runs a full battery of checks across all discovered pages — desktop and mobile — then AI explains what it found.
+            Every scan tests desktop and mobile across all discovered pages — JS errors, network failures, layout breaks, performance, and more.
           </p>
         </div>
 
-        <AIInsightsBlock />
-
-        <div className="space-y-10 mt-10">
+        <div className="space-y-10">
           {GROUPS.map((group) => (
             <div key={group.category}>
               <div className="flex items-center gap-3 mb-5">

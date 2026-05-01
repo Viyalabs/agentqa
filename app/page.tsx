@@ -6,10 +6,10 @@ import { HowItWorks } from '@/components/how-it-works'
 import { Comparison } from '@/components/comparison'
 import { ReportPreview } from '@/components/report-preview'
 import { DemoScan } from '@/components/demo-scan'
+import { AiMoat } from '@/components/ai-moat'
 import { Testimonials } from '@/components/testimonials'
 import { TechBar } from '@/components/tech-bar'
 import { Features } from '@/components/features'
-import { FutureOfQA } from '@/components/future-of-qa'
 import { FAQ } from '@/components/faq'
 import { CtaBanner } from '@/components/cta-banner'
 import { Pricing } from '@/components/pricing'
@@ -84,17 +84,17 @@ export default async function HomePage() {
         {/* 7. Live demo scan */}
         <DemoScan />
 
-        {/* 8. Full feature set */}
+        {/* 8. AI moat — root cause + fix centerpiece */}
+        <AiMoat />
+
+        {/* 9. Full feature set */}
         <Features />
 
-        {/* 9. Vision: Today / Next / Soon */}
-        <FutureOfQA />
-
-        {/* 10. FAQ — handles objections before close */}
-        <FAQ />
-
-        {/* 11. Social proof — right before pricing decision */}
+        {/* 10. Social proof */}
         <Testimonials />
+
+        {/* 11. FAQ — objection handling */}
+        <FAQ />
 
         {/* 12. CTA before pricing */}
         <CtaBanner />

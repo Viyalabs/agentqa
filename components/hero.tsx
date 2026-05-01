@@ -246,7 +246,7 @@ export function Hero({ stats }: { stats?: HomeStats }) {
                 </div>
                 <div className="flex items-center gap-2">
                   <ShieldCheck className="h-4 w-4 text-blue-500" />
-                  No QA team needed
+                  No QA experience required
                 </div>
               </div>
 
