@@ -268,22 +268,23 @@ const FOR_WHO = [
   {
     emoji: '⚡',
     title: 'AI Builders',
-    description: 'Using Cursor, Replit, or Lovable? AI writes the code. AgentQA catches what the LLM missed.',
+    description: 'Using Cursor, Replit, Lovable, or Bolt? LLMs write plausible code that breaks silently. AgentQA is the QA layer your AI-generated app never ships with.',
+    featured: true,
   },
   {
     emoji: '🚀',
     title: 'Indie Hackers',
-    description: 'Ship fast without a QA bottleneck. Get a scored report on every deploy, not just bug reports from users.',
+    description: 'Ship fast without a QA bottleneck. Get a scored report on every deploy, not bug reports from users.',
   },
   {
     emoji: '⚙️',
     title: 'Startups',
-    description: "Move at startup speed without hiring a QA team. Know your app's health before every launch.",
+    description: "Move at startup speed without hiring QA. Know your app's health before every launch.",
   },
   {
     emoji: '🏢',
     title: 'Agencies',
-    description: 'Deliver client projects with a professional QA report, not just a Loom walkthrough.',
+    description: 'Deliver client handoffs with a QA report, not a Loom walkthrough. Look professional.',
   },
 ]
 
@@ -292,21 +293,39 @@ function ForWhoSection() {
     <section className="py-16 px-4 border-t border-zinc-800/40">
       <div className="max-w-5xl mx-auto">
         <div className="text-center mb-10">
+          <p className="text-xs font-mono text-blue-400 tracking-widest uppercase mb-3">Who it&apos;s for</p>
           <h2 className="text-2xl sm:text-3xl font-bold text-white mb-3">
-            Built for teams that ship fast
+            Who AgentQA is built for
           </h2>
-          <p className="text-zinc-400">
-            AgentQA replaces the QA step that most fast-moving teams skip entirely.
+          <p className="text-zinc-500 text-sm max-w-lg mx-auto">
+            Built for the way modern teams ship — fast, lean, and without a dedicated QA department.
           </p>
         </div>
 
-        <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          {FOR_WHO.map((item) => (
+        {/* AI Builders — featured card */}
+        <div className="mb-4 p-5 sm:p-6 rounded-xl border border-blue-500/30 bg-blue-500/5 hover:border-blue-500/50 transition-colors">
+          <div className="flex items-start gap-4">
+            <div className="text-2xl shrink-0 mt-0.5">⚡</div>
+            <div>
+              <div className="flex items-center gap-2 mb-1.5">
+                <h3 className="text-white font-semibold">AI Builders</h3>
+                <span className="text-[11px] px-2 py-0.5 rounded-full bg-blue-500/20 text-blue-400 border border-blue-500/30 font-medium">Primary audience</span>
+              </div>
+              <p className="text-zinc-300 text-sm leading-relaxed">
+                Using Cursor, Replit, Lovable, or Bolt? LLMs write plausible-looking code that breaks silently — broken auth flows, mobile overflows, API crashes at runtime. AgentQA is the real-browser QA pass your AI-generated app never ships with.
+              </p>
+            </div>
+          </div>
+        </div>
+
+        {/* Other ICPs */}
+        <div className="grid sm:grid-cols-3 gap-4">
+          {FOR_WHO.slice(1).map((item) => (
             <div
               key={item.title}
               className="p-5 rounded-xl border border-zinc-800 bg-zinc-900/40 hover:border-zinc-700 hover:bg-zinc-900/70 transition-all duration-200"
             >
-              <div className="text-3xl mb-3">{item.emoji}</div>
+              <div className="text-2xl mb-3">{item.emoji}</div>
               <h3 className="text-white font-semibold mb-1.5">{item.title}</h3>
               <p className="text-zinc-400 text-sm leading-relaxed">{item.description}</p>
             </div>

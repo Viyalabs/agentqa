@@ -11,13 +11,16 @@ function focusScanInput() {
 
 export function CtaBanner() {
   return (
-    <section className="py-14 px-4 border-t border-zinc-800/40">
+    <section className="py-16 px-4 border-t border-zinc-800/40">
       <div className="max-w-3xl mx-auto text-center">
-        <h2 className="text-3xl sm:text-4xl font-bold text-white mb-4">
-          Your first QA report in under 2 minutes
+        <p className="text-xs font-mono text-blue-400 tracking-widest uppercase mb-4">Free — no account required</p>
+        <h2 className="text-4xl sm:text-5xl font-bold text-white mb-5 leading-tight">
+          Run your first scan now.
+          <br />
+          <span className="text-zinc-500">It takes 2 minutes.</span>
         </h2>
-        <p className="text-zinc-400 mb-8 text-lg">
-          No credit card. No setup. No QA team. Just paste your URL and get a scored report with every bug, screenshot, and JS error found.
+        <p className="text-zinc-400 mb-8 text-lg max-w-xl mx-auto">
+          Paste your URL. A real browser tests every page. You get a scored report with every bug, screenshot, and JS error — shareable with a single link.
         </p>
         <Button
           size="lg"
@@ -43,6 +46,9 @@ export function CtaBanner() {
             Works with any framework
           </span>
         </div>
+        <p className="text-zinc-700 text-xs mt-5">
+          No credit card. No sign-up. No setup. Just paste a URL.
+        </p>
       </div>
     </section>
   )

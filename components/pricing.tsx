@@ -67,10 +67,11 @@ export function Pricing() {
         <div className="text-center mb-10">
           <p className="text-xs font-mono text-blue-400 tracking-widest uppercase mb-3">Pricing</p>
           <h2 className="text-3xl sm:text-4xl font-bold text-white mb-4">
-            Simple pricing
+            Free to start. Scales with you.
           </h2>
-          <p className="text-zinc-400">
-            Start free. Upgrade when you need more.
+          <p className="text-zinc-400 max-w-lg mx-auto">
+            A full-time QA engineer costs $80k–$150k per year — and still misses bugs.
+            AgentQA starts free.
           </p>
         </div>
 
@@ -129,7 +130,7 @@ export function Pricing() {
                     Pro is in early access
                   </p>
                   <p className="text-zinc-600 text-xs mb-4 text-center">
-                    Get notified when it launches + lock in launch pricing
+                    Join the list to lock in launch pricing — $49/mo forever
                   </p>
                   <Button
                     size="sm"

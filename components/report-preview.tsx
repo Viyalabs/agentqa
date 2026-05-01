@@ -1,13 +1,14 @@
-import { CheckCircle2, AlertCircle, AlertTriangle, Info, Globe, Clock } from 'lucide-react'
+import { CheckCircle2, AlertCircle, AlertTriangle, Info, Globe, Clock, Sparkles } from 'lucide-react'
 
 const mockIssues = [
   {
     severity: 'critical' as const,
-    title: '404 – Page Not Found',
-    description: '/dashboard returned a 404 status code.',
+    title: 'Uncaught JS Error',
+    description: "TypeError: Cannot read properties of undefined (reading 'user')",
     icon: AlertCircle,
     color: 'text-red-400',
     bg: 'bg-red-500/10 border-red-500/20',
+    hasAI: true,
   },
   {
     severity: 'medium' as const,
@@ -16,6 +17,7 @@ const mockIssues = [
     icon: AlertTriangle,
     color: 'text-yellow-400',
     bg: 'bg-yellow-500/10 border-yellow-500/20',
+    hasAI: false,
   },
   {
     severity: 'low' as const,
@@ -24,6 +26,7 @@ const mockIssues = [
     icon: Info,
     color: 'text-blue-400',
     bg: 'bg-blue-500/10 border-blue-500/20',
+    hasAI: false,
   },
 ]
 
@@ -43,18 +46,23 @@ export function ReportPreview() {
             This is what your report looks like
           </h2>
           <p className="text-zinc-400 max-w-xl mx-auto">
-            Every scan produces a QA score, severity-classified issues, per-page status, and screenshots — shareable via a single link.
+            A QA score, severity-classified issues, per-page breakdown, AI analysis, and screenshots — shareable via a single link.
           </p>
         </div>
 
         {/* Mock dashboard */}
-        <div className="rounded-2xl border border-zinc-800 bg-zinc-900/30 overflow-hidden">
+        <div className="rounded-2xl border border-zinc-700/60 bg-zinc-900/30 overflow-hidden shadow-2xl">
           {/* Toolbar */}
-          <div className="flex items-center justify-between px-5 py-3 border-b border-zinc-800 bg-zinc-900/60">
+          <div className="flex items-center justify-between px-5 py-3 border-b border-zinc-800 bg-zinc-900/80">
             <div className="flex items-center gap-2">
-              <span className="text-xs font-mono text-zinc-500">qa.viyalabs.com/scan/</span>
+              <div className="flex gap-1.5">
+                <span className="h-3 w-3 rounded-full bg-red-500/60" />
+                <span className="h-3 w-3 rounded-full bg-yellow-500/60" />
+                <span className="h-3 w-3 rounded-full bg-green-500/60" />
+              </div>
+              <span className="text-xs font-mono text-zinc-500 ml-2">qa.viyalabs.com/report/</span>
               <span className="text-xs font-mono text-blue-400">a1b2c3d4</span>
-              <span className="text-xs text-zinc-600 hidden sm:inline">— shareable link</span>
+              <span className="text-xs text-zinc-700 hidden sm:inline">— permanent shareable link</span>
             </div>
             <div className="flex items-center gap-2 px-2.5 py-1 rounded-md bg-green-500/10 border border-green-500/20 text-green-400 text-xs">
               <CheckCircle2 className="h-3 w-3" />
@@ -72,7 +80,7 @@ export function ReportPreview() {
                   73
                   <span className="text-2xl text-zinc-600">/100</span>
                 </div>
-                <div className="text-sm text-yellow-400 mt-1">Fair</div>
+                <div className="text-sm text-yellow-400 mt-1">Fair — 3 issues need attention</div>
               </div>
 
               {/* Stats */}
@@ -120,15 +128,31 @@ export function ReportPreview() {
                 <div className="text-xs text-zinc-500 uppercase tracking-wider mb-2">Issues</div>
                 <div className="space-y-2">
                   {mockIssues.map((issue) => (
-                    <div
-                      key={issue.title}
-                      className={`flex items-start gap-3 p-3 rounded-lg border ${issue.bg}`}
-                    >
-                      <issue.icon className={`h-4 w-4 mt-0.5 shrink-0 ${issue.color}`} />
-                      <div className="min-w-0">
-                        <div className={`text-sm font-medium ${issue.color}`}>{issue.title}</div>
-                        <div className="text-xs text-zinc-500 mt-0.5">{issue.description}</div>
+                    <div key={issue.title}>
+                      <div className={`flex items-start gap-3 p-3 rounded-lg border ${issue.bg}`}>
+                        <issue.icon className={`h-4 w-4 mt-0.5 shrink-0 ${issue.color}`} />
+                        <div className="min-w-0 flex-1">
+                          <div className={`text-sm font-medium ${issue.color}`}>{issue.title}</div>
+                          <div className="text-xs text-zinc-500 mt-0.5 font-mono">{issue.description}</div>
+                        </div>
                       </div>
+                      {/* AI analysis inline */}
+                      {issue.hasAI && (
+                        <div className="ml-3 mt-1 p-3 rounded-b-lg border-x border-b border-blue-500/15 bg-blue-500/5">
+                          <div className="flex items-center gap-1.5 mb-1.5">
+                            <Sparkles className="h-3 w-3 text-blue-400" />
+                            <span className="text-xs font-semibold text-blue-400">AI Analysis</span>
+                          </div>
+                          <p className="text-xs text-zinc-400 mb-1.5">
+                            <span className="text-zinc-600">Root cause: </span>
+                            Auth context accessed before session resolves — <code className="text-blue-300">useUser()</code> returns undefined on first render.
+                          </p>
+                          <p className="text-xs text-green-400">
+                            <span className="text-green-600">Fix: </span>
+                            Add <code>if (!user) return null</code> guard before accessing user properties in auth-protected components.
+                          </p>
+                        </div>
+                      )}
                     </div>
                   ))}
                 </div>
@@ -136,7 +160,7 @@ export function ReportPreview() {
 
               {/* Pages */}
               <div>
-                <div className="text-xs text-zinc-500 uppercase tracking-wider mb-2">Pages</div>
+                <div className="text-xs text-zinc-500 uppercase tracking-wider mb-2">Pages scanned</div>
                 <div className="space-y-1.5">
                   {mockPages.map((page) => (
                     <div
