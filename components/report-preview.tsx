@@ -46,7 +46,7 @@ export function ReportPreview() {
             This is what your report looks like
           </h2>
           <p className="text-zinc-400 max-w-xl mx-auto">
-            A QA score, severity-classified issues, per-page breakdown, AI analysis, and screenshots — shareable via a single link.
+            Every issue ranked by severity, the fix already written. Share your report with a single link — no login required to view it.
           </p>
         </div>
 

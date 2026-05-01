@@ -6,11 +6,10 @@ import { Button } from './ui/button'
 
 const freeTierFeatures = [
   'Up to 5 pages per scan',
-  'Real Chrome browser — desktop & mobile',
-  'Full page screenshots',
+  'Full page screenshots — desktop & mobile',
   'Issue classification (critical / medium / low)',
   'AI root cause analysis + fix suggestions',
-  'QA score report',
+  'Overall health score + per-page breakdown',
   'Console, JS, and network error detection',
   'Permanent shareable report link',
 ]

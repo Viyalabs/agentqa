@@ -51,7 +51,7 @@ export function HowItWorks() {
             From URL to full QA report in 4 steps
           </h2>
           <p className="text-zinc-400 max-w-xl mx-auto">
-            Paste a URL and get a complete QA report with AI analysis in under 2 minutes.
+            Four automated phases — crawl, analyze, classify, report — running in real Chrome while you watch.
           </p>
         </div>
 

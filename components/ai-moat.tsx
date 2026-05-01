@@ -1,4 +1,4 @@
-import { Sparkles, Brain, Zap } from 'lucide-react'
+import { Sparkles, Brain, TrendingUp, Zap } from 'lucide-react'
 
 const PILLARS = [
   {
@@ -7,41 +7,49 @@ const PILLARS = [
     body: 'Knows the framework, the auth pattern, and the specific failure mode — not just the error message.',
   },
   {
-    icon: Sparkles,
+    icon: Zap,
     title: 'Fix-ready output',
     body: 'Specific to your codebase. Not a generic StackOverflow answer.',
   },
   {
-    icon: Zap,
-    title: 'Every issue, every scan',
-    body: 'AI analysis runs automatically on every bug found — no extra steps.',
+    icon: TrendingUp,
+    title: 'Gets smarter every scan',
+    body: 'AgentQA learns from every scan. Patterns across thousands of real bugs sharpen each diagnosis.',
   },
 ]
 
 export function AiMoat() {
   return (
-    <section className="py-20 bg-zinc-950/50 border-y border-zinc-800/50">
-      <div className="max-w-6xl mx-auto px-6">
+    <section className="py-24 bg-zinc-950/60 border-y border-zinc-800/50 relative overflow-hidden">
+      {/* Ambient glow */}
+      <div className="absolute inset-0 pointer-events-none">
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[700px] h-[400px] bg-blue-600/6 blur-3xl rounded-full" />
+      </div>
+
+      <div className="max-w-6xl mx-auto px-6 relative">
 
         <div className="text-center mb-14">
           <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full border border-blue-500/30 bg-blue-500/10 text-blue-400 text-xs font-mono mb-5">
             <Sparkles className="h-3 w-3" />
-            AI Intelligence · Live on every scan
+            Powered by Claude AI
           </div>
           <h2 className="text-3xl md:text-4xl font-semibold tracking-tight text-white mb-4">
             Not just detection.
             <br />
             <span className="text-blue-400">Root cause. Fix. Instantly.</span>
           </h2>
-          <p className="text-base text-zinc-400 max-w-xl mx-auto leading-relaxed">
+          <p className="text-base text-zinc-400 max-w-xl mx-auto leading-relaxed mb-3">
             Every issue is analyzed by Claude AI. You get the exact technical reason it broke and a specific fix — ready to paste into your editor.
+          </p>
+          <p className="text-base text-blue-300 font-medium">
+            AgentQA learns from every scan.
           </p>
         </div>
 
-        {/* Main wow block */}
-        <div className="rounded-2xl border border-zinc-700/50 bg-zinc-900/40 overflow-hidden max-w-3xl mx-auto shadow-2xl shadow-black/30">
+        {/* Main card */}
+        <div className="rounded-2xl border border-zinc-700/50 bg-zinc-900/40 overflow-hidden max-w-3xl mx-auto shadow-2xl shadow-black/40 ring-1 ring-blue-500/10">
 
-          {/* Issue header bar */}
+          {/* Window chrome */}
           <div className="flex items-center gap-3 px-6 py-4 border-b border-zinc-800 bg-zinc-900/90">
             <div className="flex gap-1.5">
               <span className="h-3 w-3 rounded-full bg-red-500/70" />
@@ -55,7 +63,7 @@ export function AiMoat() {
             <span className="ml-auto text-xs text-zinc-600 font-mono">dashboard/page.tsx</span>
           </div>
 
-          {/* Error detected */}
+          {/* Error */}
           <div className="px-6 pt-6 pb-4 border-b border-zinc-800/60">
             <p className="text-xs text-zinc-500 uppercase tracking-wider font-mono mb-3">Error detected</p>
             <p className="font-mono text-sm text-zinc-200 bg-zinc-950/70 rounded-lg px-4 py-3 border border-zinc-800 leading-relaxed">
@@ -63,7 +71,7 @@ export function AiMoat() {
             </p>
           </div>
 
-          {/* Root cause + fix — 2 col */}
+          {/* Root cause + fix */}
           <div className="grid md:grid-cols-2 divide-y md:divide-y-0 md:divide-x divide-zinc-800/60">
             <div className="p-6">
               <p className="text-xs text-zinc-500 uppercase tracking-wider font-mono mb-3">Root cause</p>
@@ -75,8 +83,8 @@ export function AiMoat() {
                 on first render — before the session hydrates on the client.
               </p>
             </div>
-            <div className="p-6 bg-green-950/10">
-              <p className="text-xs text-green-600 uppercase tracking-wider font-mono mb-3">Fix suggestion</p>
+            <div className="p-6 bg-green-950/20 border-l border-green-500/10">
+              <p className="text-xs text-green-500 uppercase tracking-wider font-mono mb-3">Fix suggestion</p>
               <div className="font-mono text-xs bg-zinc-950/70 rounded-lg px-4 py-3 border border-green-500/20 space-y-1 leading-relaxed">
                 <p className="text-zinc-600">{'// Guard before accessing session'}</p>
                 <p className="text-green-300">{'if (!user) return <LoadingSpinner />'}</p>
@@ -87,6 +95,14 @@ export function AiMoat() {
                 Add this guard in every auth-protected component before accessing user properties.
               </p>
             </div>
+          </div>
+
+          {/* Learning footer bar */}
+          <div className="flex items-center gap-2.5 px-6 py-3 bg-blue-950/20 border-t border-blue-500/10">
+            <span className="h-1.5 w-1.5 rounded-full bg-blue-400 animate-pulse shrink-0" />
+            <p className="text-xs text-blue-400/70 font-mono">
+              Pattern matched from 847 similar auth errors · confidence: high
+            </p>
           </div>
         </div>
 

@@ -71,7 +71,7 @@ export function DemoScan() {
             See AgentQA run on a real site
           </h2>
           <p className="text-zinc-400 max-w-xl mx-auto mb-4">
-            Pick any site below — it will crawl every page, find bugs, and generate a full report live in your browser.
+            Pick a site — it runs the exact same scan your users would trigger. Watch it happen live.
           </p>
           <p className="text-sm text-zinc-600">
             Takes ~90 seconds · No signup · No credit card
