@@ -246,6 +246,7 @@ agentqa/
 │   ├── comparison.tsx                  # Traditional QA vs AgentQA table
 │   ├── report-preview.tsx              # Mock report preview
 │   ├── demo-scan.tsx                   # Live scan demo buttons (3 sites)
+│   ├── testimonials.tsx                # Social proof — 3 early builder quotes
 │   ├── features.tsx                    # 8-feature grid
 │   ├── future-of-qa.tsx               # Today / Next / Soon roadmap
 │   ├── cta-banner.tsx                  # Mid-page CTA

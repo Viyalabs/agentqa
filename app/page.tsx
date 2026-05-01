@@ -6,6 +6,7 @@ import { HowItWorks } from '@/components/how-it-works'
 import { Comparison } from '@/components/comparison'
 import { ReportPreview } from '@/components/report-preview'
 import { DemoScan } from '@/components/demo-scan'
+import { Testimonials } from '@/components/testimonials'
 import { Features } from '@/components/features'
 import { FutureOfQA } from '@/components/future-of-qa'
 import { CtaBanner } from '@/components/cta-banner'
@@ -77,16 +78,19 @@ export default async function HomePage() {
         {/* 6. Live demo scan */}
         <DemoScan />
 
-        {/* 7. Full feature set */}
+        {/* 7. Social proof — early builder quotes */}
+        <Testimonials />
+
+        {/* 8. Full feature set */}
         <Features />
 
-        {/* 8. Vision: Today / Next / Soon */}
+        {/* 9. Vision: Today / Next / Soon */}
         <FutureOfQA />
 
-        {/* 9. CTA before pricing */}
+        {/* 10. CTA before pricing */}
         <CtaBanner />
 
-        {/* 10. Pricing */}
+        {/* 11. Pricing */}
         <Pricing />
       </main>
 

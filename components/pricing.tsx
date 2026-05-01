@@ -81,7 +81,7 @@ export function Pricing() {
                 <span className="text-4xl font-bold text-white">$0</span>
                 <span className="text-zinc-500">/month</span>
               </div>
-              <p className="text-sm text-zinc-400 mt-2">Perfect for testing your AI projects</p>
+              <p className="text-sm text-zinc-400 mt-2">Catch bugs before your users do — forever free</p>
             </div>
 
             <Button
@@ -192,13 +192,13 @@ export function Pricing() {
             <div className="mb-6 opacity-40">
               <div className="flex items-center gap-2 mb-1">
                 <h3 className="text-lg font-semibold text-white">Pro</h3>
-                <span className="text-xs px-2 py-0.5 rounded-full bg-blue-600 text-white font-medium">Popular</span>
+                <span className="text-xs px-2 py-0.5 rounded-full bg-blue-600 text-white font-medium">Early Access</span>
               </div>
               <div className="flex items-baseline gap-1">
-                <span className="text-4xl font-bold text-white">$29</span>
+                <span className="text-4xl font-bold text-white">$49</span>
                 <span className="text-zinc-500">/month</span>
               </div>
-              <p className="text-sm text-zinc-400 mt-2">For teams shipping AI apps</p>
+              <p className="text-sm text-zinc-400 mt-2">For teams shipping AI apps daily</p>
             </div>
 
             <Button className="w-full mb-8 opacity-40" disabled>
