@@ -102,9 +102,9 @@ export function ScanForm() {
       <p className="text-xs text-zinc-600 mt-3 text-left">
         Try a demo:{' '}
         {[
-          { label: 'vercel.com', url: 'https://vercel.com' },
-          { label: 'linear.app', url: 'https://linear.app' },
-          { label: 'nextjs.org', url: 'https://nextjs.org' },
+          { label: 'ycombinator.com', url: 'https://ycombinator.com' },
+          { label: 'producthunt.com', url: 'https://producthunt.com' },
+          { label: 'stripe.com', url: 'https://stripe.com' },
         ].map((demo, i) => (
           <span key={demo.url}>
             {i > 0 && <span className="mx-1 text-zinc-700">·</span>}
@@ -120,7 +120,7 @@ export function ScanForm() {
       </p>
       <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-2">
         <span className="text-xs text-zinc-500">You&apos;ll get:</span>
-        {['QA Score', 'Screenshots', 'JS Errors', 'AI Analysis'].map((item) => (
+        {['QA Score', 'Screenshots', 'JS Errors', 'Root Cause + Fix'].map((item) => (
           <span
             key={item}
             className="text-xs px-2 py-0.5 rounded-full border border-zinc-700 text-zinc-500"
