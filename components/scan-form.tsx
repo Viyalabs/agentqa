@@ -81,7 +81,7 @@ export function ScanForm() {
           {isPending ? (
             <>
               <Loader2 className="h-4 w-4 animate-spin" />
-              Loading…
+              Scanning…
             </>
           ) : (
             <>
@@ -100,15 +100,35 @@ export function ScanForm() {
       )}
 
       <p className="text-xs text-zinc-600 mt-3 text-left">
-        Example:{' '}
-        <button
-          type="button"
-          className="text-zinc-500 hover:text-zinc-300 underline underline-offset-2 transition-colors"
-          onClick={() => setUrl('https://example.com')}
-        >
-          https://example.com
-        </button>
+        Try a demo:{' '}
+        {[
+          { label: 'vercel.com', url: 'https://vercel.com' },
+          { label: 'linear.app', url: 'https://linear.app' },
+          { label: 'nextjs.org', url: 'https://nextjs.org' },
+        ].map((demo, i) => (
+          <span key={demo.url}>
+            {i > 0 && <span className="mx-1 text-zinc-700">·</span>}
+            <button
+              type="button"
+              className="text-zinc-500 hover:text-zinc-300 underline underline-offset-2 transition-colors"
+              onClick={() => { setUrl(demo.url); if (error) setError(null) }}
+            >
+              {demo.label}
+            </button>
+          </span>
+        ))}
       </p>
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-2">
+        <span className="text-xs text-zinc-700">You&apos;ll get:</span>
+        {['QA Score', 'Screenshots', 'JS Errors', 'AI Analysis'].map((item) => (
+          <span
+            key={item}
+            className="text-xs px-2 py-0.5 rounded-full border border-zinc-800 text-zinc-600"
+          >
+            {item}
+          </span>
+        ))}
+      </div>
     </form>
   )
 }

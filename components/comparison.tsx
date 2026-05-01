@@ -1,70 +1,82 @@
+import { CheckCircle2, XCircle, ArrowRight } from 'lucide-react'
+
 const ROWS = [
   {
     aspect: 'How to start',
     traditional: 'Write test scripts',
     agentqa: 'Paste a URL',
     highlight: 'key',
+    check: false,
   },
   {
     aspect: 'Testing method',
     traditional: 'Manual click-through',
     agentqa: 'Autonomous agent',
     highlight: false,
+    check: false,
   },
   {
     aspect: 'Team required',
     traditional: 'QA engineer or team',
     agentqa: 'Zero',
     highlight: false,
+    check: true,
   },
   {
     aspect: 'Setup time',
     traditional: 'Days to weeks',
     agentqa: 'Instant',
     highlight: false,
+    check: false,
   },
   {
     aspect: 'Test type',
     traditional: 'Static scripts — go stale, need rewrites',
     agentqa: 'Adaptive — retests everything fresh each scan',
     highlight: false,
+    check: false,
   },
   {
     aspect: 'Mobile testing',
     traditional: 'Manual device checks',
     agentqa: 'Automatic 375px tests',
     highlight: false,
+    check: false,
   },
   {
     aspect: 'Time to results',
     traditional: 'Hours to days',
     agentqa: 'Under 2 minutes',
     highlight: false,
+    check: false,
   },
   {
     aspect: 'AI analysis',
     traditional: 'None',
     agentqa: 'Root cause + fix on every issue',
     highlight: false,
+    check: true,
   },
   {
     aspect: 'Shareable reports',
     traditional: 'Export + email thread',
     agentqa: 'Single shareable link',
     highlight: false,
+    check: false,
   },
   {
     aspect: 'Cost',
     traditional: '$80k–$150k / yr',
     agentqa: 'Free to start',
     highlight: 'cost',
+    check: false,
   },
 ]
 
 export function Comparison() {
   return (
-    <section className="py-16 px-6 border-t border-zinc-800/40">
-      <div className="max-w-6xl mx-auto">
+    <section className="py-16 border-t border-zinc-800/40">
+      <div className="max-w-6xl mx-auto px-6">
         <div className="text-center mb-10">
           <p className="text-xs font-mono text-blue-400 tracking-widest uppercase mb-3">Why AgentQA</p>
           <h2 className="text-3xl sm:text-4xl font-bold text-white mb-4">
@@ -94,18 +106,18 @@ export function Comparison() {
             return (
               <div
                 key={row.aspect}
-                className={`grid grid-cols-3 border-b border-zinc-800/60 last:border-0 ${
+                className={`grid grid-cols-3 border-b last:border-0 ${
                   isKey
-                    ? 'bg-blue-500/5 border-b-blue-500/10'
+                    ? 'bg-blue-500/5 border-b-blue-500/10 border-zinc-800/60'
                     : isCost
-                    ? ''
+                    ? 'border-y border-zinc-700/80 bg-zinc-950/60'
                     : i % 2 === 0
-                    ? 'bg-zinc-900/20'
-                    : ''
+                    ? 'bg-zinc-900/20 border-zinc-800/60'
+                    : 'border-zinc-800/60'
                 }`}
               >
-                <div className="py-4 px-6 flex items-center gap-2">
-                  <span className={`text-sm font-medium ${isKey ? 'text-white' : 'text-zinc-400'}`}>
+                <div className={`flex items-center gap-2 ${isCost ? 'py-5 px-6' : 'py-4 px-6'}`}>
+                  <span className={`font-medium ${isKey ? 'text-white text-sm' : isCost ? 'text-white text-base' : 'text-zinc-400 text-sm'}`}>
                     {row.aspect}
                   </span>
                   {isKey && (
@@ -114,13 +126,23 @@ export function Comparison() {
                     </span>
                   )}
                 </div>
-                <div className="py-4 px-6 flex items-center justify-center">
-                  <span className={`text-sm text-center ${isCost ? 'text-red-400 font-semibold' : 'text-zinc-600'}`}>
+
+                {/* Traditional column */}
+                <div className={`flex items-center justify-center gap-2 ${isCost ? 'py-5 px-6' : 'py-4 px-6'}`}>
+                  {row.check && (
+                    <XCircle className="h-4 w-4 text-red-500/70 shrink-0" />
+                  )}
+                  <span className={`text-center ${isCost ? 'text-red-400 font-bold text-lg' : row.check ? 'text-zinc-500 text-sm' : 'text-zinc-600 text-sm'}`}>
                     {row.traditional}
                   </span>
                 </div>
-                <div className="py-4 px-6 flex items-center justify-center bg-blue-500/5 border-l border-blue-500/10">
-                  <span className={`text-sm font-medium text-center ${isCost ? 'text-green-400 font-semibold' : 'text-blue-300'}`}>
+
+                {/* AgentQA column */}
+                <div className={`flex items-center justify-center gap-2 bg-blue-500/5 border-l border-blue-500/10 ${isCost ? 'py-5 px-6' : 'py-4 px-6'}`}>
+                  {row.check && (
+                    <CheckCircle2 className="h-4 w-4 text-green-400 shrink-0" />
+                  )}
+                  <span className={`font-medium text-center ${isCost ? 'text-green-400 font-bold text-lg' : row.check ? 'text-green-300 text-sm' : 'text-blue-300 text-sm'}`}>
                     {row.agentqa}
                   </span>
                 </div>
@@ -130,7 +152,7 @@ export function Comparison() {
         </div>
 
         {/* Bottom callout */}
-        <div className="mt-6 p-5 rounded-xl border border-zinc-800 bg-zinc-900/30 text-center">
+        <div className="mt-6 p-6 rounded-xl border border-zinc-800 bg-zinc-900/30 text-center">
           <p className="text-zinc-300 text-sm font-medium">
             A QA engineer costs{' '}
             <span className="text-red-400 font-semibold">$80k–$150k per year</span>{' '}
@@ -138,6 +160,13 @@ export function Comparison() {
             AgentQA finds them in{' '}
             <span className="text-green-400 font-semibold">under 2 minutes</span>, free to start.
           </p>
+          <a
+            href="#scan-form"
+            className="inline-flex items-center gap-2 mt-4 px-5 py-2.5 rounded-lg bg-blue-600 hover:bg-blue-500 text-white font-medium text-sm transition-colors"
+          >
+            Try AgentQA Free
+            <ArrowRight className="h-4 w-4" />
+          </a>
         </div>
       </div>
     </section>

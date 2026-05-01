@@ -4,7 +4,30 @@ import { useState, useEffect } from 'react'
 import { Chrome, Zap, Smartphone, AlertCircle, AlertTriangle, WifiOff, ShieldCheck } from 'lucide-react'
 import { ScanForm } from './scan-form'
 import type { HomeStats } from '@/lib/stats'
-import { formatStat } from '@/lib/stats'
+
+const FLOOR = { appsScanned: 1200, bugsCaught: 8400, pagesScanned: 6000 }
+
+function useCountUp(target: number, duration = 1600): number {
+  const [val, setVal] = useState(0)
+  useEffect(() => {
+    if (!target) return
+    const t0 = performance.now()
+    const tick = (now: number) => {
+      const p = Math.min((now - t0) / duration, 1)
+      const eased = 1 - Math.pow(1 - p, 3)
+      setVal(Math.round(eased * target))
+      if (p < 1) requestAnimationFrame(tick)
+    }
+    requestAnimationFrame(tick)
+  }, [target, duration])
+  return val
+}
+
+function fmtCount(n: number): string {
+  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`
+  if (n >= 1_000) return `${(n / 1_000).toFixed(1)}k`
+  return n.toLocaleString()
+}
 
 const LOGS: Array<{ text: string; color: string }> = [
   { text: 'Launching Chrome browser...', color: 'text-zinc-400' },
@@ -159,6 +182,14 @@ function FloatingCard({
 }
 
 export function Hero({ stats }: { stats?: HomeStats }) {
+  const appsTarget = stats?.appsScanned || FLOOR.appsScanned
+  const bugsTarget = stats?.bugsCaught || FLOOR.bugsCaught
+  const pagesTarget = stats?.pagesScanned || FLOOR.pagesScanned
+
+  const appsCount = useCountUp(appsTarget)
+  const bugsCount = useCountUp(bugsTarget)
+  const pagesCount = useCountUp(pagesTarget)
+
   return (
     <>
       <style>{`
@@ -168,13 +199,13 @@ export function Hero({ stats }: { stats?: HomeStats }) {
         }
       `}</style>
 
-      <section className="relative overflow-hidden pt-24 pb-16 px-6">
+      <section className="relative overflow-hidden pt-24 pb-16">
         <div className="absolute inset-0 -z-10 pointer-events-none">
           <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[900px] h-[500px] bg-blue-600/10 blur-[140px] rounded-full" />
           <div className="absolute top-1/2 left-1/4 w-[400px] h-[300px] bg-cyan-600/5 blur-[100px] rounded-full" />
         </div>
 
-        <div className="max-w-6xl mx-auto">
+        <div className="max-w-6xl mx-auto px-6">
           <div className="grid lg:grid-cols-2 gap-12 lg:gap-16 items-center">
 
             <div className="text-center lg:text-left">
@@ -196,7 +227,7 @@ export function Hero({ stats }: { stats?: HomeStats }) {
               </h1>
 
               <p className="text-xl text-zinc-400 mb-10 leading-relaxed max-w-xl mx-auto lg:mx-0">
-                The AI QA engineer that replaces manual testing. Paste a URL — get a full report with screenshots, JS errors, network failures, and a QA score in under 2&nbsp;minutes. Zero setup. Zero QA team.
+                Paste a URL. A real Chrome browser crawls every page, catches every bug, and delivers a QA report with AI&nbsp;root-cause analysis in under 2&nbsp;minutes. No setup. No QA team.
               </p>
 
               <div className="max-w-xl mx-auto lg:mx-0">
@@ -223,32 +254,37 @@ export function Hero({ stats }: { stats?: HomeStats }) {
               <div className="mt-8 pt-8 border-t border-zinc-800/60">
                 <div className="flex items-center justify-center lg:justify-start gap-8">
                   <div>
-                    <div className="text-2xl font-bold text-white">
-                      {formatStat(stats?.appsScanned ?? 0, '1,200')}
-                      <span className="text-blue-400">+</span>
+                    <div className="text-2xl font-bold text-white tabular-nums">
+                      {fmtCount(appsCount)}<span className="text-blue-400">+</span>
                     </div>
                     <div className="text-xs text-zinc-500 mt-0.5">apps scanned</div>
                   </div>
                   <div className="w-px h-8 bg-zinc-800" />
                   <div>
-                    <div className="text-2xl font-bold text-white">
-                      {formatStat(stats?.bugsCaught ?? 0, '8,400')}
-                      <span className="text-blue-400">+</span>
+                    <div className="text-2xl font-bold text-white tabular-nums">
+                      {fmtCount(bugsCount)}<span className="text-blue-400">+</span>
                     </div>
                     <div className="text-xs text-zinc-500 mt-0.5">bugs caught</div>
                   </div>
                   <div className="w-px h-8 bg-zinc-800" />
                   <div>
-                    <div className="text-2xl font-bold text-white">
-                      {formatStat(stats?.pagesScanned ?? 0, '6,000')}
-                      <span className="text-blue-400">+</span>
+                    <div className="text-2xl font-bold text-white tabular-nums">
+                      {fmtCount(pagesCount)}<span className="text-blue-400">+</span>
                     </div>
                     <div className="text-xs text-zinc-500 mt-0.5">pages tested</div>
                   </div>
                 </div>
-                <p className="text-xs text-zinc-600 mt-3 text-center lg:text-left">
-                  Trusted by AI builders shipping with Cursor, Replit &amp; Lovable
-                </p>
+                <div className="flex flex-wrap items-center justify-center lg:justify-start gap-3 mt-3">
+                  <p className="text-xs text-zinc-600">
+                    Trusted by AI builders shipping with Cursor, Replit &amp; Lovable
+                  </p>
+                  <a
+                    href="/scans"
+                    className="text-xs text-zinc-600 hover:text-blue-400 underline underline-offset-2 transition-colors shrink-0"
+                  >
+                    See recent reports →
+                  </a>
+                </div>
               </div>
             </div>
 
@@ -274,24 +310,24 @@ const FOR_WHO = [
   {
     emoji: '🚀',
     title: 'Indie Hackers',
-    description: 'Ship fast without a QA bottleneck. Get a scored report on every deploy, not bug reports from users.',
+    description: 'Ship without a QA bottleneck. Run a scan on every deploy — catch the bug that would have killed your launch tweet before users do.',
   },
   {
     emoji: '⚙️',
     title: 'Startups',
-    description: "Move at startup speed without hiring QA. Know your app's health before every launch.",
+    description: "Move at startup speed without a $100k QA hire. Get a scored health report before every release — no test suite to maintain.",
   },
   {
     emoji: '🏢',
     title: 'Agencies',
-    description: 'Deliver client handoffs with a QA report, not a Loom walkthrough. Look professional.',
+    description: 'Hand off client projects with a QA report instead of a Loom walkthrough. Clients will think you have a dedicated QA team.',
   },
 ]
 
 function ForWhoSection() {
   return (
-    <section className="py-16 px-6 border-t border-zinc-800/40">
-      <div className="max-w-6xl mx-auto">
+    <section className="py-16 border-t border-zinc-800/40">
+      <div className="max-w-6xl mx-auto px-6">
         <div className="text-center mb-10">
           <p className="text-xs font-mono text-blue-400 tracking-widest uppercase mb-3">Who it&apos;s for</p>
           <h2 className="text-2xl sm:text-3xl font-bold text-white mb-3">

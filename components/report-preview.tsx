@@ -1,4 +1,4 @@
-import { CheckCircle2, AlertCircle, AlertTriangle, Info, Globe, Clock, Sparkles } from 'lucide-react'
+import { CheckCircle2, AlertCircle, AlertTriangle, Info, Globe, Clock, Sparkles, ArrowRight } from 'lucide-react'
 
 const mockIssues = [
   {
@@ -187,6 +187,18 @@ export function ReportPreview() {
               </div>
             </div>
           </div>
+        </div>
+
+        {/* Inline CTA */}
+        <div className="mt-8 flex flex-col sm:flex-row items-center justify-center gap-4">
+          <p className="text-zinc-500 text-sm">Ready to see your app&apos;s real report?</p>
+          <a
+            href="#scan-form"
+            className="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg bg-blue-600 hover:bg-blue-500 text-white font-medium text-sm transition-colors"
+          >
+            Scan My App Free
+            <ArrowRight className="h-4 w-4" />
+          </a>
         </div>
       </div>
     </section>

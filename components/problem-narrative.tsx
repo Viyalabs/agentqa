@@ -1,11 +1,11 @@
-import { Zap, Wrench, TrendingUp, AlertTriangle, AlertCircle } from 'lucide-react'
+import { Zap, Wrench, TrendingUp, AlertTriangle, AlertCircle, ArrowRight } from 'lucide-react'
 
 export function ProblemNarrative() {
   return (
     <>
       {/* Why AgentQA Exists */}
-      <section className="py-16 px-6 border-t border-zinc-800/40">
-        <div className="max-w-6xl mx-auto">
+      <section className="py-16 border-t border-zinc-800/40">
+        <div className="max-w-6xl mx-auto px-6">
           <div className="text-center mb-12">
             <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full border border-yellow-500/20 bg-yellow-500/5 text-yellow-400 text-xs font-mono mb-5">
               <AlertTriangle className="h-3 w-3 shrink-0" />
@@ -25,21 +25,21 @@ export function ProblemNarrative() {
                 color: 'text-yellow-400',
                 bg: 'bg-yellow-500/10',
                 label: 'Building is 10× faster',
-                body: 'AI tools generate full web apps in under an hour. The speed of shipping has changed permanently.',
+                body: 'AI ships full web apps in under an hour — but the QA process hasn\'t changed since 2005.',
               },
               {
                 Icon: Wrench,
                 color: 'text-red-400',
                 bg: 'bg-red-500/10',
                 label: 'QA is still manual',
-                body: 'A QA engineer clicking through pages, maintaining scripts that go stale. A process built for 2005.',
+                body: 'Click every page, maintain scripts that go stale, repeat after every deploy. A process built for 2005.',
               },
               {
                 Icon: Zap,
                 color: 'text-blue-400',
                 bg: 'bg-blue-500/10',
                 label: 'Most teams skip it entirely',
-                body: 'Startups and solo builders can\'t afford a QA team. So bugs reach users. Users churn.',
+                body: 'Can\'t afford a QA team? Bugs reach users. Users churn. Your reputation takes the hit.',
               },
             ].map((item) => (
               <div key={item.label} className="p-6 rounded-xl border border-zinc-800 bg-zinc-900/40">
@@ -54,16 +54,18 @@ export function ProblemNarrative() {
 
           <div className="p-8 sm:p-10 rounded-2xl border border-blue-500/20 bg-blue-500/5 text-center">
             <p className="text-2xl sm:text-3xl font-bold text-white leading-snug">
-              AgentQA is the QA engineer you never had to hire.
+              AI-generated code needs AI-powered QA.
             </p>
-            <p className="text-zinc-400 mt-3 text-lg">Autonomous. Instant. Free to start.</p>
-            <div className="flex flex-wrap items-center justify-center gap-x-6 gap-y-2 mt-5 text-sm text-zinc-500">
-              <span>Real Chrome browser</span>
-              <span className="text-zinc-700">·</span>
-              <span>Zero configuration</span>
-              <span className="text-zinc-700">·</span>
-              <span>Works with any framework</span>
-            </div>
+            <p className="text-zinc-400 mt-3 text-lg max-w-xl mx-auto">
+              AgentQA is the only QA tool built for the speed at which AI ships code — real browser, zero setup, actionable report in under 2 minutes.
+            </p>
+            <a
+              href="#scan-form"
+              className="inline-flex items-center gap-2 mt-6 px-6 py-2.5 rounded-lg bg-blue-600 hover:bg-blue-500 text-white font-medium text-sm transition-colors"
+            >
+              Scan My App Free
+              <ArrowRight className="h-4 w-4" />
+            </a>
           </div>
         </div>
       </section>
@@ -130,8 +132,8 @@ const BUG_EXAMPLES = [
 
 function AiAppsSection() {
   return (
-    <section className="py-16 px-6 border-t border-zinc-800/40">
-      <div className="max-w-6xl mx-auto">
+    <section className="py-16 border-t border-zinc-800/40">
+      <div className="max-w-6xl mx-auto px-6">
         <div className="grid lg:grid-cols-2 gap-12 items-start">
           {/* Left: copy */}
           <div>

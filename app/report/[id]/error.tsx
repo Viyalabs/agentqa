@@ -21,7 +21,7 @@ export default function ReportError({
         <AlertCircle className="h-12 w-12 text-red-400 mx-auto mb-4" />
         <h2 className="text-xl font-bold text-white mb-2">Failed to load report</h2>
         <p className="text-zinc-400 text-sm mb-6">
-          This report couldn't be loaded. It may have expired or the scan encountered an error.
+          This report couldn't be loaded. The scan may have failed to complete, or the report ID is invalid.
         </p>
         <div className="flex items-center justify-center gap-4">
           <button

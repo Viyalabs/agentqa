@@ -57,28 +57,36 @@ const GROUPS = [
       {
         icon: Video,
         title: 'Screenshots & Video Replay',
-        description: 'Desktop and mobile screenshots for every page, plus video recordings of failures.',
+        description: 'Desktop and mobile screenshots for every page, plus video recordings of failures so you see exactly what broke.',
         color: 'text-blue-400',
         bg: 'bg-blue-500/10',
       },
       {
         icon: Network,
         title: 'Network Debugging',
-        description: 'Every XHR, fetch, and script request — status codes, response times, failed calls in one tab.',
+        description: 'Every XHR, fetch, and script request — status codes, response times, failed calls surfaced in one view.',
         color: 'text-yellow-400',
         bg: 'bg-yellow-500/10',
       },
+    ],
+  },
+  {
+    category: 'Performance',
+    eyebrow: 'Speed and health at a glance',
+    color: 'text-cyan-400',
+    borderColor: 'border-cyan-500/20',
+    items: [
       {
         icon: BarChart3,
         title: 'QA Score',
-        description: 'A 0–100 score weighted by severity on every scan, so app health is always a single number.',
+        description: 'A 0–100 score weighted by issue severity on every scan — app health as a single number you can track over time.',
         color: 'text-green-400',
         bg: 'bg-green-500/10',
       },
       {
         icon: Timer,
         title: 'Performance Checks',
-        description: 'Flags pages that load above 5s and assets over 500 KB — low-hanging wins to fix first.',
+        description: 'Flags pages that load above 5s and assets over 500 KB — the low-hanging wins to fix before users notice.',
         color: 'text-cyan-400',
         bg: 'bg-cyan-500/10',
       },
@@ -92,7 +100,7 @@ function AIInsightsBlock() {
       <div className="px-6 py-5 border-b border-blue-500/10 flex items-center gap-3">
         <Sparkles className="h-5 w-5 text-blue-400" />
         <div>
-          <p className="text-xs font-mono text-blue-400 tracking-widest uppercase">AI Intelligence — Live</p>
+          <p className="text-xs font-mono text-blue-400 tracking-widest uppercase">Powered by Claude AI · Live</p>
           <p className="text-white font-semibold text-sm mt-0.5">Not just detection — explanation and fix</p>
         </div>
       </div>
@@ -151,7 +159,7 @@ export function Features() {
     <section className="py-16 bg-zinc-950/50 border-y border-zinc-800/50">
       <div className="max-w-6xl mx-auto px-6">
         <div className="text-center mb-12">
-          <p className="text-xs font-mono text-blue-400 tracking-widest uppercase mb-3">What we test</p>
+          <p className="text-xs font-mono text-blue-400 tracking-widest uppercase mb-3">Complete QA coverage</p>
           <h2 className="text-3xl sm:text-4xl font-bold text-white mb-4">
             Everything tested. Nothing missed.
           </h2>
@@ -170,7 +178,7 @@ export function Features() {
                 <div className="flex-1 h-px bg-zinc-800" />
                 <span className="text-xs text-zinc-600">{group.eyebrow}</span>
               </div>
-              <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
+              <div className={`grid sm:grid-cols-2 gap-4 ${group.items.length >= 4 ? 'lg:grid-cols-4' : 'lg:grid-cols-2'}`}>
                 {group.items.map((feature) => (
                   <div
                     key={feature.title}

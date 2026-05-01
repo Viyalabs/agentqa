@@ -63,15 +63,18 @@ export function DemoScan() {
   }
 
   return (
-    <section className="py-16 px-6">
-      <div className="max-w-6xl mx-auto">
+    <section className="py-16 border-t border-zinc-800/40" id="demo">
+      <div className="max-w-6xl mx-auto px-6">
         <div className="text-center mb-10">
           <p className="text-xs font-mono text-blue-400 tracking-widest uppercase mb-3">Live demo</p>
           <h2 className="text-3xl sm:text-4xl font-bold text-white mb-4">
             See AgentQA run on a real site
           </h2>
-          <p className="text-zinc-400 max-w-xl mx-auto">
-            Pick any of these and watch the AI QA agent crawl, test, and report — live, in your browser, right now.
+          <p className="text-zinc-400 max-w-xl mx-auto mb-4">
+            Pick any site below — a real Chrome browser will crawl it, find bugs, and generate a report live in your browser.
+          </p>
+          <p className="text-sm text-zinc-600">
+            Takes ~90 seconds · No signup · No credit card
           </p>
         </div>
 

@@ -34,16 +34,17 @@ const steps = [
     title: 'AI explains the why',
     description:
       'Claude AI analyzes every issue — root cause, technical reason, and a specific fix suggestion. Not just what broke, but exactly how to resolve it.',
-    color: 'text-blue-400',
-    bg: 'bg-blue-500/10 border-blue-500/20',
+    color: 'text-cyan-300',
+    bg: 'bg-blue-500/20 border-blue-400/50',
     badge: 'Live',
+    highlight: true,
   },
 ]
 
 export function HowItWorks() {
   return (
-    <section className="py-16 px-6" id="how-it-works">
-      <div className="max-w-6xl mx-auto">
+    <section className="py-16 border-t border-zinc-800/40" id="how-it-works">
+      <div className="max-w-6xl mx-auto px-6">
         <div className="text-center mb-12">
           <p className="text-xs font-mono text-blue-400 tracking-widest uppercase mb-3">How it works</p>
           <h2 className="text-3xl sm:text-4xl font-bold text-white mb-4">
@@ -65,7 +66,7 @@ export function HowItWorks() {
               <div className="relative flex flex-col items-center text-center">
                 {/* Icon circle */}
                 <div
-                  className={`w-16 h-16 rounded-2xl border ${step.bg} flex items-center justify-center mb-5 z-10 relative`}
+                  className={`w-16 h-16 rounded-2xl border ${step.bg} flex items-center justify-center mb-5 z-10 relative ${'highlight' in step && step.highlight ? 'shadow-lg shadow-blue-500/20' : ''}`}
                 >
                   <step.icon className={`h-7 w-7 ${step.color}`} />
                   {step.badge && (
@@ -78,8 +79,12 @@ export function HowItWorks() {
                 <div className={`text-xs font-mono font-bold ${step.color} mb-2 tracking-widest`}>
                   STEP {step.number}
                 </div>
-                <h3 className="text-base font-semibold text-white mb-2">{step.title}</h3>
-                <p className="text-zinc-400 text-sm leading-relaxed">{step.description}</p>
+                <h3 className={`text-base font-semibold mb-2 ${'highlight' in step && step.highlight ? 'text-cyan-100' : 'text-white'}`}>
+                  {step.title}
+                </h3>
+                <p className={`text-sm leading-relaxed ${'highlight' in step && step.highlight ? 'text-zinc-300' : 'text-zinc-400'}`}>
+                  {step.description}
+                </p>
               </div>
             </div>
           ))}

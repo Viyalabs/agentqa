@@ -11,8 +11,8 @@ function focusScanInput() {
 
 export function CtaBanner() {
   return (
-    <section className="py-16 px-6 border-t border-zinc-800/40">
-      <div className="max-w-6xl mx-auto">
+    <section className="py-16 border-t border-blue-500/15 bg-blue-950/10">
+      <div className="max-w-6xl mx-auto px-6">
       <div className="max-w-3xl mx-auto text-center">
         <p className="text-xs font-mono text-blue-400 tracking-widest uppercase mb-4">Free — no account required</p>
         <h2 className="text-4xl sm:text-5xl font-bold text-white mb-5 leading-tight">

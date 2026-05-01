@@ -10,9 +10,11 @@ import { Testimonials } from '@/components/testimonials'
 import { TechBar } from '@/components/tech-bar'
 import { Features } from '@/components/features'
 import { FutureOfQA } from '@/components/future-of-qa'
+import { FAQ } from '@/components/faq'
 import { CtaBanner } from '@/components/cta-banner'
 import { Pricing } from '@/components/pricing'
 import { Footer } from '@/components/footer'
+import { MobileCta } from '@/components/mobile-cta'
 
 const jsonLd = {
   '@context': 'https://schema.org',
@@ -91,14 +93,18 @@ export default async function HomePage() {
         {/* 10. Vision: Today / Next / Soon */}
         <FutureOfQA />
 
-        {/* 11. CTA before pricing */}
+        {/* 11. FAQ — handles objections before pricing */}
+        <FAQ />
+
+        {/* 12. CTA before pricing */}
         <CtaBanner />
 
-        {/* 12. Pricing */}
+        {/* 13. Pricing */}
         <Pricing />
       </main>
 
       <Footer />
+      <MobileCta />
     </div>
   )
 }

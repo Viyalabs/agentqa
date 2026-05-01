@@ -1,59 +1,64 @@
 const PHASES = [
   {
-    time: 'Today',
+    step: '01',
+    label: 'Live now',
     status: 'live' as const,
-    title: 'Detect bugs automatically',
+    verb: 'Detect',
+    title: 'Every bug found automatically',
     description:
-      'Real Chrome browser. Every page. Desktop and mobile. Screenshots, JS errors, network failures, and a QA score — in under 2 minutes.',
+      'Real Chrome browser crawls every page — desktop and mobile. JS errors, network failures, layout breaks, 404s — scored and classified in under 2 minutes.',
   },
   {
-    time: 'Also live',
+    step: '02',
+    label: 'Live now',
     status: 'live' as const,
-    title: 'Explain root causes with AI',
+    verb: 'Explain',
+    title: 'AI tells you why it broke',
     description:
-      "Not just what broke — but why it broke and how to fix it. AI analysis on every issue so you don't have to guess.",
+      "Claude AI analyzes every issue — root cause, technical reason, and a specific code fix. Not just what broke, but exactly how to resolve it.",
   },
   {
-    time: 'Next',
+    step: '03',
+    label: 'Coming next',
     status: 'building' as const,
-    title: 'Fix them automatically',
+    verb: 'Fix',
+    title: 'AgentQA opens the PR',
     description:
-      'AgentQA opens a pull request with the fix. Detect, diagnose, and resolve — fully autonomous.',
+      'Detect, diagnose, and patch — fully autonomous. AgentQA opens a pull request with the fix so you can ship with confidence.',
   },
 ]
 
 export function FutureOfQA() {
   return (
-    <section className="py-16 px-6 border-t border-zinc-800/40">
-      <div className="max-w-6xl mx-auto">
+    <section className="py-16 border-t border-zinc-800/40">
+      <div className="max-w-6xl mx-auto px-6">
       <div className="max-w-3xl mx-auto text-center">
-        <p className="text-xs font-mono text-blue-400 tracking-widest uppercase mb-3">What&apos;s next</p>
+        <p className="text-xs font-mono text-blue-400 tracking-widest uppercase mb-3">The roadmap</p>
         <h2 className="text-3xl sm:text-4xl font-bold text-white mb-4">
-          The fully autonomous QA engineer
+          Detect → Explain → Fix
         </h2>
         <p className="text-zinc-400 mb-10 max-w-xl mx-auto">
-          QA that detects, diagnoses, and fixes bugs — without a human in the loop.
+          The first two steps are live today. The third makes AgentQA the only QA tool that closes the loop without a human.
         </p>
 
         <div className="grid sm:grid-cols-3 gap-4 text-left">
           {PHASES.map((phase) => (
             <div
-              key={phase.time}
+              key={phase.step}
               className={`p-6 rounded-xl border ${
                 phase.status === 'live'
                   ? 'border-blue-500/30 bg-blue-500/5'
-                  : 'border-zinc-800 bg-zinc-900/30'
+                  : 'border-zinc-800 bg-zinc-900/30 opacity-80'
               }`}
             >
               <div className="flex items-center justify-between mb-4">
-                <span
-                  className={`text-xs font-mono font-bold tracking-widest uppercase ${
-                    phase.status === 'live' ? 'text-blue-400' : 'text-zinc-600'
-                  }`}
-                >
-                  {phase.time}
-                </span>
-                {phase.status === 'live' && (
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-mono text-zinc-600">{phase.step}</span>
+                  <span className={`text-lg font-bold ${phase.status === 'live' ? 'text-white' : 'text-zinc-500'}`}>
+                    {phase.verb}
+                  </span>
+                </div>
+                {phase.status === 'live' ? (
                   <span className="flex items-center gap-1.5 text-xs text-green-400 font-medium">
                     <span className="relative flex h-1.5 w-1.5">
                       <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75" />
@@ -61,9 +66,11 @@ export function FutureOfQA() {
                     </span>
                     Live
                   </span>
+                ) : (
+                  <span className="text-xs text-zinc-600 font-mono">Soon</span>
                 )}
               </div>
-              <h3 className="text-white font-semibold mb-2">{phase.title}</h3>
+              <h3 className="text-white font-semibold mb-2 text-sm">{phase.title}</h3>
               <p className="text-zinc-400 text-sm leading-relaxed">{phase.description}</p>
             </div>
           ))}

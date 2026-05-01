@@ -26,6 +26,8 @@ CREATE TABLE IF NOT EXISTS scans (
 
 CREATE INDEX IF NOT EXISTS idx_scans_status ON scans(status);
 CREATE INDEX IF NOT EXISTS idx_scans_created_at ON scans(created_at DESC);
+-- Composite index for cache-check query: WHERE url = ? AND status = 'completed' ORDER BY created_at DESC
+CREATE INDEX IF NOT EXISTS idx_scans_url_status ON scans(url, status, created_at DESC);
 
 -- ============================================================
 -- SCANNED PAGES
@@ -170,3 +172,4 @@ CREATE POLICY "Service role only on waitlist" ON waitlist FOR ALL USING (false);
 -- CREATE INDEX IF NOT EXISTS idx_scan_logs_scan_id ON scan_logs(scan_id);
 -- ALTER TABLE scan_logs ENABLE ROW LEVEL SECURITY;
 -- CREATE POLICY "Public access to scan_logs" ON scan_logs FOR ALL USING (true);
+-- CREATE INDEX IF NOT EXISTS idx_scans_url_status ON scans(url, status, created_at DESC);

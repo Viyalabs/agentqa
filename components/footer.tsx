@@ -4,13 +4,16 @@ import { Activity } from 'lucide-react'
 
 export function Footer() {
   return (
-    <footer className="py-16 px-6 border-t border-zinc-800">
-      <div className="max-w-6xl mx-auto">
+    <footer className="py-16 border-t border-zinc-800">
+      <div className="max-w-6xl mx-auto px-6">
         <div className="flex flex-col sm:flex-row items-center justify-between gap-6 mb-10">
-          {/* Logo */}
-          <div className="flex items-center gap-2.5">
-            <Activity className="h-5 w-5 text-blue-400" />
-            <span className="font-bold text-lg text-white">AgentQA</span>
+          {/* Logo + tagline */}
+          <div>
+            <div className="flex items-center gap-2.5 mb-1">
+              <Activity className="h-5 w-5 text-blue-400" />
+              <span className="font-bold text-lg text-white">AgentQA</span>
+            </div>
+            <p className="text-xs text-zinc-600 pl-0.5">The AI QA layer for modern apps</p>
           </div>
 
           {/* Links */}

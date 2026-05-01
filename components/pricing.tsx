@@ -62,16 +62,16 @@ export function Pricing() {
   }
 
   return (
-    <section className="py-16 px-6" id="pricing">
-      <div className="max-w-6xl mx-auto">
+    <section className="py-16 border-t border-zinc-800/40" id="pricing">
+      <div className="max-w-6xl mx-auto px-6">
         <div className="text-center mb-10">
-          <p className="text-xs font-mono text-blue-400 tracking-widest uppercase mb-3">Pricing</p>
+          <p className="text-xs font-mono text-blue-400 tracking-widest uppercase mb-3">Launch pricing — limited time</p>
           <h2 className="text-3xl sm:text-4xl font-bold text-white mb-4">
-            Free to start. Scales with you.
+            Start free. Lock in Pro before it raises.
           </h2>
           <p className="text-zinc-400 max-w-lg mx-auto">
-            A full-time QA engineer costs $80k–$150k per year — and still misses bugs.
-            AgentQA starts free.
+            A QA engineer costs <span className="text-red-400 font-semibold">$80k–$150k/year</span> and still misses bugs.
+            AgentQA is free to start — Pro early access locks in at <span className="text-green-400 font-semibold">$49/mo forever</span>.
           </p>
         </div>
 
@@ -84,7 +84,7 @@ export function Pricing() {
                 <span className="text-4xl font-bold text-white">$0</span>
                 <span className="text-zinc-500">/month</span>
               </div>
-              <p className="text-sm text-zinc-400 mt-2">Catch bugs before your users do — forever free</p>
+              <p className="text-sm text-zinc-400 mt-2">Full QA report on every scan — no credit card, no expiry</p>
             </div>
 
             <Button
@@ -127,10 +127,10 @@ export function Pricing() {
               ) : formState === 'idle' ? (
                 <>
                   <p className="text-zinc-400 text-sm mb-1 text-center font-medium">
-                    Pro is in early access
+                    Pro is in early access — launching soon
                   </p>
                   <p className="text-zinc-600 text-xs mb-4 text-center">
-                    Join the list to lock in launch pricing — $49/mo forever
+                    Join now to lock in <span className="text-green-400 font-medium">$49/mo forever</span> before public pricing
                   </p>
                   <Button
                     size="sm"

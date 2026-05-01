@@ -33,6 +33,9 @@ export function Navbar() {
           <a href="#how-it-works" className="hover:text-white transition-colors">
             How it works
           </a>
+          <a href="#demo" className="hover:text-white transition-colors">
+            Demo
+          </a>
           <a href="#pricing" className="hover:text-white transition-colors">
             Pricing
           </a>
