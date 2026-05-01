@@ -196,7 +196,7 @@ export function Hero({ stats }: { stats?: HomeStats }) {
               </h1>
 
               <p className="text-xl text-zinc-400 mb-10 leading-relaxed max-w-xl mx-auto lg:mx-0">
-                Your autonomous QA engineer. Paste a URL and get a complete QA report in under 2&nbsp;minutes — no setup, no configuration, no QA team required.
+                The AI QA engineer that replaces manual testing. Paste a URL — get a full report with screenshots, JS errors, network failures, and a QA score in under 2&nbsp;minutes. Zero setup. Zero QA team.
               </p>
 
               <div className="max-w-xl mx-auto lg:mx-0">

@@ -3,7 +3,7 @@ const ROWS = [
   { aspect: 'Testing method',     traditional: 'Manual click-through',        agentqa: 'Autonomous agent' },
   { aspect: 'Team required',      traditional: 'QA engineer or team',         agentqa: 'Zero' },
   { aspect: 'Setup time',         traditional: 'Days to weeks',               agentqa: 'Instant' },
-  { aspect: 'Test maintenance',   traditional: 'Scripts go stale, need updates', agentqa: 'None — reruns every scan' },
+  { aspect: 'Test type',          traditional: 'Static scripts — go stale, need rewrites', agentqa: 'Adaptive — retests everything fresh each scan' },
   { aspect: 'Mobile testing',     traditional: 'Manual device checks',        agentqa: 'Automatic 375px tests' },
   { aspect: 'Time to results',    traditional: 'Hours to days',               agentqa: 'Under 2 minutes' },
   { aspect: 'Shareable reports',  traditional: 'Export + email thread',       agentqa: 'Single shareable link' },

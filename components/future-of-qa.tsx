@@ -26,7 +26,7 @@ export function FutureOfQA() {
   return (
     <section className="py-16 px-4 border-t border-zinc-800/40">
       <div className="max-w-3xl mx-auto text-center">
-        <p className="text-xs font-mono text-blue-400 tracking-widest uppercase mb-3">The Roadmap</p>
+        <p className="text-xs font-mono text-blue-400 tracking-widest uppercase mb-3">What&apos;s next</p>
         <h2 className="text-3xl sm:text-4xl font-bold text-white mb-4">
           The fully autonomous QA engineer
         </h2>
