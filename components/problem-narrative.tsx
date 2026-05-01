@@ -30,12 +30,12 @@ export function ProblemNarrative() {
         <div className="text-center mb-14">
           <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full border border-yellow-500/20 bg-yellow-500/5 text-yellow-400 text-xs font-mono mb-5">
             <AlertTriangle className="h-3 w-3 shrink-0" />
-            30M+ developers now ship with AI coding tools
+            The QA engineer is the next job automated away
           </div>
           <h2 className="text-3xl md:text-4xl font-semibold tracking-tight text-white leading-tight">
             AI ships code in minutes.
             <br />
-            <span className="text-zinc-500">QA is still done by hand.</span>
+            <span className="text-zinc-500">Manual QA is being replaced.</span>
           </h2>
         </div>
 
@@ -75,6 +75,17 @@ export function ProblemNarrative() {
           </div>
 
         </div>
+
+        {/* Inevitability callout */}
+        <div className="mt-14 p-6 rounded-xl border border-zinc-800/60 bg-zinc-900/20 text-center max-w-2xl mx-auto">
+          <p className="text-base text-zinc-400 leading-relaxed">
+            The travel agent was replaced by Expedia. The stockbroker by Robinhood.
+            The data analyst by Excel, then by AI.{' '}
+            <span className="text-white font-medium">The QA engineer is next.</span>{' '}
+            AgentQA is the software that replaces them.
+          </p>
+        </div>
+
       </div>
     </section>
   )

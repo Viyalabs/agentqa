@@ -28,11 +28,11 @@ export function CtaBanner() {
             className="gap-2 text-base px-8 h-12"
             onClick={focusScanInput}
           >
-            Scan My App Free
+            Run your first scan now
             <ArrowRight className="h-4 w-4" />
           </Button>
           <p className="text-zinc-700 text-xs mt-6">
-            No credit card. No sign-up. No setup. Just paste a URL.
+            Takes under 2 minutes. No signup. No credit card.
           </p>
         </div>
       </div>
