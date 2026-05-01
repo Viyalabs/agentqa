@@ -7,6 +7,7 @@ import { Comparison } from '@/components/comparison'
 import { ReportPreview } from '@/components/report-preview'
 import { DemoScan } from '@/components/demo-scan'
 import { Testimonials } from '@/components/testimonials'
+import { TechBar } from '@/components/tech-bar'
 import { Features } from '@/components/features'
 import { FutureOfQA } from '@/components/future-of-qa'
 import { CtaBanner } from '@/components/cta-banner'
@@ -63,34 +64,37 @@ export default async function HomePage() {
         {/* 1. Hero + Who Is This For */}
         <Hero stats={stats} />
 
-        {/* 2. Problem narrative + AI builders wedge */}
+        {/* 2. Tool compatibility bar */}
+        <TechBar />
+
+        {/* 3. Problem narrative + AI builders wedge */}
         <ProblemNarrative />
 
-        {/* 3. How it works */}
+        {/* 4. How it works */}
         <HowItWorks />
 
-        {/* 4. Traditional QA vs AgentQA */}
+        {/* 5. Traditional QA vs AgentQA */}
         <Comparison />
 
-        {/* 5. Real report output */}
+        {/* 6. Real report output */}
         <ReportPreview />
 
-        {/* 6. Live demo scan */}
+        {/* 7. Live demo scan */}
         <DemoScan />
 
-        {/* 7. Social proof — early builder quotes */}
+        {/* 8. Social proof — early builder quotes */}
         <Testimonials />
 
-        {/* 8. Full feature set */}
+        {/* 9. Full feature set */}
         <Features />
 
-        {/* 9. Vision: Today / Next / Soon */}
+        {/* 10. Vision: Today / Next / Soon */}
         <FutureOfQA />
 
-        {/* 10. CTA before pricing */}
+        {/* 11. CTA before pricing */}
         <CtaBanner />
 
-        {/* 11. Pricing */}
+        {/* 12. Pricing */}
         <Pricing />
       </main>
 

@@ -1,4 +1,4 @@
-import { Zap, Wrench, TrendingUp } from 'lucide-react'
+import { Zap, Wrench, TrendingUp, AlertTriangle } from 'lucide-react'
 
 export function ProblemNarrative() {
   return (
@@ -7,6 +7,10 @@ export function ProblemNarrative() {
       <section className="py-14 px-4 border-t border-zinc-800/40">
         <div className="max-w-4xl mx-auto">
           <div className="text-center mb-10">
+            <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full border border-yellow-500/20 bg-yellow-500/5 text-yellow-400 text-xs font-mono mb-5">
+              <AlertTriangle className="h-3 w-3 shrink-0" />
+              30M+ developers now use AI coding tools. Bugs are shipping faster than ever.
+            </div>
             <p className="text-xs font-mono text-blue-400 tracking-widest uppercase mb-3">The Problem</p>
             <h2 className="text-3xl sm:text-5xl font-bold text-white mb-4 leading-tight">
               AI ships code in minutes.

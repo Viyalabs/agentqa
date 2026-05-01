@@ -46,7 +46,9 @@ export function Footer() {
         <div className="flex flex-col sm:flex-row items-center justify-between gap-4 mt-8 text-xs text-zinc-600">
           <p>© {new Date().getFullYear()} AgentQA. All rights reserved.</p>
           <p>
-            A product by{' '}
+            Built by{' '}
+            <span className="text-zinc-400 font-medium">Praveen Perfeito</span>
+            {' '}·{' '}
             <a
               href="https://viyalabs.com"
               target="_blank"
