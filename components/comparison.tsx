@@ -156,9 +156,9 @@ export function Comparison() {
           <p className="text-base text-zinc-400 leading-relaxed">
             A QA engineer costs{' '}
             <span className="text-red-400 font-semibold">$80k–$150k per year</span>{' '}
-            and still misses bugs. AgentQA is your AI QA engineer —
-            catches more, costs less, available{' '}
-            <span className="text-green-400 font-semibold">right now for free</span>.
+            and still misses bugs. AgentQA starts at{' '}
+            <span className="text-green-400 font-semibold">$0</span>
+            {' '}and catches what they miss — broken auth flows, mobile overflows, silent API failures. No hire. No wait.
           </p>
         </div>
       </div>

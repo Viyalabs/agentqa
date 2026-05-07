@@ -21,7 +21,7 @@ export function CtaBanner() {
             <span className="text-zinc-500">Run your first scan now — takes under 2 minutes.</span>
           </h2>
           <p className="text-base text-zinc-400 leading-relaxed mb-8 max-w-xl mx-auto">
-            Most broken pages are never found by the team that built them — they&apos;re found by users. One URL. 90 seconds. Know exactly what&apos;s broken.
+            Most broken pages are never found by the team that built them — they&apos;re found by users. One scan before launch changes that.
           </p>
           <Button
             size="lg"

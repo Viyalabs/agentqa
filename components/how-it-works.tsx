@@ -51,7 +51,7 @@ export function HowItWorks() {
             From URL to full QA report in 4 steps
           </h2>
           <p className="text-base text-zinc-400 leading-relaxed max-w-xl mx-auto">
-            Four automated phases — crawl, analyze, classify, report — running in real Chrome while you watch.
+            Four automated phases — crawl, analyze, classify, report — delivering a scored report with every issue ranked and the fix already written.
           </p>
         </div>
 
