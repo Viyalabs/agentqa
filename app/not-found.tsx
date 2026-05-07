@@ -6,7 +6,7 @@ export default function NotFound() {
     <div className="min-h-screen bg-[#0A0A0F] flex flex-col">
       <nav className="border-b border-zinc-800/50">
         <div className="max-w-6xl mx-auto px-6 h-14 flex items-center">
-          <Link href="/" className="flex items-center gap-2 font-bold text-white hover:opacity-90 transition-opacity">
+          <Link href="/" className="flex items-center gap-2 font-semibold text-white hover:opacity-90 transition-opacity">
             <Activity className="h-5 w-5 text-blue-400" />
             AgentQA
           </Link>

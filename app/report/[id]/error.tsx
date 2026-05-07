@@ -19,7 +19,7 @@ export default function ReportError({
     <div className="min-h-screen bg-[#0A0A0F] flex items-center justify-center px-4">
       <div className="text-center max-w-md">
         <AlertCircle className="h-12 w-12 text-red-400 mx-auto mb-4" />
-        <h2 className="text-xl font-bold text-white mb-2">Failed to load report</h2>
+        <h2 className="text-xl font-semibold text-white mb-2">Failed to load report</h2>
         <p className="text-zinc-400 text-sm mb-6">
           This report couldn't be loaded. The scan may have failed to complete, or the report ID is invalid.
         </p>

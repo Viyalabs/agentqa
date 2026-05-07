@@ -25,7 +25,7 @@ export default async function ScansPage() {
     <div className="min-h-screen bg-[#0A0A0F]">
       <nav className="sticky top-0 z-40 border-b border-zinc-800/50 bg-[#0A0A0F]/90 backdrop-blur-md">
         <div className="max-w-6xl mx-auto px-6 h-14 flex items-center justify-between">
-          <Link href="/" className="flex items-center gap-2 font-bold text-white">
+          <Link href="/" className="flex items-center gap-2 font-semibold text-white">
             <Activity className="h-5 w-5 text-blue-400" />
             AgentQA
           </Link>
