@@ -27,7 +27,7 @@ function Block({ children }: { children: string }) {
 function Section({ id, title, children }: { id: string; title: string; children: React.ReactNode }) {
   return (
     <section id={id} className="space-y-4 scroll-mt-20">
-      <h2 className="text-xl font-bold text-white">{title}</h2>
+      <h2 className="text-xl font-semibold text-white">{title}</h2>
       {children}
     </section>
   )
@@ -37,7 +37,7 @@ export default function DocsPage() {
   return (
     <div className="min-h-screen bg-[#0A0A0F]">
       <nav className="sticky top-0 z-40 border-b border-zinc-800/50 bg-[#0A0A0F]/90 backdrop-blur-md">
-        <div className="max-w-6xl mx-auto px-4 h-14 flex items-center justify-between">
+        <div className="max-w-6xl mx-auto px-6 h-14 flex items-center justify-between">
           <Link href="/" className="flex items-center gap-2 font-bold text-white">
             <Activity className="h-5 w-5 text-blue-400" />
             AgentQA
@@ -48,11 +48,11 @@ export default function DocsPage() {
         </div>
       </nav>
 
-      <main className="max-w-3xl mx-auto px-4 py-16 space-y-16">
+      <main className="max-w-3xl mx-auto px-6 py-16 space-y-16">
         {/* Hero */}
         <div>
           <p className="text-xs font-mono text-blue-400 tracking-widest uppercase mb-3">Developer docs</p>
-          <h1 className="text-3xl font-bold text-white mb-4">CI/CD Integration</h1>
+          <h1 className="text-3xl md:text-4xl font-semibold tracking-tight text-white mb-4">CI/CD Integration</h1>
           <p className="text-zinc-400 leading-relaxed">
             Run automated QA checks as part of your deployment pipeline. One POST request
             returns a score, issue list, and pass/fail result — so you can block bad
@@ -62,7 +62,7 @@ export default function DocsPage() {
 
         {/* Authentication */}
         <Section id="auth" title="Authentication">
-          <p className="text-zinc-400 text-sm leading-relaxed">
+          <p className="text-base text-zinc-400 leading-relaxed">
             Generate a secret key and set it as <Code>WEBHOOK_API_KEY</Code> in your Vercel
             environment variables. Pass the same value in every request.
           </p>
@@ -117,7 +117,7 @@ Authorization: Bearer your_secret_key`}</Block>
 
         {/* Response */}
         <Section id="response" title="Response">
-          <p className="text-zinc-400 text-sm">
+          <p className="text-base text-zinc-400 leading-relaxed">
             Returns <Code>200</Code> when <Code>score &gt;= failThreshold</Code>, <Code>422</Code> otherwise.
             Your CI runner treats 422 as a build failure.
           </p>
@@ -203,7 +203,7 @@ curl -f -X POST https://qa.viyalabs.com/api/webhook/scan \\
 
         {/* Setup */}
         <Section id="setup" title="Quick setup">
-          <ol className="space-y-4 text-zinc-400 text-sm list-none">
+          <ol className="space-y-4 text-base text-zinc-400 list-none">
             {[
               ['1', 'Generate a secret key — e.g. run: openssl rand -hex 32'],
               ['2', 'Add WEBHOOK_API_KEY=<your-key> to your Vercel environment variables'],

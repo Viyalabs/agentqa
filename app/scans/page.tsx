@@ -24,7 +24,7 @@ export default async function ScansPage() {
   return (
     <div className="min-h-screen bg-[#0A0A0F]">
       <nav className="sticky top-0 z-40 border-b border-zinc-800/50 bg-[#0A0A0F]/90 backdrop-blur-md">
-        <div className="max-w-6xl mx-auto px-4 h-14 flex items-center justify-between">
+        <div className="max-w-6xl mx-auto px-6 h-14 flex items-center justify-between">
           <Link href="/" className="flex items-center gap-2 font-bold text-white">
             <Activity className="h-5 w-5 text-blue-400" />
             AgentQA
@@ -35,10 +35,10 @@ export default async function ScansPage() {
         </div>
       </nav>
 
-      <main className="max-w-4xl mx-auto px-4 py-12">
+      <main className="max-w-6xl mx-auto px-6 py-12">
         <div className="mb-8">
-          <h1 className="text-2xl font-bold text-white mb-2">Recent Scans</h1>
-          <p className="text-zinc-400 text-sm">
+          <h1 className="text-3xl md:text-4xl font-semibold tracking-tight text-white mb-2">Recent Scans</h1>
+          <p className="text-base text-zinc-400 leading-relaxed">
             The last {scans?.length ?? 0} completed QA scans. All reports are public and permanent.
           </p>
         </div>

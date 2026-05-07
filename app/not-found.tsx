@@ -5,7 +5,7 @@ export default function NotFound() {
   return (
     <div className="min-h-screen bg-[#0A0A0F] flex flex-col">
       <nav className="border-b border-zinc-800/50">
-        <div className="max-w-6xl mx-auto px-4 h-14 flex items-center">
+        <div className="max-w-6xl mx-auto px-6 h-14 flex items-center">
           <Link href="/" className="flex items-center gap-2 font-bold text-white hover:opacity-90 transition-opacity">
             <Activity className="h-5 w-5 text-blue-400" />
             AgentQA
@@ -13,10 +13,10 @@ export default function NotFound() {
         </div>
       </nav>
 
-      <main className="flex-1 flex flex-col items-center justify-center px-4 text-center">
+      <main className="flex-1 flex flex-col items-center justify-center px-6 text-center">
         <p className="text-xs font-mono text-blue-400 tracking-widest uppercase mb-4">404</p>
-        <h1 className="text-4xl sm:text-5xl font-bold text-white mb-4">Page not found</h1>
-        <p className="text-zinc-400 text-lg mb-10 max-w-md">
+        <h1 className="text-4xl sm:text-5xl font-semibold tracking-tight text-white mb-4">Page not found</h1>
+        <p className="text-base text-zinc-400 leading-relaxed mb-10 max-w-md">
           This page doesn&apos;t exist — but your next QA report does.
         </p>
         <Link

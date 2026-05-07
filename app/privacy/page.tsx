@@ -15,7 +15,7 @@ export default function PrivacyPage() {
     <div className="min-h-screen bg-[#0A0A0F]">
       {/* Nav */}
       <nav className="border-b border-zinc-800/50 bg-[#0A0A0F]/90 backdrop-blur-md">
-        <div className="max-w-4xl mx-auto px-4 h-14 flex items-center">
+        <div className="max-w-6xl mx-auto px-6 h-14 flex items-center">
           <Link href="/" className="flex items-center gap-2 font-bold text-white hover:opacity-90 transition-opacity">
             <Activity className="h-5 w-5 text-blue-400" />
             AgentQA
@@ -23,9 +23,9 @@ export default function PrivacyPage() {
         </div>
       </nav>
 
-      <main className="max-w-3xl mx-auto px-4 py-16">
+      <main className="max-w-3xl mx-auto px-6 py-16">
         <p className="text-xs font-mono text-blue-400 tracking-widest uppercase mb-4">Legal</p>
-        <h1 className="text-3xl sm:text-4xl font-bold text-white mb-3">Privacy Policy</h1>
+        <h1 className="text-3xl sm:text-4xl font-semibold tracking-tight text-white mb-3">Privacy Policy</h1>
         <p className="text-zinc-500 text-sm mb-12">Last updated: {LAST_UPDATED}</p>
 
         <div className="prose prose-zinc prose-invert max-w-none space-y-10 text-zinc-400 leading-relaxed">
@@ -104,8 +104,8 @@ export default function PrivacyPage() {
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <div>
-      <h2 className="text-lg font-semibold text-white mb-3">{title}</h2>
-      <div className="text-zinc-400 text-sm leading-relaxed">{children}</div>
+      <h2 className="text-xl font-semibold text-white mb-3">{title}</h2>
+      <div className="text-base text-zinc-400 leading-relaxed">{children}</div>
     </div>
   )
 }
