@@ -33,9 +33,9 @@ export function ProblemNarrative() {
             The QA engineer is the next job automated away
           </div>
           <h2 className="text-3xl md:text-4xl font-semibold tracking-tight text-white leading-tight">
-            AI ships code in minutes.
+            Manual QA is being replaced.
             <br />
-            <span className="text-zinc-500">Manual QA is being replaced.</span>
+            <span className="text-blue-400">AgentQA is the replacement.</span>
           </h2>
           <p className="text-xl font-semibold text-blue-300 mt-4">
             Every app will have an AI QA agent.
