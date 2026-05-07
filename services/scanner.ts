@@ -1,9 +1,9 @@
 import { getAdminClient, uploadScreenshot, uploadMobileScreenshot } from '@/lib/supabase'
 import { crawlWebsite } from '@/playwright/crawler'
 import { calculateScore } from './scorer'
-import { analyzeIssues, generateScanOverview } from './ai-analyzer'
 import { detectAndStoreFrameworks } from './framework-detector'
 import { matchScanIssues } from './pattern-matcher'
+import { enqueueAIJobs } from './ai-queue'
 import type { IssueClassified, IssueType, IssueSeverity, PageTestResult } from '@/types'
 
 const SCAN_TIMEOUT_MS = 120_000 // 2 minutes
@@ -180,29 +180,35 @@ export async function runScan(scanId: string, url: string): Promise<void> {
       `[scanner] ${scanId} done — score:${score} pages:${totalPages} issues:${allIssues.length}${timedOut ? ' [PARTIAL]' : ''}`
     )
 
-    // ── Post-scan intelligence pipeline (non-blocking, runs after scan completes) ──
+    // ── Post-scan intelligence pipeline ─────────────────────────────────────────
 
-    // 1. Detect frameworks from the network requests already stored in scanned_pages
+    // 1. Detect frameworks (fast — reads network_details already in DB)
     const frameworks = await detectAndStoreFrameworks(scanId).catch((err: unknown) => {
       console.error(`[scanner] Framework detection failed for ${scanId}:`, err)
       return [] as string[]
     })
 
-    // 2. Fingerprint issues + match to cross-scan pattern DB
-    //    Returns cached AI templates for known patterns — saves Claude calls below
-    const patternMatches = await matchScanIssues(scanId, frameworks).catch((err: unknown) => {
+    // 2. Fingerprint issues + match to cross-scan pattern DB (fast — DB-only)
+    //    Populates cached templates so the async worker can skip Claude calls for known patterns
+    await matchScanIssues(scanId, frameworks).catch((err: unknown) => {
       console.error(`[scanner] Pattern matching failed for ${scanId}:`, err)
-      return new Map()
     })
 
-    // 3. AI analysis — uses cached templates where available, calls Claude for new patterns
-    await analyzeIssues(scanId, url, patternMatches, frameworks).catch((err: unknown) => {
-      console.error(`[scanner] AI issue analysis failed for ${scanId}:`, err)
+    // 3. Enqueue AI analysis jobs + trigger the worker asynchronously
+    //    Scan is already marked complete above — AI runs without blocking the user
+    await enqueueAIJobs(scanId).catch((err: unknown) => {
+      console.error(`[scanner] Failed to enqueue AI jobs for ${scanId}:`, err)
     })
 
-    // 4. Scan-level overview with framework context
-    await generateScanOverview(scanId, url, score, criticalCount, mediumCount, frameworks).catch((err: unknown) => {
-      console.error(`[scanner] AI overview failed for ${scanId}:`, err)
+    // Fire-and-forget worker trigger — worker drains the queue via waitUntil
+    const workerUrl    = `${process.env.NEXT_PUBLIC_APP_URL}/api/ai/worker`
+    const workerSecret = process.env.WORKER_SECRET ?? ''
+    fetch(workerUrl, {
+      method:  'POST',
+      headers: { 'x-worker-secret': workerSecret, 'Content-Type': 'application/json' },
+      body:    '{}',
+    }).catch((err: unknown) => {
+      console.error(`[scanner] Failed to trigger AI worker for ${scanId}:`, err)
     })
 
     if (notifyEmail) {

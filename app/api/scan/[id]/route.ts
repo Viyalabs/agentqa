@@ -63,18 +63,19 @@ export async function GET(
     issueList.map((i) => i.fingerprint as string | null).filter((f): f is string => !!f)
   )]
 
-  let patternMap = new Map<string, { occurrence_count: number; affected_frameworks: string[] }>()
+  let patternMap = new Map<string, { occurrence_count: number; total_scans_affected: number; affected_frameworks: string[] }>()
   if (fingerprints.length > 0) {
     try {
       const { data: patterns } = await db
         .from('issue_patterns')
-        .select('fingerprint, occurrence_count, affected_frameworks')
+        .select('fingerprint, occurrence_count, total_scans_affected, affected_frameworks')
         .in('fingerprint', fingerprints)
 
       for (const p of patterns ?? []) {
         patternMap.set(p.fingerprint, {
-          occurrence_count: p.occurrence_count,
-          affected_frameworks: p.affected_frameworks ?? [],
+          occurrence_count:     p.occurrence_count,
+          total_scans_affected: p.total_scans_affected ?? 0,
+          affected_frameworks:  p.affected_frameworks ?? [],
         })
       }
     } catch {
@@ -87,8 +88,9 @@ export async function GET(
     const pattern = fp ? patternMap.get(fp) : undefined
     return {
       ...issue,
-      pattern_count: pattern?.occurrence_count ?? null,
-      pattern_frameworks: pattern?.affected_frameworks ?? [],
+      pattern_count:        pattern?.occurrence_count ?? null,
+      total_scans_affected: pattern?.total_scans_affected ?? null,
+      pattern_frameworks:   pattern?.affected_frameworks ?? [],
     }
   })
 

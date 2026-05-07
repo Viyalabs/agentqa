@@ -4,7 +4,8 @@ import { updatePatternTemplates } from './pattern-matcher'
 import type { IssueType, IssueSeverity, PatternMatchResult } from '@/types'
 
 // Haiku: fast + cheap for post-scan analysis that runs in background
-const MODEL = 'claude-haiku-4-5-20251001'
+const MODEL      = 'claude-haiku-4-5-20251001'
+const BATCH_SIZE = 8  // issues per Claude call; ~150 output tokens each = ~1200 max_tokens
 
 interface IssueForAnalysis {
   id: string
@@ -24,19 +25,97 @@ interface AIAnalysis {
 
 function frameworkLabel(frameworks: string[]): string {
   if (frameworks.length === 0) return 'unknown stack'
-  // Show at most 2 (e.g. "next.js + react")
   return frameworks.slice(0, 2).join(' + ')
 }
 
-function buildIssuePrompt(
+/**
+ * Build a single prompt covering up to BATCH_SIZE issues.
+ * Shared context (persona, URL, stack) is written once — major token saving vs N individual prompts.
+ */
+function buildBatchPrompt(
   appUrl: string,
-  issue: IssueForAnalysis,
+  issues: IssueForAnalysis[],
   frameworks: string[],
 ): string {
+  const stack = frameworkLabel(frameworks)
+
+  const issueLines = issues.map((issue, i) => {
+    // Truncate details to 200 chars per issue in batch mode (vs 800 in solo mode)
+    const details = issue.details
+      ? JSON.stringify(issue.details).slice(0, 200)
+      : 'none'
+    return [
+      `[${i + 1}] type:${issue.type}  severity:${issue.severity}`,
+      `    title: ${issue.title}`,
+      `    desc:  ${issue.description ?? 'none'}`,
+      `    data:  ${details}`,
+    ].join('\n')
+  }).join('\n\n')
+
+  return `You are an expert QA engineer. Analyze these ${issues.length} issues detected by an automated browser scanner.
+
+App: ${appUrl}
+Stack: ${stack}
+
+${issueLines}
+
+Return a JSON array with exactly ${issues.length} objects, one per issue in the same order:
+[{"i":1,"summary":"1 sentence — what broke","root_cause":"technical reason","fix":"actionable steps"},...]
+
+Rules: valid JSON only, no markdown fences, preserve issue order.`
+}
+
+/** Three-pass JSON extraction: direct → fenced → bare object/array */
+function extractJSON(text: string): unknown {
+  try { return JSON.parse(text) } catch { /* fall through */ }
+  const fenced = text.match(/```(?:json)?\s*([\s\S]*?)```/)
+  if (fenced?.[1]) { try { return JSON.parse(fenced[1].trim()) } catch { /* fall through */ } }
+  const bare = text.match(/(\[[\s\S]*\]|\{[\s\S]*\})/)
+  if (bare?.[1]) { try { return JSON.parse(bare[1]) } catch { /* fall through */ } }
+  throw new SyntaxError(`No JSON found in response (first 200 chars): ${text.slice(0, 200)}`)
+}
+
+/**
+ * Analyze a batch of representative issues in a single Claude call.
+ * Returns a map of cacheKey → AIAnalysis for each issue that was successfully analyzed.
+ * Throws on API failure so the caller can fall back to individual calls.
+ */
+async function analyzeBatch(
+  client: Anthropic,
+  appUrl: string,
+  issues: IssueForAnalysis[],
+  frameworks: string[],
+): Promise<Map<string, AIAnalysis>> {
+  const message = await client.messages.create({
+    model:      MODEL,
+    max_tokens: Math.max(150 * issues.length, 300),
+    messages:   [{ role: 'user', content: buildBatchPrompt(appUrl, issues, frameworks) }],
+  })
+
+  const text   = message.content[0]?.type === 'text' ? message.content[0].text : ''
+  const parsed = extractJSON(text) as Array<{ i: number; summary?: string; root_cause?: string; fix?: string }>
+
+  if (!Array.isArray(parsed)) throw new TypeError('Batch response was not a JSON array')
+
+  const result = new Map<string, AIAnalysis>()
+  for (const item of parsed) {
+    const rep = issues[item.i - 1]
+    if (!rep) continue
+    const summary      = item.summary?.trim()      ?? ''
+    const rootCause    = item.root_cause?.trim()   ?? ''
+    const fixSuggestion = item.fix?.trim()         ?? ''
+    if (summary) {
+      result.set(rep.fingerprint ?? rep.type, { summary, rootCause, fixSuggestion })
+    }
+  }
+  return result
+}
+
+/** Single-issue fallback prompt (used when batch parsing fails for a specific item) */
+function buildSoloPrompt(appUrl: string, issue: IssueForAnalysis, frameworks: string[]): string {
   const detailText = issue.details
     ? JSON.stringify(issue.details, null, 2).slice(0, 800)
     : 'none'
-
   return `You are an expert QA engineer reviewing a bug detected by an automated browser scanner.
 
 App URL: ${appUrl}
@@ -53,6 +132,17 @@ ROOT_CAUSE: [1-2 sentences — the likely technical reason, specific to ${framew
 FIX: [specific, actionable steps a developer can take to resolve this]
 
 Be precise and technical. No filler. Speak to the developer fixing it.`
+}
+
+function parseSoloResponse(text: string): AIAnalysis {
+  const lines = text.trim().split('\n')
+  let summary = '', rootCause = '', fixSuggestion = ''
+  for (const line of lines) {
+    if (line.startsWith('SUMMARY:'))         summary       = line.slice('SUMMARY:'.length).trim()
+    else if (line.startsWith('ROOT_CAUSE:')) rootCause     = line.slice('ROOT_CAUSE:'.length).trim()
+    else if (line.startsWith('FIX:'))        fixSuggestion = line.slice('FIX:'.length).trim()
+  }
+  return { summary, rootCause, fixSuggestion }
 }
 
 function buildOverviewPrompt(
@@ -81,21 +171,6 @@ Write a 2-3 sentence executive summary:
 Be direct. Speak to a developer or technical founder.`
 }
 
-function parseAnalysis(text: string): AIAnalysis {
-  const lines = text.trim().split('\n')
-  let summary = ''
-  let rootCause = ''
-  let fixSuggestion = ''
-
-  for (const line of lines) {
-    if (line.startsWith('SUMMARY:'))    summary      = line.slice('SUMMARY:'.length).trim()
-    else if (line.startsWith('ROOT_CAUSE:')) rootCause = line.slice('ROOT_CAUSE:'.length).trim()
-    else if (line.startsWith('FIX:'))   fixSuggestion = line.slice('FIX:'.length).trim()
-  }
-
-  return { summary, rootCause, fixSuggestion }
-}
-
 /**
  * Analyze all issues for a completed scan.
  *
@@ -116,6 +191,7 @@ export async function analyzeIssues(
   appUrl: string,
   patternMatches: Map<string, PatternMatchResult> = new Map(),
   frameworks: string[] = [],
+  severities: string[] = ['critical', 'medium', 'low'],
 ): Promise<void> {
   const apiKey = process.env.ANTHROPIC_API_KEY
   if (!apiKey) {
@@ -129,6 +205,7 @@ export async function analyzeIssues(
     .from('issues')
     .select('id, type, severity, title, description, details, fingerprint')
     .eq('scan_id', scanId)
+    .in('severity', severities)
     .is('ai_summary', null)
 
   if (error || !issues || issues.length === 0) return
@@ -186,32 +263,49 @@ export async function analyzeIssues(
   // fingerprint (or type fallback) → analysis result
   const analysisCache = new Map<string, AIAnalysis>()
 
-  await Promise.allSettled(
-    representatives.map(async (rep) => {
-      const cacheKey = rep.fingerprint ?? rep.type
-      try {
-        const message = await client.messages.create({
-          model: MODEL,
-          max_tokens: 350,
-          messages: [{ role: 'user', content: buildIssuePrompt(appUrl, rep, frameworks) }],
-        })
-        const text = message.content[0]?.type === 'text' ? message.content[0].text : ''
-        const analysis = parseAnalysis(text)
-        if (analysis.summary) {
-          analysisCache.set(cacheKey, analysis)
-
-          // Write back to pattern DB so future scans can skip this call
+  for (let i = 0; i < representatives.length; i += BATCH_SIZE) {
+    const batch = representatives.slice(i, i + BATCH_SIZE)
+    try {
+      const batchResults = await analyzeBatch(client, appUrl, batch, frameworks)
+      for (const [cacheKey, analysis] of batchResults) {
+        analysisCache.set(cacheKey, analysis)
+        const rep = batch.find((r) => (r.fingerprint ?? r.type) === cacheKey)
+        if (rep) {
           const match = patternMatches.get(rep.id)
           if (match?.patternId && analysis.rootCause && analysis.fixSuggestion) {
             await updatePatternTemplates(match.patternId, analysis.rootCause, analysis.fixSuggestion)
               .catch((err) => console.error('[ai-analyzer] pattern template update failed:', err))
           }
         }
-      } catch (err) {
-        console.error(`[ai-analyzer] Claude call failed for ${cacheKey}:`, err)
       }
-    })
-  )
+    } catch (err) {
+      console.warn(`[ai-analyzer] Batch failed, falling back to individual calls:`, err)
+      await Promise.allSettled(
+        batch.map(async (rep) => {
+          const cacheKey = rep.fingerprint ?? rep.type
+          try {
+            const message = await client.messages.create({
+              model:      MODEL,
+              max_tokens: 350,
+              messages:   [{ role: 'user', content: buildSoloPrompt(appUrl, rep, frameworks) }],
+            })
+            const text     = message.content[0]?.type === 'text' ? message.content[0].text : ''
+            const analysis = parseSoloResponse(text)
+            if (analysis.summary) {
+              analysisCache.set(cacheKey, analysis)
+              const match = patternMatches.get(rep.id)
+              if (match?.patternId && analysis.rootCause && analysis.fixSuggestion) {
+                await updatePatternTemplates(match.patternId, analysis.rootCause, analysis.fixSuggestion)
+                  .catch((e) => console.error('[ai-analyzer] pattern template update failed:', e))
+              }
+            }
+          } catch (e) {
+            console.error(`[ai-analyzer] Solo call failed for ${cacheKey}:`, e)
+          }
+        })
+      )
+    }
+  }
 
   // --- Step 3: persist analysis to all issues that needed it -------------------
   await Promise.allSettled(

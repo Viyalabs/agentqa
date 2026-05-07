@@ -75,8 +75,14 @@ export interface Issue {
   framework: string | null
   created_at: string
   // Joined from issue_patterns — present in API responses, not in DB rows directly
-  pattern_count?: number
+  pattern_count?: number | null
+  total_scans_affected?: number | null
   pattern_frameworks?: string[]
+  // Joined from issues_enriched — present after async AI analysis completes
+  confidence?: number | null
+  from_pattern?: boolean | null
+  // User feedback on AI fix suggestion
+  fix_helpful?: boolean | null
 }
 
 export interface PageLog {

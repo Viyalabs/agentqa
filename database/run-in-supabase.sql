@@ -1,93 +1,7 @@
-#!/usr/bin/env node
-/**
- * AgentQA — Supabase migration runner
- * Usage: node scripts/migrate.js
- *
- * Reads credentials from .env.local and applies the full schema via a
- * direct Postgres connection (not the Management API, which requires a PAT).
- *
- * Required in .env.local — use ONE of these connection options:
- *
- *   SUPABASE_POOLER_URL  (recommended — IPv4, works everywhere)
- *     Dashboard → Project Settings → Database → Connection Pooling
- *     → Session mode → Connection string URI
- *     e.g. postgresql://postgres.[ref]:[password]@aws-0-[region].pooler.supabase.com:5432/postgres
- *
- *   SUPABASE_DB_URL  (direct — IPv6 only, may fail on some networks)
- *     Dashboard → Project Settings → Database → Connection string → URI
- *
- *   SUPABASE_DB_PASSWORD  (auto-builds direct URL from NEXT_PUBLIC_SUPABASE_URL)
- */
+CREATE EXTENSION IF NOT EXISTS "pgcrypto";
 
-const fs   = require('fs')
-const path = require('path')
-const { Client } = require('pg')
+-- ─────────────────────────────────────────────
 
-// ── Load .env.local ───────────────────────────────────────────────────────────
-
-function loadEnv() {
-  const envPath = path.join(__dirname, '..', '.env.local')
-  if (!fs.existsSync(envPath)) {
-    console.error('\n  .env.local not found.')
-    console.error('   Copy .env.example -> .env.local and fill in your credentials.\n')
-    process.exit(1)
-  }
-  for (const line of fs.readFileSync(envPath, 'utf8').split('\n')) {
-    const trimmed = line.trim()
-    if (!trimmed || trimmed.startsWith('#')) continue
-    const eq = trimmed.indexOf('=')
-    if (eq === -1) continue
-    const key = trimmed.slice(0, eq).trim()
-    const val = trimmed.slice(eq + 1).trim().replace(/^["']|["']$/g, '')
-    if (!process.env[key]) process.env[key] = val
-  }
-}
-
-loadEnv()
-
-const SUPABASE_URL    = process.env.NEXT_PUBLIC_SUPABASE_URL
-const DB_PASSWORD     = process.env.SUPABASE_DB_PASSWORD
-const POOLER_URL      = process.env.SUPABASE_POOLER_URL   // session-mode pooler — IPv4, preferred
-const DB_URL_DIRECT   = process.env.SUPABASE_DB_URL        // direct connection  — IPv6 only
-
-if (!SUPABASE_URL || SUPABASE_URL.includes('your-project')) {
-  console.error('\n  NEXT_PUBLIC_SUPABASE_URL is not set in .env.local\n')
-  process.exit(1)
-}
-
-let DB_URL
-let DB_HOST
-
-if (POOLER_URL) {
-  // Session-mode pooler — IPv4, works on all networks (recommended)
-  DB_URL  = POOLER_URL
-  DB_HOST = POOLER_URL.split('@')[1]?.split(':')[0] ?? 'pooler'
-} else if (DB_URL_DIRECT) {
-  // Direct connection — IPv6 only, may fail on some ISPs/routers
-  DB_URL  = DB_URL_DIRECT
-  DB_HOST = DB_URL_DIRECT.split('@')[1]?.split(':')[0] ?? 'direct'
-} else if (DB_PASSWORD) {
-  // Build direct URL from password — same IPv6 caveat as above
-  const projectRef = SUPABASE_URL.replace('https://', '').split('.')[0]
-  DB_HOST = `db.${projectRef}.supabase.co`
-  DB_URL  = `postgresql://postgres:${encodeURIComponent(DB_PASSWORD)}@${DB_HOST}:5432/postgres`
-} else {
-  console.error('\n  No database connection configured in .env.local.')
-  console.error('  Add SUPABASE_POOLER_URL (recommended) from:')
-  console.error('    Dashboard → Project Settings → Database → Connection Pooling → Session mode → URI\n')
-  process.exit(1)
-}
-
-// ── SQL steps ─────────────────────────────────────────────────────────────────
-
-const steps = [
-  {
-    label: 'Enable pgcrypto extension',
-    sql: `CREATE EXTENSION IF NOT EXISTS "pgcrypto";`
-  },
-  {
-    label: 'Create scans table',
-    sql: `
 CREATE TABLE IF NOT EXISTS scans (
   id            UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
   url           TEXT        NOT NULL,
@@ -104,13 +18,22 @@ CREATE TABLE IF NOT EXISTS scans (
   completed_at  TIMESTAMPTZ,
   created_at    TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
+-- Add columns that may be missing if scans table already existed
+ALTER TABLE scans ADD COLUMN IF NOT EXISTS score         INTEGER CHECK (score >= 0 AND score <= 100);
+ALTER TABLE scans ADD COLUMN IF NOT EXISTS total_pages   INTEGER NOT NULL DEFAULT 0;
+ALTER TABLE scans ADD COLUMN IF NOT EXISTS total_issues  INTEGER NOT NULL DEFAULT 0;
+ALTER TABLE scans ADD COLUMN IF NOT EXISTS error_message TEXT;
+ALTER TABLE scans ADD COLUMN IF NOT EXISTS notify_email  TEXT;
+ALTER TABLE scans ADD COLUMN IF NOT EXISTS ip            TEXT;
+ALTER TABLE scans ADD COLUMN IF NOT EXISTS ai_overview   TEXT;
+ALTER TABLE scans ADD COLUMN IF NOT EXISTS started_at    TIMESTAMPTZ;
+ALTER TABLE scans ADD COLUMN IF NOT EXISTS completed_at  TIMESTAMPTZ;
 CREATE INDEX IF NOT EXISTS idx_scans_status     ON scans (status);
 CREATE INDEX IF NOT EXISTS idx_scans_created_at ON scans (created_at DESC);
-CREATE INDEX IF NOT EXISTS idx_scans_url_status ON scans (url, status, created_at DESC);`
-  },
-  {
-    label: 'Create scanned_pages table',
-    sql: `
+CREATE INDEX IF NOT EXISTS idx_scans_url_status ON scans (url, status, created_at DESC);
+
+-- ─────────────────────────────────────────────
+
 CREATE TABLE IF NOT EXISTS scanned_pages (
   id                    UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
   scan_id               UUID        NOT NULL REFERENCES scans(id) ON DELETE CASCADE,
@@ -127,11 +50,10 @@ CREATE TABLE IF NOT EXISTS scanned_pages (
   network_details       JSONB,
   created_at            TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
-CREATE INDEX IF NOT EXISTS idx_scanned_pages_scan_id ON scanned_pages (scan_id);`
-  },
-  {
-    label: 'Create issues table',
-    sql: `
+CREATE INDEX IF NOT EXISTS idx_scanned_pages_scan_id ON scanned_pages (scan_id);
+
+-- ─────────────────────────────────────────────
+
 CREATE TABLE IF NOT EXISTS issues (
   id             UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
   scan_id        UUID        NOT NULL REFERENCES scans(id) ON DELETE CASCADE,
@@ -148,14 +70,19 @@ CREATE TABLE IF NOT EXISTS issues (
   framework      TEXT,
   created_at     TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
+-- Add columns that may be missing if the table already existed
+ALTER TABLE issues ADD COLUMN IF NOT EXISTS ai_summary     TEXT;
+ALTER TABLE issues ADD COLUMN IF NOT EXISTS root_cause     TEXT;
+ALTER TABLE issues ADD COLUMN IF NOT EXISTS fix_suggestion TEXT;
+ALTER TABLE issues ADD COLUMN IF NOT EXISTS fingerprint    TEXT;
+ALTER TABLE issues ADD COLUMN IF NOT EXISTS framework      TEXT;
 CREATE INDEX IF NOT EXISTS idx_issues_scan_id     ON issues (scan_id);
 CREATE INDEX IF NOT EXISTS idx_issues_severity    ON issues (severity);
 CREATE INDEX IF NOT EXISTS idx_issues_page_id     ON issues (page_id);
-CREATE INDEX IF NOT EXISTS idx_issues_fingerprint ON issues (fingerprint) WHERE fingerprint IS NOT NULL;`
-  },
-  {
-    label: 'Create page_logs table',
-    sql: `
+CREATE INDEX IF NOT EXISTS idx_issues_fingerprint ON issues (fingerprint) WHERE fingerprint IS NOT NULL;
+
+-- ─────────────────────────────────────────────
+
 CREATE TABLE IF NOT EXISTS page_logs (
   id          UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
   page_id     UUID        NOT NULL REFERENCES scanned_pages(id) ON DELETE CASCADE,
@@ -166,22 +93,20 @@ CREATE TABLE IF NOT EXISTS page_logs (
   created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 CREATE INDEX IF NOT EXISTS idx_page_logs_page_id ON page_logs (page_id);
-CREATE INDEX IF NOT EXISTS idx_page_logs_level   ON page_logs (level);`
-  },
-  {
-    label: 'Create scan_logs table',
-    sql: `
+CREATE INDEX IF NOT EXISTS idx_page_logs_level   ON page_logs (level);
+
+-- ─────────────────────────────────────────────
+
 CREATE TABLE IF NOT EXISTS scan_logs (
   id         BIGSERIAL   PRIMARY KEY,
   scan_id    UUID        NOT NULL REFERENCES scans(id) ON DELETE CASCADE,
   message    TEXT        NOT NULL,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
-CREATE INDEX IF NOT EXISTS idx_scan_logs_scan_id ON scan_logs (scan_id);`
-  },
-  {
-    label: 'Create waitlist table',
-    sql: `
+CREATE INDEX IF NOT EXISTS idx_scan_logs_scan_id ON scan_logs (scan_id);
+
+-- ─────────────────────────────────────────────
+
 CREATE TABLE IF NOT EXISTS waitlist (
   id         UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
   email      TEXT        NOT NULL UNIQUE,
@@ -189,11 +114,10 @@ CREATE TABLE IF NOT EXISTS waitlist (
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 CREATE INDEX IF NOT EXISTS idx_waitlist_email      ON waitlist (email);
-CREATE INDEX IF NOT EXISTS idx_waitlist_created_at ON waitlist (created_at DESC);`
-  },
-  {
-    label: 'Create scan_frameworks table',
-    sql: `
+CREATE INDEX IF NOT EXISTS idx_waitlist_created_at ON waitlist (created_at DESC);
+
+-- ─────────────────────────────────────────────
+
 CREATE TABLE IF NOT EXISTS scan_frameworks (
   id         UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
   scan_id    UUID        NOT NULL REFERENCES scans(id) ON DELETE CASCADE,
@@ -202,11 +126,10 @@ CREATE TABLE IF NOT EXISTS scan_frameworks (
   signals    TEXT[]      NOT NULL DEFAULT '{}',
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
-CREATE INDEX IF NOT EXISTS idx_scan_frameworks_scan_id ON scan_frameworks (scan_id);`
-  },
-  {
-    label: 'Create issue_patterns table',
-    sql: `
+CREATE INDEX IF NOT EXISTS idx_scan_frameworks_scan_id ON scan_frameworks (scan_id);
+
+-- ─────────────────────────────────────────────
+
 CREATE TABLE IF NOT EXISTS issue_patterns (
   id                   UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
   fingerprint          TEXT        NOT NULL UNIQUE,
@@ -234,11 +157,10 @@ CREATE INDEX IF NOT EXISTS idx_ip_total_scans      ON issue_patterns (total_scan
 CREATE INDEX IF NOT EXISTS idx_ip_confidence_score ON issue_patterns (confidence_score DESC) WHERE confidence_score IS NOT NULL;
 CREATE INDEX IF NOT EXISTS idx_ip_template_updated ON issue_patterns (template_updated_at ASC) WHERE template_updated_at IS NOT NULL;
 CREATE INDEX IF NOT EXISTS idx_ip_frameworks_gin   ON issue_patterns USING GIN (affected_frameworks);
-CREATE INDEX IF NOT EXISTS idx_ip_metadata_gin     ON issue_patterns USING GIN (metadata);`
-  },
-  {
-    label: 'Create issue_pattern_matches table',
-    sql: `
+CREATE INDEX IF NOT EXISTS idx_ip_metadata_gin     ON issue_patterns USING GIN (metadata);
+
+-- ─────────────────────────────────────────────
+
 CREATE TABLE IF NOT EXISTS issue_pattern_matches (
   id         UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
   issue_id   UUID        NOT NULL REFERENCES issues(id) ON DELETE CASCADE,
@@ -247,11 +169,10 @@ CREATE TABLE IF NOT EXISTS issue_pattern_matches (
   UNIQUE (issue_id, pattern_id)
 );
 CREATE INDEX IF NOT EXISTS idx_ipm_issue_id   ON issue_pattern_matches (issue_id);
-CREATE INDEX IF NOT EXISTS idx_ipm_pattern_id ON issue_pattern_matches (pattern_id);`
-  },
-  {
-    label: 'Create issues_enriched table',
-    sql: `
+CREATE INDEX IF NOT EXISTS idx_ipm_pattern_id ON issue_pattern_matches (pattern_id);
+
+-- ─────────────────────────────────────────────
+
 CREATE TABLE IF NOT EXISTS issues_enriched (
   id               UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
   issue_id         UUID        NOT NULL REFERENCES issues(id) ON DELETE CASCADE,
@@ -274,11 +195,10 @@ CREATE INDEX IF NOT EXISTS idx_ie_analyzed_at    ON issues_enriched (analyzed_at
 CREATE INDEX IF NOT EXISTS idx_ie_model_version  ON issues_enriched (model_version) WHERE model_version IS NOT NULL;
 CREATE INDEX IF NOT EXISTS idx_ie_confidence     ON issues_enriched (confidence) WHERE confidence IS NOT NULL;
 CREATE INDEX IF NOT EXISTS idx_ie_model_analyzed ON issues_enriched (model_version, analyzed_at DESC);
-CREATE INDEX IF NOT EXISTS idx_ie_analysis_gin   ON issues_enriched USING GIN (analysis_data);`
-  },
-  {
-    label: 'Create pattern_occurrences table',
-    sql: `
+CREATE INDEX IF NOT EXISTS idx_ie_analysis_gin   ON issues_enriched USING GIN (analysis_data);
+
+-- ─────────────────────────────────────────────
+
 CREATE TABLE IF NOT EXISTS pattern_occurrences (
   id          UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
   pattern_id  UUID        NOT NULL REFERENCES issue_patterns(id) ON DELETE CASCADE,
@@ -290,11 +210,10 @@ CREATE TABLE IF NOT EXISTS pattern_occurrences (
 CREATE INDEX IF NOT EXISTS idx_po_pattern_time ON pattern_occurrences (pattern_id, occurred_at DESC);
 CREATE INDEX IF NOT EXISTS idx_po_scan_id      ON pattern_occurrences (scan_id);
 CREATE INDEX IF NOT EXISTS idx_po_occurred_at  ON pattern_occurrences (occurred_at DESC);
-CREATE INDEX IF NOT EXISTS idx_po_framework    ON pattern_occurrences (framework, occurred_at DESC) WHERE framework IS NOT NULL;`
-  },
-  {
-    label: 'Enable Row Level Security on all tables',
-    sql: `
+CREATE INDEX IF NOT EXISTS idx_po_framework    ON pattern_occurrences (framework, occurred_at DESC) WHERE framework IS NOT NULL;
+
+-- ─────────────────────────────────────────────
+
 ALTER TABLE scans                 ENABLE ROW LEVEL SECURITY;
 ALTER TABLE scanned_pages         ENABLE ROW LEVEL SECURITY;
 ALTER TABLE issues                ENABLE ROW LEVEL SECURITY;
@@ -305,11 +224,10 @@ ALTER TABLE scan_frameworks       ENABLE ROW LEVEL SECURITY;
 ALTER TABLE issue_patterns        ENABLE ROW LEVEL SECURITY;
 ALTER TABLE issue_pattern_matches ENABLE ROW LEVEL SECURITY;
 ALTER TABLE issues_enriched       ENABLE ROW LEVEL SECURITY;
-ALTER TABLE pattern_occurrences   ENABLE ROW LEVEL SECURITY;`
-  },
-  {
-    label: 'Create RLS policies',
-    sql: `
+ALTER TABLE pattern_occurrences   ENABLE ROW LEVEL SECURITY;
+
+-- ─────────────────────────────────────────────
+
 DO $$ BEGIN
   IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename='scans' AND policyname='Public access to scans') THEN
     CREATE POLICY "Public access to scans" ON scans FOR ALL USING (true); END IF;
@@ -333,11 +251,10 @@ DO $$ BEGIN
     CREATE POLICY "Public access to issues_enriched" ON issues_enriched FOR ALL USING (true); END IF;
   IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename='pattern_occurrences' AND policyname='Public access to pattern_occurrences') THEN
     CREATE POLICY "Public access to pattern_occurrences" ON pattern_occurrences FOR ALL USING (true); END IF;
-END $$;`
-  },
-  {
-    label: 'Create updated_at trigger',
-    sql: `
+END $$;
+
+-- ─────────────────────────────────────────────
+
 CREATE OR REPLACE FUNCTION set_updated_at()
 RETURNS TRIGGER LANGUAGE plpgsql AS $$
 BEGIN NEW.updated_at = NOW(); RETURN NEW; END;
@@ -345,11 +262,10 @@ $$;
 DROP TRIGGER IF EXISTS trg_issues_enriched_updated_at ON issues_enriched;
 CREATE TRIGGER trg_issues_enriched_updated_at
   BEFORE UPDATE ON issues_enriched
-  FOR EACH ROW EXECUTE PROCEDURE set_updated_at();`
-  },
-  {
-    label: 'Create issues_with_analysis view',
-    sql: `
+  FOR EACH ROW EXECUTE PROCEDURE set_updated_at();
+
+-- ─────────────────────────────────────────────
+
 CREATE OR REPLACE VIEW issues_with_analysis AS
 SELECT
   i.id, i.scan_id, i.page_id, i.type, i.severity, i.title,
@@ -369,11 +285,10 @@ SELECT
   ip.total_scans_affected
 FROM issues i
 LEFT JOIN issues_enriched ie ON ie.issue_id = i.id
-LEFT JOIN issue_patterns  ip ON ip.id = ie.pattern_id;`
-  },
-  {
-    label: 'Backfill issues_enriched from existing AI data',
-    sql: `
+LEFT JOIN issue_patterns  ip ON ip.id = ie.pattern_id;
+
+-- ─────────────────────────────────────────────
+
 INSERT INTO issues_enriched (
   issue_id, summary, root_cause, fix_suggestion,
   confidence, analysis_data, model_version,
@@ -393,11 +308,10 @@ SELECT
 FROM issues i
 LEFT JOIN issue_pattern_matches ipm ON ipm.issue_id = i.id
 WHERE i.ai_summary IS NOT NULL
-ON CONFLICT (issue_id) DO NOTHING;`
-  },
-  {
-    label: 'Backfill pattern_occurrences from existing matches',
-    sql: `
+ON CONFLICT (issue_id) DO NOTHING;
+
+-- ─────────────────────────────────────────────
+
 INSERT INTO pattern_occurrences (pattern_id, scan_id, framework, occurred_at)
 SELECT
   ipm.pattern_id, i.scan_id,
@@ -407,158 +321,4 @@ SELECT
 FROM issue_pattern_matches ipm
 JOIN issues i ON i.id = ipm.issue_id
 GROUP BY ipm.pattern_id, i.scan_id
-ON CONFLICT (pattern_id, scan_id) DO NOTHING;`
-  },
-
-  // ── Migration 003 ─────────────────────────────────────────────────────────────
-  {
-    label: 'Create ai_analysis_jobs table',
-    sql: `
-CREATE TABLE IF NOT EXISTS ai_analysis_jobs (
-  id            UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
-  scan_id       UUID        NOT NULL REFERENCES scans(id) ON DELETE CASCADE,
-  job_type      TEXT        NOT NULL CHECK (job_type IN ('issue_batch', 'scan_overview')),
-  status        TEXT        NOT NULL DEFAULT 'pending'
-                              CHECK (status IN ('pending', 'running', 'completed', 'failed')),
-  priority      INTEGER     NOT NULL DEFAULT 10,
-  attempts      INTEGER     NOT NULL DEFAULT 0,
-  last_error    TEXT,
-  scheduled_at  TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-  created_at    TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-  started_at    TIMESTAMPTZ,
-  completed_at  TIMESTAMPTZ
-);
-CREATE INDEX IF NOT EXISTS idx_aaj_claim
-  ON ai_analysis_jobs (status, scheduled_at, priority, created_at)
-  WHERE status = 'pending';
-CREATE INDEX IF NOT EXISTS idx_aaj_scan_id
-  ON ai_analysis_jobs (scan_id);
-ALTER TABLE ai_analysis_jobs ENABLE ROW LEVEL SECURITY;
-DO $$ BEGIN
-  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename='ai_analysis_jobs' AND policyname='Service role access to ai_analysis_jobs') THEN
-    CREATE POLICY "Service role access to ai_analysis_jobs" ON ai_analysis_jobs FOR ALL USING (true);
-  END IF;
-END $$;`
-  },
-
-  // ── Migration 004 ─────────────────────────────────────────────────────────────
-  {
-    label: 'Create claim_next_ai_job() function',
-    sql: `
-CREATE OR REPLACE FUNCTION claim_next_ai_job()
-RETURNS SETOF ai_analysis_jobs
-LANGUAGE plpgsql
-SECURITY DEFINER
-AS $$
-BEGIN
-  RETURN QUERY
-  UPDATE ai_analysis_jobs
-  SET
-    status     = 'running',
-    started_at = NOW(),
-    attempts   = attempts + 1
-  WHERE id = (
-    SELECT id
-    FROM   ai_analysis_jobs
-    WHERE  status       = 'pending'
-      AND  scheduled_at <= NOW()
-      AND  attempts     <  3
-    ORDER BY priority ASC, created_at ASC
-    LIMIT 1
-    FOR UPDATE SKIP LOCKED
-  )
-  RETURNING *;
-END;
-$$;
-GRANT EXECUTE ON FUNCTION claim_next_ai_job() TO service_role;`
-  },
-
-  // ── Migration 005 ─────────────────────────────────────────────────────────────
-  {
-    label: 'Add fix_helpful to issues',
-    sql: `ALTER TABLE issues ADD COLUMN IF NOT EXISTS fix_helpful BOOLEAN;`
-  },
-  {
-    label: 'Add needs_refresh to issue_patterns',
-    sql: `ALTER TABLE issue_patterns ADD COLUMN IF NOT EXISTS needs_refresh BOOLEAN NOT NULL DEFAULT false;`
-  },
-  {
-    label: 'Create record_issue_feedback() function',
-    sql: `
-CREATE OR REPLACE FUNCTION record_issue_feedback(
-  p_issue_id UUID,
-  p_helpful  BOOLEAN
-) RETURNS void
-LANGUAGE plpgsql
-SECURITY DEFINER
-AS $$
-BEGIN
-  UPDATE issues SET fix_helpful = p_helpful WHERE id = p_issue_id;
-  IF NOT p_helpful THEN
-    UPDATE issue_patterns
-    SET needs_refresh = true
-    WHERE id IN (
-      SELECT pattern_id FROM issue_pattern_matches WHERE issue_id = p_issue_id
-    );
-  END IF;
-END;
-$$;
-GRANT EXECUTE ON FUNCTION record_issue_feedback(UUID, BOOLEAN) TO service_role;`
-  },
-]
-
-// ── Runner ────────────────────────────────────────────────────────────────────
-
-async function runMigration() {
-  console.log(`\n  AgentQA — database migration`)
-  console.log(`   Host:  ${DB_HOST}`)
-  console.log(`   Steps: ${steps.length}\n`)
-
-  const client = new Client({ connectionString: DB_URL, ssl: { rejectUnauthorized: false } })
-
-  try {
-    await client.connect()
-  } catch (err) {
-    console.error(`\n  Could not connect to database: ${err.message}`)
-    console.error('   Check that SUPABASE_DB_PASSWORD is correct in .env.local\n')
-    process.exit(1)
-  }
-
-  let passed = 0
-  let failed = 0
-
-  for (const step of steps) {
-    process.stdout.write(`   ${step.label}... `)
-    try {
-      await client.query(step.sql.trim())
-      console.log('OK')
-      passed++
-    } catch (err) {
-      const msg = err.message || String(err)
-      if (/already exists/i.test(msg)) {
-        console.log('OK (already exists)')
-        passed++
-      } else {
-        console.log(`FAILED — ${msg}`)
-        failed++
-      }
-    }
-  }
-
-  await client.end()
-
-  console.log(`\n${'─'.repeat(60)}`)
-  console.log(`   ${passed} passed    ${failed} failed`)
-
-  if (failed === 0) {
-    console.log(`\n   Migration complete! Your database is ready.\n`)
-  } else {
-    console.log(`\n   Some steps failed. Check the errors above.\n`)
-    process.exit(1)
-  }
-}
-
-runMigration().catch((err) => {
-  console.error('\n  Unexpected error:', err.message)
-  process.exit(1)
-})
+ON CONFLICT (pattern_id, scan_id) DO NOTHING;

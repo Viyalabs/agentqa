@@ -14,19 +14,23 @@ interface StoredIssue {
 /**
  * Find an existing issue pattern by fingerprint or create a new one.
  *
- * On match:   increments occurrence_count, extends affected_frameworks, returns cached templates.
+ * On match:   increments occurrence_count + total_scans_affected, extends
+ *             affected_frameworks, tracks in pattern_occurrences, returns cached templates.
  * On miss:    inserts a new pattern row, returns empty templates (Claude will fill them later).
  */
 async function findOrCreatePattern(
   fp: string,
   issue: StoredIssue,
+  scanId: string,
   frameworks: string[],
 ): Promise<PatternMatchResult> {
   const db = getAdminClient()
+  const now = new Date().toISOString()
+  const primaryFramework = frameworks[0] ?? null
 
   const { data: existing } = await db
     .from('issue_patterns')
-    .select('id, occurrence_count, root_cause_template, fix_template, affected_frameworks')
+    .select('id, occurrence_count, total_scans_affected, root_cause_template, fix_template, affected_frameworks')
     .eq('fingerprint', fp)
     .maybeSingle()
 
@@ -35,33 +39,43 @@ async function findOrCreatePattern(
     await db
       .from('issue_patterns')
       .update({
-        occurrence_count: existing.occurrence_count + 1,
-        last_seen_at: new Date().toISOString(),
+        occurrence_count:    existing.occurrence_count + 1,
+        total_scans_affected: (existing.total_scans_affected ?? 0) + 1,
+        last_seen_at:        now,
         affected_frameworks: merged,
       })
       .eq('id', existing.id)
 
+    // Time-series record — one row per (pattern, scan); UNIQUE constraint deduplicates
+    await db
+      .from('pattern_occurrences')
+      .upsert(
+        { pattern_id: existing.id, scan_id: scanId, framework: primaryFramework, occurred_at: now },
+        { onConflict: 'pattern_id,scan_id' },
+      )
+
     return {
-      patternId: existing.id,
-      fingerprint: fp,
-      isNew: false,
-      occurrenceCount: existing.occurrence_count + 1,
+      patternId:         existing.id,
+      fingerprint:       fp,
+      isNew:             false,
+      occurrenceCount:   existing.occurrence_count + 1,
       rootCauseTemplate: existing.root_cause_template ?? null,
-      fixTemplate: existing.fix_template ?? null,
+      fixTemplate:       existing.fix_template ?? null,
     }
   }
 
   const { data: created, error } = await db
     .from('issue_patterns')
     .insert({
-      fingerprint: fp,
-      type: issue.type,
-      severity: issue.severity,
-      title: issue.title,
-      occurrence_count: 1,
+      fingerprint:         fp,
+      type:                issue.type,
+      severity:            issue.severity,
+      title:               issue.title,
+      occurrence_count:    1,
+      total_scans_affected: 1,
       affected_frameworks: frameworks,
-      first_seen_at: new Date().toISOString(),
-      last_seen_at: new Date().toISOString(),
+      first_seen_at:       now,
+      last_seen_at:        now,
     })
     .select('id')
     .single()
@@ -70,20 +84,27 @@ async function findOrCreatePattern(
     throw new Error(`[pattern-matcher] insert failed: ${error?.message}`)
   }
 
+  await db
+    .from('pattern_occurrences')
+    .upsert(
+      { pattern_id: created.id, scan_id: scanId, framework: primaryFramework, occurred_at: now },
+      { onConflict: 'pattern_id,scan_id' },
+    )
+
   return {
-    patternId: created.id,
-    fingerprint: fp,
-    isNew: true,
-    occurrenceCount: 1,
+    patternId:         created.id,
+    fingerprint:       fp,
+    isNew:             true,
+    occurrenceCount:   1,
     rootCauseTemplate: null,
-    fixTemplate: null,
+    fixTemplate:       null,
   }
 }
 
 /**
- * After AI analysis produces a root cause + fix for an issue, persist it back
- * to the pattern as a reusable template — but only if the pattern has none yet.
- * This means the first quality analysis wins and is reused for all future matches.
+ * Persist a root cause + fix back to the pattern as a reusable template.
+ * Writes only when the pattern has no template yet OR when needs_refresh = true
+ * (set by negative user feedback). Resets needs_refresh after overwriting.
  */
 export async function updatePatternTemplates(
   patternId: string,
@@ -93,9 +114,14 @@ export async function updatePatternTemplates(
   const db = getAdminClient()
   await db
     .from('issue_patterns')
-    .update({ root_cause_template: rootCause, fix_template: fix })
+    .update({
+      root_cause_template: rootCause,
+      fix_template:        fix,
+      needs_refresh:       false,
+      template_updated_at: new Date().toISOString(),
+    })
     .eq('id', patternId)
-    .is('root_cause_template', null)   // never overwrite an existing template
+    .or('root_cause_template.is.null,needs_refresh.eq.true')
 }
 
 /**
@@ -144,7 +170,7 @@ export async function matchScanIssues(
         // Reuse result if we already processed this fingerprint in this scan
         let match = fpCache.get(fp)
         if (!match) {
-          match = await findOrCreatePattern(fp, issue, frameworks)
+          match = await findOrCreatePattern(fp, issue, scanId, frameworks)
           fpCache.set(fp, match)
         }
 
