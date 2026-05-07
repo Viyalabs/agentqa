@@ -269,21 +269,21 @@ export function Hero({ stats }: { stats?: HomeStats }) {
               <div className="mt-8 pt-8 border-t border-zinc-800/60">
                 <div className="flex items-center justify-center lg:justify-start gap-8">
                   <div>
-                    <div className="text-2xl font-bold text-white tabular-nums">
+                    <div className="text-2xl font-semibold text-white tabular-nums">
                       {fmtCount(appsCount)}<span className="text-blue-400">+</span>
                     </div>
                     <div className="text-xs text-zinc-500 mt-0.5">apps scanned</div>
                   </div>
                   <div className="w-px h-8 bg-zinc-800" />
                   <div>
-                    <div className="text-2xl font-bold text-white tabular-nums">
+                    <div className="text-2xl font-semibold text-white tabular-nums">
                       {fmtCount(bugsCount)}<span className="text-blue-400">+</span>
                     </div>
                     <div className="text-xs text-zinc-500 mt-0.5">bugs caught</div>
                   </div>
                   <div className="w-px h-8 bg-zinc-800" />
                   <div>
-                    <div className="text-2xl font-bold text-white tabular-nums">
+                    <div className="text-2xl font-semibold text-white tabular-nums">
                       {fmtCount(pagesCount)}<span className="text-blue-400">+</span>
                     </div>
                     <div className="text-xs text-zinc-500 mt-0.5">pages tested</div>

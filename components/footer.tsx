@@ -11,7 +11,7 @@ export function Footer() {
           <div>
             <div className="flex items-center gap-2.5 mb-1">
               <Activity className="h-5 w-5 text-blue-400" />
-              <span className="font-bold text-lg text-white">AgentQA</span>
+              <span className="font-semibold text-lg text-white">AgentQA</span>
             </div>
             <p className="text-xs text-zinc-600 pl-0.5">The AI QA engineer for your app</p>
           </div>

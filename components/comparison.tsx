@@ -132,7 +132,7 @@ export function Comparison() {
                   {row.check && (
                     <XCircle className="h-4 w-4 text-red-500/70 shrink-0" />
                   )}
-                  <span className={`text-center ${isCost ? 'text-red-400 font-bold text-lg' : row.check ? 'text-zinc-500 text-sm' : 'text-zinc-600 text-sm'}`}>
+                  <span className={`text-center ${isCost ? 'text-red-400 font-semibold text-base' : row.check ? 'text-zinc-500 text-sm' : 'text-zinc-600 text-sm'}`}>
                     {row.traditional}
                   </span>
                 </div>
@@ -142,7 +142,7 @@ export function Comparison() {
                   {row.check && (
                     <CheckCircle2 className="h-4 w-4 text-green-400 shrink-0" />
                   )}
-                  <span className={`font-medium text-center ${isCost ? 'text-green-400 font-bold text-lg' : row.check ? 'text-green-300 text-sm' : 'text-blue-300 text-sm'}`}>
+                  <span className={`text-center ${isCost ? 'text-green-400 font-semibold text-base' : row.check ? 'text-green-300 text-sm' : 'text-blue-300 text-sm'}`}>
                     {row.agentqa}
                   </span>
                 </div>

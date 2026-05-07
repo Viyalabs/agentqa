@@ -23,7 +23,7 @@ export function Navbar() {
     >
       <div className="max-w-6xl mx-auto px-6 h-16 flex items-center justify-between">
         {/* Brand */}
-        <a href="/" className="flex items-center gap-2.5 text-white font-bold text-lg hover:opacity-90 transition-opacity">
+        <a href="/" className="flex items-center gap-2.5 text-white font-semibold text-lg hover:opacity-90 transition-opacity">
           <Activity className="h-5 w-5 text-blue-400" />
           AgentQA
         </a>

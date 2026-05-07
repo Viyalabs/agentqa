@@ -80,7 +80,7 @@ export function Pricing() {
             <div className="mb-6">
               <h3 className="text-xl font-semibold text-white mb-1">Free</h3>
               <div className="flex items-baseline gap-1">
-                <span className="text-4xl font-bold text-white">$0</span>
+                <span className="text-4xl font-semibold text-white">$0</span>
                 <span className="text-zinc-500">/month</span>
               </div>
               <p className="text-base text-zinc-400 leading-relaxed mt-2">Full QA report on every scan — no credit card, no expiry</p>
@@ -197,7 +197,7 @@ export function Pricing() {
                 <span className="text-xs px-2 py-0.5 rounded-full bg-blue-600 text-white font-medium">Early Access</span>
               </div>
               <div className="flex items-baseline gap-1">
-                <span className="text-4xl font-bold text-white">$49</span>
+                <span className="text-4xl font-semibold text-white">$49</span>
                 <span className="text-zinc-500">/month</span>
               </div>
               <p className="text-base text-zinc-400 leading-relaxed mt-2">For teams shipping AI apps daily</p>
