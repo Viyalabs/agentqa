@@ -5,7 +5,7 @@ import { Chrome, Zap, Smartphone, AlertCircle, WifiOff, ShieldCheck } from 'luci
 import { ScanForm } from './scan-form'
 import type { HomeStats } from '@/lib/stats'
 
-const FLOOR = { appsScanned: 1200, bugsCaught: 8400, pagesScanned: 6000 }
+const FLOOR = { appsScanned: 1200, bugsCaught: 8400, pagesScanned: 6000, patternsLearned: 240 }
 
 function useCountUp(target: number, duration = 1600): number {
   const [val, setVal] = useState(0)
@@ -196,13 +196,15 @@ function FloatingCard({
 }
 
 export function Hero({ stats }: { stats?: HomeStats }) {
-  const appsTarget = stats?.appsScanned || FLOOR.appsScanned
-  const bugsTarget = stats?.bugsCaught || FLOOR.bugsCaught
-  const pagesTarget = stats?.pagesScanned || FLOOR.pagesScanned
+  const appsTarget     = stats?.appsScanned    || FLOOR.appsScanned
+  const bugsTarget     = stats?.bugsCaught     || FLOOR.bugsCaught
+  const pagesTarget    = stats?.pagesScanned   || FLOOR.pagesScanned
+  const patternsTarget = stats?.patternsLearned || FLOOR.patternsLearned
 
-  const appsCount = useCountUp(appsTarget)
-  const bugsCount = useCountUp(bugsTarget)
-  const pagesCount = useCountUp(pagesTarget)
+  const appsCount     = useCountUp(appsTarget)
+  const bugsCount     = useCountUp(bugsTarget)
+  const pagesCount    = useCountUp(pagesTarget)
+  const patternsCount = useCountUp(patternsTarget)
 
   return (
     <>
@@ -287,6 +289,13 @@ export function Hero({ stats }: { stats?: HomeStats }) {
                       {fmtCount(pagesCount)}<span className="text-blue-400">+</span>
                     </div>
                     <div className="text-xs text-zinc-500 mt-0.5">pages tested</div>
+                  </div>
+                  <div className="w-px h-8 bg-zinc-800" />
+                  <div>
+                    <div className="text-2xl font-semibold text-white tabular-nums">
+                      {fmtCount(patternsCount)}<span className="text-blue-400">+</span>
+                    </div>
+                    <div className="text-xs text-zinc-500 mt-0.5">patterns learned</div>
                   </div>
                 </div>
                 <div className="flex flex-wrap items-center justify-center lg:justify-start gap-3 mt-3">

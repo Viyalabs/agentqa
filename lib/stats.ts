@@ -4,9 +4,10 @@ export interface HomeStats {
   appsScanned: number
   bugsCaught: number
   pagesScanned: number
+  patternsLearned: number
 }
 
-const FALLBACK: HomeStats = { appsScanned: 0, bugsCaught: 0, pagesScanned: 0 }
+const FALLBACK: HomeStats = { appsScanned: 0, bugsCaught: 0, pagesScanned: 0, patternsLearned: 0 }
 
 export async function getHomeStats(): Promise<HomeStats> {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL
@@ -16,7 +17,7 @@ export async function getHomeStats(): Promise<HomeStats> {
   try {
     const db = createClient(url, key)
 
-    const [{ count: scanCount }, { data: issueData }, { count: pageCount }] = await Promise.all([
+    const [{ count: scanCount }, { data: issueData }, { count: pageCount }, { count: patternCount }] = await Promise.all([
       db
         .from('scans')
         .select('*', { count: 'exact', head: true })
@@ -28,6 +29,9 @@ export async function getHomeStats(): Promise<HomeStats> {
       db
         .from('scanned_pages')
         .select('*', { count: 'exact', head: true }),
+      db
+        .from('issue_patterns')
+        .select('*', { count: 'exact', head: true }),
     ])
 
     const bugsCaught = issueData?.reduce((sum, row) => sum + (row.total_issues ?? 0), 0) ?? 0
@@ -36,6 +40,7 @@ export async function getHomeStats(): Promise<HomeStats> {
       appsScanned: scanCount ?? 0,
       bugsCaught,
       pagesScanned: pageCount ?? 0,
+      patternsLearned: patternCount ?? 0,
     }
   } catch {
     return FALLBACK
