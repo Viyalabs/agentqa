@@ -167,6 +167,7 @@ export function ResultsDashboard({ scanId }: ResultsDashboardProps) {
   const [rescanPending, startRescan] = useTransition()
   const [pageSort, setPageSort] = useState<'default' | 'slowest' | 'issues'>('default')
   const [issueSearch, setIssueSearch] = useState('')
+  const [networkTypeFilter, setNetworkTypeFilter] = useState<string>('all')
 
   const fetchResults = useCallback(async () => {
     try {
@@ -892,17 +893,60 @@ export function ResultsDashboard({ scanId }: ResultsDashboardProps) {
                 </span>
               </div>
 
+              {/* Resource type filter */}
+              {(() => {
+                const resourceTypes = Array.from(new Set(allNetworkRequests.map((r) => r.resourceType))).sort()
+                const TYPE_LABELS: Record<string, string> = {
+                  xhr: 'XHR', fetch: 'Fetch', script: 'JS', stylesheet: 'CSS',
+                  document: 'Doc', image: 'Img', font: 'Font',
+                }
+                return (
+                  <div className="flex items-center gap-1 flex-wrap">
+                    {(['all', ...resourceTypes] as string[]).map((t) => {
+                      const label = t === 'all' ? 'All' : (TYPE_LABELS[t] ?? t)
+                      const isActive = networkTypeFilter === t
+                      return (
+                        <button
+                          key={t}
+                          onClick={() => setNetworkTypeFilter(t)}
+                          className={`px-2.5 py-1 rounded-md text-[11px] font-medium transition-all border ${
+                            isActive
+                              ? 'bg-zinc-700 text-white border-zinc-600'
+                              : 'text-zinc-500 border-zinc-700/50 hover:text-zinc-300 hover:border-zinc-600'
+                          }`}
+                        >
+                          {label}
+                        </button>
+                      )
+                    })}
+                    {networkTypeFilter !== 'all' && (
+                      <button
+                        onClick={() => setNetworkTypeFilter('all')}
+                        className="ml-1 text-[11px] text-zinc-600 hover:text-zinc-400 transition-colors"
+                      >
+                        × clear
+                      </button>
+                    )}
+                  </div>
+                )
+              })()}
+
               {/* Per-page breakdown */}
               {pages
                 .filter((p) => p.network_details && (p.network_details as NetworkRequest[]).length > 0)
                 .map((page) => {
-                  const reqs = page.network_details as NetworkRequest[]
+                  const allReqs = page.network_details as NetworkRequest[]
+                  const reqs = networkTypeFilter === 'all'
+                    ? allReqs
+                    : allReqs.filter((r) => r.resourceType === networkTypeFilter)
+                  if (reqs.length === 0) return null
                   const failed = reqs.filter((r) => r.failed)
                   return (
                     <div key={page.id} className="space-y-1">
                       <div className="flex items-center gap-2 text-xs text-zinc-500 px-1">
                         <Globe className="h-3 w-3 shrink-0" />
                         <span className="font-mono truncate">{truncateUrl(page.url, 70)}</span>
+                        <span className="shrink-0 text-zinc-700">{reqs.length} req</span>
                         {failed.length > 0 && (
                           <span className="shrink-0 text-red-400">{failed.length} failed</span>
                         )}
@@ -910,7 +954,6 @@ export function ResultsDashboard({ scanId }: ResultsDashboardProps) {
                       <Card>
                         <CardContent className="p-1">
                           <div className="divide-y divide-zinc-800/50">
-                            {/* Show failed first, then successful */}
                             {[...reqs.filter((r) => r.failed), ...reqs.filter((r) => !r.failed)].map(
                               (req, i) => <NetworkRow key={i} req={req} />
                             )}
