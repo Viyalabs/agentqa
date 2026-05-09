@@ -370,7 +370,8 @@ CREATE TRIGGER trg_issues_enriched_updated_at
   {
     label: 'Create issues_with_analysis view',
     sql: `
-CREATE OR REPLACE VIEW issues_with_analysis AS
+DROP VIEW IF EXISTS issues_with_analysis;
+CREATE VIEW issues_with_analysis AS
 SELECT
   i.id, i.scan_id, i.page_id, i.type, i.severity, i.title,
   i.description, i.details, i.fingerprint, i.framework, i.created_at,
@@ -966,13 +967,31 @@ async function runViaManagementAPI() {
     }
   }
 
+  // Retry up to maxAttempts for transient network errors (fetch failed, 5xx)
+  async function execWithRetry(sql, maxAttempts = 3) {
+    let lastErr
+    for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+      try {
+        await execSQL(sql)
+        return
+      } catch (err) {
+        lastErr = err
+        const msg = err.message || String(err)
+        const isTransient = /fetch failed|network|ECONNRESET|ETIMEDOUT|50[234]/i.test(msg)
+        if (!isTransient || attempt === maxAttempts) throw err
+        await new Promise(r => setTimeout(r, attempt * 1500))
+      }
+    }
+    throw lastErr
+  }
+
   let passed = 0
   let failed = 0
 
   for (const step of steps) {
     process.stdout.write(`   ${step.label}... `)
     try {
-      await execSQL(step.sql)
+      await execWithRetry(step.sql)
       console.log('OK')
       passed++
     } catch (err) {
