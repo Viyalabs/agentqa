@@ -568,6 +568,57 @@ CREATE INDEX IF NOT EXISTS idx_ie_model_version_asc
   ON issues_enriched (model_version, analyzed_at ASC)
   WHERE model_version IS NOT NULL;`
   },
+
+  // ── Migration 007 ─────────────────────────────────────────────────────────────
+  {
+    label: 'Add rate-limit index on scans(ip, created_at)',
+    sql: `
+CREATE INDEX IF NOT EXISTS idx_scans_ip_created_at
+  ON scans (ip, created_at DESC)
+  WHERE ip IS NOT NULL;`
+  },
+  {
+    label: 'Add issues sort index (scan_id, severity, created_at)',
+    sql: `
+CREATE INDEX IF NOT EXISTS idx_issues_scan_sort
+  ON issues (scan_id, severity, created_at);`
+  },
+  {
+    label: 'Add partial indexes on scanned_pages boolean flags',
+    sql: `
+CREATE INDEX IF NOT EXISTS idx_scanned_pages_errors
+  ON scanned_pages (scan_id)
+  WHERE has_console_errors = true;
+CREATE INDEX IF NOT EXISTS idx_scanned_pages_network
+  ON scanned_pages (scan_id)
+  WHERE has_network_failures = true;
+CREATE INDEX IF NOT EXISTS idx_scanned_pages_mobile
+  ON scanned_pages (scan_id)
+  WHERE has_mobile_issues = true;`
+  },
+  {
+    label: 'Add pattern refresh queue index',
+    sql: `
+CREATE INDEX IF NOT EXISTS idx_ip_refresh_queue
+  ON issue_patterns (last_seen_at DESC)
+  WHERE needs_refresh = true;`
+  },
+  {
+    label: 'Add GIN index on scanned_pages.network_details',
+    sql: `
+CREATE INDEX IF NOT EXISTS idx_scanned_pages_network_gin
+  ON scanned_pages USING GIN (network_details)
+  WHERE network_details IS NOT NULL;`
+  },
+  {
+    label: 'Add analytics indexes (completed scans, issue type+severity)',
+    sql: `
+CREATE INDEX IF NOT EXISTS idx_scans_completed_at
+  ON scans (completed_at DESC)
+  WHERE status = 'completed';
+CREATE INDEX IF NOT EXISTS idx_issues_type_severity
+  ON issues (type, severity);`
+  },
 ]
 
 // ── Pooler auto-discovery ─────────────────────────────────────────────────────
