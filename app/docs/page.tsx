@@ -221,6 +221,80 @@ curl -f -X POST https://qa.viyalabs.com/api/webhook/scan \\
           </ol>
         </Section>
 
+        {/* Detection reference */}
+        <Section id="detection" title="What we detect">
+          <p className="text-base text-zinc-400 leading-relaxed">
+            Every scan checks for the following issue types across all discovered pages.
+            Issues are classified into three severity levels that feed directly into the QA score.
+          </p>
+
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-zinc-800 text-zinc-500 text-left">
+                  <th className="pb-3 pr-6 font-medium">Type</th>
+                  <th className="pb-3 pr-6 font-medium">Severity</th>
+                  <th className="pb-3 font-medium">Description</th>
+                </tr>
+              </thead>
+              <tbody className="text-zinc-300">
+                {[
+                  ['page_crash', 'critical', 'Page threw an unhandled exception during navigation — users see a blank or broken page'],
+                  ['navigation_failure', 'critical', 'Playwright could not reach the page at all — server timeout, DNS failure, or hard crash'],
+                  ['js_error', 'critical', 'Uncaught JavaScript exception detected in the browser console with full stack trace'],
+                  ['page_not_found', 'medium', 'Page returned HTTP 404 — internal link pointing to a missing route'],
+                  ['console_error', 'medium', 'Non-fatal console.error() call — often a failed resource, API error, or React warning'],
+                  ['network_failure', 'medium', 'An XHR or fetch request returned a 4xx/5xx status or timed out'],
+                  ['missing_image', 'medium', 'An <img> tag failed to load — broken src URL or missing file'],
+                  ['missing_alt', 'medium', 'Images without alt text — WCAG 2.1 SC 1.1.1 accessibility violation'],
+                  ['mobile_layout', 'medium', 'Content overflows the 375 px mobile viewport — users scroll horizontally'],
+                  ['broken_form', 'medium', 'Form submission returned a network error or the form could not be submitted'],
+                  ['slow_load', 'low', 'Page took longer than 5 seconds to reach interactive — performance regression risk'],
+                  ['large_asset', 'low', 'A script, stylesheet, or image exceeded 500 KB uncompressed'],
+                  ['console_warning', 'low', 'console.warn() calls — deprecation notices, missing keys, or React prop warnings'],
+                  ['missing_meta', 'low', 'Missing meta description, Open Graph image, H1 heading, or mobile viewport tag'],
+                ].map(([type, severity, desc]) => (
+                  <tr key={type} className="border-b border-zinc-900">
+                    <td className="py-3 pr-6 font-mono text-blue-300 whitespace-nowrap">{type}</td>
+                    <td className={`py-3 pr-6 font-mono text-xs whitespace-nowrap ${
+                      severity === 'critical' ? 'text-red-400' :
+                      severity === 'medium' ? 'text-yellow-400' : 'text-blue-400'
+                    }`}>{severity}</td>
+                    <td className="py-3 text-zinc-400 text-xs leading-relaxed">{desc}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </Section>
+
+        {/* Score formula */}
+        <Section id="score" title="Score formula">
+          <p className="text-base text-zinc-400 leading-relaxed">
+            The QA score starts at 100 and deducts points by severity. Deductions per severity are
+            capped so a single category can't zero out your score alone.
+          </p>
+          <div className="grid sm:grid-cols-3 gap-4">
+            {[
+              { label: 'Critical', points: '−20 pts each', cap: 'max −60', color: 'text-red-400', border: 'border-red-500/20', bg: 'bg-red-500/5' },
+              { label: 'Medium', points: '−8 pts each', cap: 'max −30', color: 'text-yellow-400', border: 'border-yellow-500/20', bg: 'bg-yellow-500/5' },
+              { label: 'Low', points: '−2 pts each', cap: 'max −10', color: 'text-blue-400', border: 'border-blue-500/20', bg: 'bg-blue-500/5' },
+            ].map((tier) => (
+              <div key={tier.label} className={`p-4 rounded-xl border ${tier.border} ${tier.bg}`}>
+                <div className={`text-xs font-mono font-bold uppercase tracking-widest mb-2 ${tier.color}`}>
+                  {tier.label}
+                </div>
+                <div className={`text-xl font-bold tabular-nums ${tier.color}`}>{tier.points}</div>
+                <div className="text-xs text-zinc-500 mt-1">{tier.cap}</div>
+              </div>
+            ))}
+          </div>
+          <p className="text-sm text-zinc-500 leading-relaxed">
+            Example: 1 critical + 2 medium + 3 low issues → 100 − 20 − 16 − 6 = <span className="text-white font-semibold">58 / 100</span>.
+            The <Code>failThreshold</Code> defaults to 70 in the CI/CD webhook — scores below that return HTTP 422.
+          </p>
+        </Section>
+
         <div className="border-t border-zinc-800 pt-10 flex items-center justify-between text-sm text-zinc-600">
           <span>Questions? <a href="mailto:support@viyalabs.com" className="text-zinc-400 hover:text-white transition-colors">support@viyalabs.com</a></span>
           <Link href="/" className="text-zinc-400 hover:text-white transition-colors">
