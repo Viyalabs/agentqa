@@ -59,6 +59,9 @@ export async function testPage(
   let loadTimeMs = 0
   let title = ''
   let failedImages: string[] = []
+  let missingAltCount = 0
+  let missingMetaDescription = false
+  let missingViewport = false
   let forms: PageTestResult['forms'] = []
   let links: string[] = []
   let isCrash = false
@@ -200,6 +203,26 @@ export async function testPage(
         )
         .catch(() => [])
 
+      missingAltCount = await page
+        .evaluate(() =>
+          Array.from(document.querySelectorAll('img')).filter(
+            (img) => !img.hasAttribute('alt') && img.src?.startsWith('http')
+          ).length
+        )
+        .catch(() => 0)
+
+      missingMetaDescription = await page
+        .evaluate(
+          () => !document.querySelector('meta[name="description"]')
+        )
+        .catch(() => false)
+
+      missingViewport = await page
+        .evaluate(
+          () => !document.querySelector('meta[name="viewport"]')
+        )
+        .catch(() => false)
+
       forms = await page
         .evaluate(() =>
           Array.from(document.querySelectorAll('form')).map((form) => ({
@@ -293,6 +316,9 @@ export async function testPage(
     jsErrors,
     networkRequests,
     failedImages,
+    missingAltCount,
+    missingMetaDescription,
+    missingViewport,
     forms,
     links,
     screenshot,

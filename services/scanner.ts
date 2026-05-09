@@ -497,6 +497,30 @@ function classifyPageIssues(
     )
   }
 
+  if (result.missingAltCount > 0) {
+    issues.push(
+      issue(
+        'missing_alt',
+        'medium',
+        'Images Missing Alt Text',
+        `${result.missingAltCount} image(s) have no alt attribute, making them inaccessible to screen readers (WCAG 2.1 SC 1.1.1).`,
+        { url: result.url, count: result.missingAltCount }
+      )
+    )
+  }
+
+  if (result.missingViewport) {
+    issues.push(
+      issue(
+        'missing_meta',
+        'medium',
+        'Missing Viewport Meta Tag',
+        'Page has no <meta name="viewport"> tag. Mobile browsers will default to a desktop-width layout, causing the page to appear zoomed out on phones.',
+        { url: result.url }
+      )
+    )
+  }
+
   const brokenForms = result.forms.filter((f) => !f.hasSubmitButton)
   if (brokenForms.length > 0) {
     issues.push(
@@ -538,6 +562,18 @@ function classifyPageIssues(
   }
 
   // ── Low ──────────────────────────────────────────────────────────────────────
+
+  if (result.missingMetaDescription && !result.is404) {
+    issues.push(
+      issue(
+        'missing_meta',
+        'low',
+        'Missing Meta Description',
+        'Page has no <meta name="description"> tag. Search engines and social platforms use this to generate preview snippets. Without it, snippets are auto-generated and typically lower quality.',
+        { url: result.url }
+      )
+    )
+  }
 
   if (result.loadTimeMs > 5000 && !result.is404) {
     issues.push(

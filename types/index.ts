@@ -10,6 +10,8 @@ export type IssueType =
   | 'console_error'
   | 'network_failure'
   | 'missing_image'
+  | 'missing_alt'
+  | 'missing_meta'
   | 'broken_form'
   | 'slow_load'
   | 'console_warning'
@@ -107,6 +109,9 @@ export interface PageTestResult {
   jsErrors: Array<{ message: string; stackTrace: string | null; timestamp: number }>
   networkRequests: NetworkRequest[]
   failedImages: string[]
+  missingAltCount: number
+  missingMetaDescription: boolean
+  missingViewport: boolean
   forms: Array<{
     action: string | null
     method: string
