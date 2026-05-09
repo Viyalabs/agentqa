@@ -543,6 +543,17 @@ export function ResultsDashboard({ scanId }: ResultsDashboardProps) {
                   <div className={`text-sm mt-1 ${getScoreColor(scan.score)}`}>
                     {getScoreLabel(scan.score)}
                   </div>
+                  {scan.started_at && scan.completed_at && (() => {
+                    const secs = Math.round(
+                      (new Date(scan.completed_at).getTime() - new Date(scan.started_at).getTime()) / 1000
+                    )
+                    return secs > 0 ? (
+                      <div className="text-xs text-zinc-600 mt-2 flex items-center gap-1">
+                        <Clock className="h-3 w-3" />
+                        {secs < 60 ? `${secs}s` : `${Math.floor(secs / 60)}m ${secs % 60}s`}
+                      </div>
+                    ) : null
+                  })()}
                 </>
               ) : (
                 <div className="text-3xl font-bold text-zinc-600">–</div>
@@ -928,7 +939,12 @@ export function ResultsDashboard({ scanId }: ResultsDashboardProps) {
 // ── ScanLogTerminal — real-time scan log feed ─────────────────────────────────
 
 function ScanLogTerminal({ logs, isRunning }: { logs: ScanLog[]; isRunning: boolean }) {
-  const visibleLogs = logs.slice(-12) // show last 12 entries
+  const bottomRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
+  }, [logs.length])
+
   return (
     <div className="rounded-lg border border-zinc-800 bg-zinc-950 overflow-hidden">
       <div className="flex items-center gap-2 px-3 py-2 border-b border-zinc-800 bg-zinc-900/50">
@@ -940,11 +956,11 @@ function ScanLogTerminal({ logs, isRunning }: { logs: ScanLog[]; isRunning: bool
         <span className="text-xs text-zinc-500 font-mono ml-1">scan log</span>
         {isRunning && <Loader2 className="h-3 w-3 text-blue-400 animate-spin ml-auto" />}
       </div>
-      <div className="p-3 font-mono text-xs space-y-1 min-h-[80px]">
-        {visibleLogs.length === 0 ? (
+      <div className="p-3 font-mono text-xs space-y-1 min-h-[80px] max-h-48 overflow-y-auto">
+        {logs.length === 0 ? (
           <span className="text-zinc-600">Waiting for scan to start…</span>
         ) : (
-          visibleLogs.map((entry) => (
+          logs.map((entry) => (
             <div key={entry.id} className="flex gap-2 text-zinc-400">
               <span className="text-zinc-700 shrink-0">
                 {new Date(entry.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
@@ -965,6 +981,7 @@ function ScanLogTerminal({ logs, isRunning }: { logs: ScanLog[]; isRunning: bool
             <span className="animate-pulse">▋</span>
           </div>
         )}
+        <div ref={bottomRef} />
       </div>
     </div>
   )
