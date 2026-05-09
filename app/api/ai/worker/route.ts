@@ -23,7 +23,9 @@ async function runIssueBatch(
   // that were already matched during the scan phase (matchScanIssues ran then).
   // Any issue with a cached root_cause_template will skip the Claude call.
   const patternMatches = await getPatternMatchesForScan(scanId)
-  await analyzeIssues(scanId, appUrl, patternMatches, frameworks, ['critical', 'medium'])
+  // Include low severity — accessibility + SEO issues deserve fix guidance too.
+  // Haiku is cheap enough (~$0.01/scan) that covering all severities is fine.
+  await analyzeIssues(scanId, appUrl, patternMatches, frameworks, ['critical', 'medium', 'low'])
 }
 
 async function runScanOverview(

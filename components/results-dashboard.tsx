@@ -814,6 +814,50 @@ export function ResultsDashboard({ scanId }: ResultsDashboardProps) {
         )
       })()}
 
+      {/* Quick wins — top 3 highest-impact fixes when score is below 80 */}
+      {isComplete && scan.score !== null && scan.score < 80 && groupedCritical.length + groupedMedium.length > 0 && (() => {
+        const pointsFor = (g: GroupedIssue) => g.severity === 'critical' ? 20 : g.severity === 'medium' ? 8 : 2
+        const top3 = [...groupedCritical, ...groupedMedium]
+          .sort((a, b) => pointsFor(b) - pointsFor(a))
+          .slice(0, 3)
+        return (
+          <div className="rounded-xl border border-zinc-800 bg-zinc-900/30 p-4 space-y-3">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-semibold text-zinc-400 uppercase tracking-wider">Quick wins — fix these first</span>
+              <span className="text-xs text-zinc-600">Highest score impact</span>
+            </div>
+            <div className="space-y-2">
+              {top3.map((g) => {
+                const gain = pointsFor(g)
+                return (
+                  <div key={`${g.type}::${g.severity}`} className="flex items-center gap-3">
+                    <span className={`shrink-0 text-xs font-mono font-bold px-2 py-0.5 rounded ${
+                      g.severity === 'critical' ? 'bg-red-500/10 text-red-400' : 'bg-yellow-500/10 text-yellow-400'
+                    }`}>
+                      +{gain} pts
+                    </span>
+                    <div className="flex-1 min-w-0">
+                      <span className="text-sm text-zinc-300 truncate">{g.title}</span>
+                      {g.pageCount > 1 && (
+                        <span className="text-xs text-zinc-600 ml-2">{g.pageCount} pages</span>
+                      )}
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+            {scan.score + top3.reduce((s, g) => s + pointsFor(g), 0) <= 100 && (
+              <p className="text-xs text-zinc-600">
+                Fix these {top3.length} issue{top3.length !== 1 ? 's' : ''} to potentially reach{' '}
+                <span className="text-white font-semibold">
+                  {Math.min(scan.score + top3.reduce((s, g) => s + pointsFor(g), 0), 100)}/100
+                </span>
+              </p>
+            )}
+          </div>
+        )
+      })()}
+
       {/* Performance summary row */}
       {isComplete && pages.some((p) => p.load_time_ms) && (() => {
         const timed = pages.filter((p) => p.load_time_ms !== null && p.load_time_ms > 0)
@@ -911,6 +955,14 @@ export function ResultsDashboard({ scanId }: ResultsDashboardProps) {
               AI insights appear automatically — usually within 10–20 s
             </p>
           </div>
+        </div>
+      )}
+
+      {/* AI unavailable — shown after polling window closes with no analysis */}
+      {isComplete && !scan.ai_overview && !isPolling && issues.some((i) => i.severity !== 'low') && (
+        <div className="flex items-center gap-3 px-4 py-3 rounded-xl border border-zinc-800 bg-zinc-900/30 text-xs text-zinc-600">
+          <Sparkles className="h-3.5 w-3.5 shrink-0 text-zinc-700" />
+          AI analysis is processing in the background — root causes and fix suggestions will appear when ready. Refresh to check.
         </div>
       )}
 
