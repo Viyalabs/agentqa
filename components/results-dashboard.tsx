@@ -582,6 +582,29 @@ export function ResultsDashboard({ scanId }: ResultsDashboardProps) {
                   <div className={`text-sm mt-1 ${getScoreColor(scan.score)}`}>
                     {getScoreLabel(scan.score)}
                   </div>
+                  {/* Score breakdown */}
+                  {(criticalIssues.length > 0 || mediumIssues.length > 0 || lowIssues.length > 0) && (
+                    <div className="mt-3 pt-2.5 border-t border-zinc-800/60 space-y-1">
+                      {criticalIssues.length > 0 && (
+                        <div className="flex items-center justify-between text-[11px] font-mono">
+                          <span className="text-zinc-600">{criticalIssues.length}× critical</span>
+                          <span className="text-red-400">-{Math.min(criticalIssues.length * 20, 60)}</span>
+                        </div>
+                      )}
+                      {mediumIssues.length > 0 && (
+                        <div className="flex items-center justify-between text-[11px] font-mono">
+                          <span className="text-zinc-600">{mediumIssues.length}× medium</span>
+                          <span className="text-yellow-400">-{Math.min(mediumIssues.length * 8, 30)}</span>
+                        </div>
+                      )}
+                      {lowIssues.length > 0 && (
+                        <div className="flex items-center justify-between text-[11px] font-mono">
+                          <span className="text-zinc-600">{lowIssues.length}× low</span>
+                          <span className="text-blue-400">-{Math.min(lowIssues.length * 2, 10)}</span>
+                        </div>
+                      )}
+                    </div>
+                  )}
                   {scan.started_at && scan.completed_at && (() => {
                     const secs = Math.round(
                       (new Date(scan.completed_at).getTime() - new Date(scan.started_at).getTime()) / 1000
