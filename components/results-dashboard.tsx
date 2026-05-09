@@ -53,6 +53,36 @@ const POLL_INTERVAL_MS = 2500
 
 type SeverityFilter = 'all' | 'critical' | 'medium' | 'low'
 
+type IssueCategory = 'all' | 'availability' | 'javascript' | 'network' | 'performance' | 'accessibility' | 'seo' | 'ux'
+
+const ISSUE_CATEGORY: Record<string, IssueCategory> = {
+  page_crash:         'availability',
+  page_not_found:     'availability',
+  navigation_failure: 'availability',
+  js_error:           'javascript',
+  console_error:      'javascript',
+  console_warning:    'javascript',
+  network_failure:    'network',
+  missing_image:      'network',
+  slow_load:          'performance',
+  large_asset:        'performance',
+  missing_alt:        'accessibility',
+  mobile_layout:      'accessibility',
+  missing_meta:       'seo',
+  broken_form:        'ux',
+}
+
+const CATEGORY_LABELS: Record<IssueCategory, string> = {
+  all:          'All',
+  availability: 'Availability',
+  javascript:   'JavaScript',
+  network:      'Network',
+  performance:  'Performance',
+  accessibility:'Accessibility',
+  seo:          'SEO',
+  ux:           'UX',
+}
+
 // ── Issue grouping ────────────────────────────────────────────────────────────
 
 interface GroupedIssue {
@@ -175,6 +205,7 @@ export function ResultsDashboard({ scanId }: ResultsDashboardProps) {
     tabParam && VALID_TABS.includes(tabParam) ? tabParam : 'issues'
   )
   const [issueSearch, setIssueSearch] = useState('')
+  const [categoryFilter, setCategoryFilter] = useState<IssueCategory>('all')
   const [networkTypeFilter, setNetworkTypeFilter] = useState<string>('all')
 
   const fetchResults = useCallback(async () => {
@@ -355,15 +386,21 @@ export function ResultsDashboard({ scanId }: ResultsDashboardProps) {
   const groupedLow = groupIssues(lowIssues)
 
   const searchTerm = issueSearch.trim().toLowerCase()
-  const filterGroup = (groups: GroupedIssue[]) =>
-    searchTerm
-      ? groups.filter((g) =>
-          g.title.toLowerCase().includes(searchTerm) ||
-          g.type.toLowerCase().includes(searchTerm) ||
-          (g.description ?? '').toLowerCase().includes(searchTerm) ||
-          g.affectedUrls.some((u) => u.toLowerCase().includes(searchTerm))
-        )
-      : groups
+  const filterGroup = (groups: GroupedIssue[]) => {
+    let filtered = groups
+    if (categoryFilter !== 'all') {
+      filtered = filtered.filter((g) => ISSUE_CATEGORY[g.type] === categoryFilter)
+    }
+    if (searchTerm) {
+      filtered = filtered.filter((g) =>
+        g.title.toLowerCase().includes(searchTerm) ||
+        g.type.toLowerCase().includes(searchTerm) ||
+        (g.description ?? '').toLowerCase().includes(searchTerm) ||
+        g.affectedUrls.some((u) => u.toLowerCase().includes(searchTerm))
+      )
+    }
+    return filtered
+  }
 
   const filteredCritical = filterGroup(groupedCritical)
   const filteredMedium   = filterGroup(groupedMedium)
@@ -893,6 +930,39 @@ export function ResultsDashboard({ scanId }: ResultsDashboardProps) {
                 </div>
               </div>
 
+              {/* Category filter chips */}
+              {(() => {
+                const allGroups = [...groupedCritical, ...groupedMedium, ...groupedLow]
+                const presentCategories = Array.from(
+                  new Set(allGroups.map((g) => ISSUE_CATEGORY[g.type] ?? 'ux'))
+                ).sort()
+                if (presentCategories.length < 2) return null
+                return (
+                  <div className="flex flex-wrap gap-1.5">
+                    {(['all', ...presentCategories] as IssueCategory[]).map((cat) => {
+                      const isActive = categoryFilter === cat
+                      const count = cat === 'all'
+                        ? allGroups.length
+                        : allGroups.filter((g) => (ISSUE_CATEGORY[g.type] ?? 'ux') === cat).length
+                      return (
+                        <button
+                          key={cat}
+                          onClick={() => setCategoryFilter(cat)}
+                          aria-pressed={isActive}
+                          className={`px-2.5 py-0.5 rounded-full border text-[11px] font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 ${
+                            isActive
+                              ? 'bg-blue-500/15 border-blue-500/40 text-blue-300'
+                              : 'bg-zinc-900/50 border-zinc-700/60 text-zinc-500 hover:text-zinc-300 hover:border-zinc-600'
+                          }`}
+                        >
+                          {CATEGORY_LABELS[cat]} · {count}
+                        </button>
+                      )
+                    })}
+                  </div>
+                )
+              })()}
+
               {/* Grouped issue sections */}
               <div className="space-y-6">
                 {(severityFilter === 'all' || severityFilter === 'critical') && filteredCritical.length > 0 && (
@@ -922,11 +992,20 @@ export function ResultsDashboard({ scanId }: ResultsDashboardProps) {
 
                 {filteredGroups.length === 0 && (
                   <div className="flex flex-col items-center justify-center py-12 text-zinc-600">
-                    {searchTerm ? (
+                    {searchTerm || categoryFilter !== 'all' ? (
                       <>
                         <Info className="h-6 w-6 mb-2 opacity-40" />
-                        <p className="text-sm">No issues match &ldquo;{issueSearch}&rdquo;</p>
-                        <button onClick={() => setIssueSearch('')} className="mt-2 text-xs text-blue-400 hover:text-blue-300">Clear search</button>
+                        <p className="text-sm">
+                          {searchTerm
+                            ? `No issues match "${issueSearch}"`
+                            : `No ${CATEGORY_LABELS[categoryFilter]} issues found`}
+                        </p>
+                        <button
+                          onClick={() => { setIssueSearch(''); setCategoryFilter('all') }}
+                          className="mt-2 text-xs text-blue-400 hover:text-blue-300"
+                        >
+                          Clear filters
+                        </button>
                       </>
                     ) : (
                       <>
