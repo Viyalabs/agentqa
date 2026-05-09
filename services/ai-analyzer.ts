@@ -21,6 +21,30 @@ interface AIAnalysis {
   summary: string
   rootCause: string
   fixSuggestion: string
+  confidence: string   // "low" | "medium" | "high" — from Claude's self-assessment
+}
+
+function confidenceToFloat(c: string): number | null {
+  switch (c) {
+    case 'high':   return 0.9
+    case 'medium': return 0.6
+    case 'low':    return 0.3
+    default:       return null
+  }
+}
+
+function buildAnalysisData(issue: IssueForAnalysis, category: IssueCategory): Record<string, unknown> {
+  const tags = [...new Set([issue.type, category.toLowerCase().replace('_', '-'), issue.severity])]
+  const errorClass = typeof issue.details?.errorType === 'string'
+    ? issue.details.errorType
+    : typeof issue.details?.type === 'string'
+      ? issue.details.type
+      : null
+  return {
+    tags,
+    category,
+    ...(errorClass ? { error_class: errorClass } : {}),
+  }
 }
 
 type IssueCategory = 'JS_ERROR' | 'NETWORK' | 'MOBILE' | 'PERFORMANCE' | 'UI' | 'OTHER'
@@ -166,7 +190,12 @@ async function analyzeBatch(
       ? fixRaw.map((s, idx) => `${idx + 1}. ${s}`).join('\n')
       : (fixRaw?.trim() ?? '')
     if (summary) {
-      result.set(rep.fingerprint ?? rep.type, { summary, rootCause, fixSuggestion })
+      result.set(rep.fingerprint ?? rep.type, {
+        summary,
+        rootCause,
+        fixSuggestion,
+        confidence: item.confidence ?? 'low',
+      })
     }
   }
   return result
@@ -216,6 +245,7 @@ function parseSoloResponse(text: string): AIAnalysis {
       summary?: string
       root_cause?: string
       fix?: string | string[]
+      confidence?: string
     }
     const fixRaw = parsed.fix
     const fixSuggestion = Array.isArray(fixRaw)
@@ -225,6 +255,7 @@ function parseSoloResponse(text: string): AIAnalysis {
       summary:      parsed.summary?.trim()    ?? '',
       rootCause:    parsed.root_cause?.trim() ?? '',
       fixSuggestion,
+      confidence:   parsed.confidence         ?? 'low',
     }
   } catch {
     const lines = text.trim().split('\n')
@@ -234,7 +265,7 @@ function parseSoloResponse(text: string): AIAnalysis {
       else if (line.startsWith('ROOT_CAUSE:')) rootCause     = line.slice('ROOT_CAUSE:'.length).trim()
       else if (line.startsWith('FIX:'))        fixSuggestion = line.slice('FIX:'.length).trim()
     }
-    return { summary, rootCause, fixSuggestion }
+    return { summary, rootCause, fixSuggestion, confidence: 'low' }
   }
 }
 
@@ -317,6 +348,19 @@ export async function analyzeIssues(
           root_cause:    match.rootCauseTemplate,
           fix_suggestion: match.fixTemplate,
         }).eq('id', issue.id)
+
+        // Write full record to issues_enriched for analytics + future queries
+        await db.from('issues_enriched').upsert({
+          issue_id:         issue.id,
+          summary:          `${issue.title} — see root cause below.`,
+          root_cause:       match.rootCauseTemplate,
+          fix_suggestion:   match.fixTemplate,
+          analysis_data:    { tags: [issue.type, issue.severity], category: issueCategory(issue.type) },
+          model_version:    MODEL,
+          from_pattern:     true,
+          pattern_id:       match.patternId,
+          analyzed_at:      new Date().toISOString(),
+        }, { onConflict: 'issue_id' })
       } else {
         needsAnalysis.push(issue)
       }
@@ -365,7 +409,7 @@ export async function analyzeIssues(
         if (rep) {
           const match = patternMatches.get(rep.id)
           if (match?.patternId && analysis.rootCause && analysis.fixSuggestion) {
-            await updatePatternTemplates(match.patternId, analysis.rootCause, analysis.fixSuggestion)
+            await updatePatternTemplates(match.patternId, analysis.rootCause, analysis.fixSuggestion, MODEL)
               .catch((err) => console.error('[ai-analyzer] pattern template update failed:', err))
           }
         }
@@ -387,7 +431,7 @@ export async function analyzeIssues(
               analysisCache.set(cacheKey, analysis)
               const match = patternMatches.get(rep.id)
               if (match?.patternId && analysis.rootCause && analysis.fixSuggestion) {
-                await updatePatternTemplates(match.patternId, analysis.rootCause, analysis.fixSuggestion)
+                await updatePatternTemplates(match.patternId, analysis.rootCause, analysis.fixSuggestion, MODEL)
                   .catch((e) => console.error('[ai-analyzer] pattern template update failed:', e))
               }
             }
@@ -406,11 +450,31 @@ export async function analyzeIssues(
       const analysis = analysisCache.get(cacheKey)
       if (!analysis) return
 
+      // Keep flat columns on issues for backward compatibility with existing queries
       await db.from('issues').update({
         ai_summary:     analysis.summary,
         root_cause:     analysis.rootCause,
         fix_suggestion: analysis.fixSuggestion,
       }).eq('id', issue.id)
+
+      // Write full enrichment record to issues_enriched
+      const cat   = issueCategory(issue.type)
+      const match = patternMatches.get(issue.id)
+      await db.from('issues_enriched').upsert({
+        issue_id:        issue.id,
+        summary:         analysis.summary,
+        root_cause:      analysis.rootCause,
+        fix_suggestion:  analysis.fixSuggestion,
+        confidence:      confidenceToFloat(analysis.confidence),
+        analysis_data:   buildAnalysisData(issue, cat),
+        model_version:   MODEL,
+        from_pattern:    false,
+        pattern_id:      match?.patternId ?? null,
+        analyzed_at:     new Date().toISOString(),
+      }, { onConflict: 'issue_id' })
+        .then(({ error }) => {
+          if (error) console.error('[ai-analyzer] issues_enriched upsert failed:', error.message)
+        })
     })
   )
 

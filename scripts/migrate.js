@@ -6,22 +6,26 @@
  * Reads credentials from .env.local and applies the full schema via a
  * direct Postgres connection (not the Management API, which requires a PAT).
  *
- * Required in .env.local — use ONE of these connection options:
+ * Required in .env.local — use ONE of these connection options (tried in order):
  *
- *   SUPABASE_POOLER_URL  (recommended — IPv4, works everywhere)
- *     Dashboard → Project Settings → Database → Connection Pooling
- *     → Session mode → Connection string URI
- *     e.g. postgresql://postgres.[ref]:[password]@aws-0-[region].pooler.supabase.com:5432/postgres
+ *   SUPABASE_ACCESS_TOKEN  ← RECOMMENDED — works on any network, no port 5432 needed
+ *     supabase.com/dashboard/account/tokens → "Generate new token"
+ *     Uses the Supabase Management API over HTTPS (port 443).
  *
- *   SUPABASE_DB_URL  (direct — IPv6 only, may fail on some networks)
- *     Dashboard → Project Settings → Database → Connection string → URI
+ *   SUPABASE_POOLER_URL  (session-mode pooler — IPv4, port 5432)
+ *     Dashboard → Project Settings → Database → Connection Pooling → Session mode → URI
  *
- *   SUPABASE_DB_PASSWORD  (auto-builds direct URL from NEXT_PUBLIC_SUPABASE_URL)
+ *   SUPABASE_DB_URL / SUPABASE_DB_PASSWORD  (direct — IPv6 only, may fail on some networks)
  */
 
 const fs   = require('fs')
 const path = require('path')
 const { Client } = require('pg')
+
+// Returns true when a URL points to the direct host (IPv6-only on many ISPs)
+function isDirectUrl(url) {
+  return /db\.[a-z0-9]+\.supabase\.co/i.test(url)
+}
 
 // ── Load .env.local ───────────────────────────────────────────────────────────
 
@@ -46,36 +50,52 @@ function loadEnv() {
 loadEnv()
 
 const SUPABASE_URL    = process.env.NEXT_PUBLIC_SUPABASE_URL
+const ACCESS_TOKEN    = process.env.SUPABASE_ACCESS_TOKEN   // PAT — HTTPS, works anywhere
 const DB_PASSWORD     = process.env.SUPABASE_DB_PASSWORD
-const POOLER_URL      = process.env.SUPABASE_POOLER_URL   // session-mode pooler — IPv4, preferred
-const DB_URL_DIRECT   = process.env.SUPABASE_DB_URL        // direct connection  — IPv6 only
+const POOLER_URL      = process.env.SUPABASE_POOLER_URL
+const DB_URL_DIRECT   = process.env.SUPABASE_DB_URL
+// Standard vars injected by the Supabase-Vercel integration (vercel env pull)
+const POSTGRES_URL           = process.env.POSTGRES_URL             // transaction pooler (port 6543)
+const POSTGRES_URL_NONPOOL   = process.env.POSTGRES_URL_NON_POOLING // direct (IPv6) — fallback only
 
 if (!SUPABASE_URL || SUPABASE_URL.includes('your-project')) {
   console.error('\n  NEXT_PUBLIC_SUPABASE_URL is not set in .env.local\n')
   process.exit(1)
 }
 
+const PROJECT_REF = SUPABASE_URL.replace('https://', '').split('.')[0]
+
+// Derive a session-mode pooler URL (port 5432) from the Vercel transaction pooler URL
+// by stripping pgbouncer params and switching port. Session mode supports DDL.
+function toSessionPooler(url) {
+  if (!url || !url.includes('.pooler.supabase.com')) return null
+  return url
+    .replace(':6543/', ':5432/')
+    .replace(/[?&]pgbouncer=true/g, '')
+    .replace(/[?&]connection_limit=\d+/g, '')
+    .replace(/\?$/, '')
+}
+
 let DB_URL
 let DB_HOST
 
-if (POOLER_URL) {
-  // Session-mode pooler — IPv4, works on all networks (recommended)
-  DB_URL  = POOLER_URL
-  DB_HOST = POOLER_URL.split('@')[1]?.split(':')[0] ?? 'pooler'
-} else if (DB_URL_DIRECT) {
-  // Direct connection — IPv6 only, may fail on some ISPs/routers
-  DB_URL  = DB_URL_DIRECT
-  DB_HOST = DB_URL_DIRECT.split('@')[1]?.split(':')[0] ?? 'direct'
-} else if (DB_PASSWORD) {
-  // Build direct URL from password — same IPv6 caveat as above
-  const projectRef = SUPABASE_URL.replace('https://', '').split('.')[0]
-  DB_HOST = `db.${projectRef}.supabase.co`
-  DB_URL  = `postgresql://postgres:${encodeURIComponent(DB_PASSWORD)}@${DB_HOST}:5432/postgres`
-} else {
-  console.error('\n  No database connection configured in .env.local.')
-  console.error('  Add SUPABASE_POOLER_URL (recommended) from:')
-  console.error('    Dashboard → Project Settings → Database → Connection Pooling → Session mode → URI\n')
-  process.exit(1)
+if (!ACCESS_TOKEN) {
+  const sessionFromVercel = toSessionPooler(POSTGRES_URL)
+
+  if (POOLER_URL && !isDirectUrl(POOLER_URL)) {
+    DB_URL  = POOLER_URL
+    DB_HOST = POOLER_URL.split('@')[1]?.split(':')[0] ?? 'pooler'
+  } else if (sessionFromVercel) {
+    // Derived from POSTGRES_URL injected by Supabase-Vercel integration
+    DB_URL  = sessionFromVercel
+    DB_HOST = sessionFromVercel.split('@')[1]?.split(':')[0] ?? 'pooler'
+  } else if (DB_URL_DIRECT) {
+    DB_URL  = DB_URL_DIRECT
+    DB_HOST = DB_URL_DIRECT.split('@')[1]?.split(':')[0] ?? 'direct'
+  } else if (DB_PASSWORD) {
+    DB_HOST = `db.${PROJECT_REF}.supabase.co`
+    DB_URL  = `postgresql://postgres:${encodeURIComponent(DB_PASSWORD)}@${DB_HOST}:5432/postgres`
+  }
 }
 
 // ── SQL steps ─────────────────────────────────────────────────────────────────
@@ -505,25 +525,94 @@ END;
 $$;
 GRANT EXECUTE ON FUNCTION record_issue_feedback(UUID, BOOLEAN) TO service_role;`
   },
+
+  // ── Migration 006 ─────────────────────────────────────────────────────────────
+  {
+    label: 'Rebuild issues_with_analysis view (add fix_helpful + needs_refresh)',
+    sql: `
+CREATE OR REPLACE VIEW issues_with_analysis AS
+SELECT
+  i.id, i.scan_id, i.page_id, i.type, i.severity, i.title,
+  i.description, i.details, i.fingerprint, i.framework,
+  i.fix_helpful,
+  i.created_at,
+  ie.summary          AS ai_summary,
+  ie.root_cause,
+  ie.fix_suggestion,
+  ie.confidence,
+  ie.analysis_data,
+  ie.model_version,
+  ie.analysis_version,
+  ie.from_pattern,
+  ie.pattern_id,
+  ie.analyzed_at,
+  ip.occurrence_count     AS pattern_count,
+  ip.affected_frameworks  AS pattern_frameworks,
+  ip.total_scans_affected,
+  ip.needs_refresh        AS pattern_needs_refresh
+FROM issues i
+LEFT JOIN issues_enriched ie ON ie.issue_id = i.id
+LEFT JOIN issue_patterns  ip ON ip.id = ie.pattern_id;`
+  },
+  {
+    label: 'Add feedback and refresh indexes (migration 006)',
+    sql: `
+CREATE INDEX IF NOT EXISTS idx_issues_fix_helpful
+  ON issues (fix_helpful)
+  WHERE fix_helpful IS NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_ip_needs_refresh
+  ON issue_patterns (id)
+  WHERE needs_refresh = true;
+CREATE INDEX IF NOT EXISTS idx_ie_model_version_asc
+  ON issues_enriched (model_version, analyzed_at ASC)
+  WHERE model_version IS NOT NULL;`
+  },
 ]
+
+// ── Pooler auto-discovery ─────────────────────────────────────────────────────
+
+// When the direct URL fails (IPv6-only on many ISPs), try Supabase session
+// poolers in common regions. Returns the first URL that connects, or null.
+async function tryPoolerRegions(projectRef, password) {
+  const regions = [
+    'ap-south-1',      // Mumbai — likely for India-based users
+    'ap-southeast-1',  // Singapore
+    'us-east-1',
+    'eu-central-1',
+    'ap-northeast-1',  // Tokyo
+    'us-west-1',
+    'eu-west-2',
+    'sa-east-1',
+    'ca-central-1',
+  ]
+  const user = `postgres.${projectRef}`
+  for (const region of regions) {
+    const host = `aws-0-${region}.pooler.supabase.com`
+    const url  = `postgresql://${user}:${encodeURIComponent(password)}@${host}:5432/postgres`
+    const probe = new Client({ connectionString: url, ssl: { rejectUnauthorized: false },
+      connectionTimeoutMillis: 5000 })
+    try {
+      await probe.connect()
+      await probe.end()
+      return { url, host }
+    } catch {
+      // try next region
+    }
+  }
+  return null
+}
+
+// Extract password from a postgresql:// URI
+function extractPassword(url) {
+  try {
+    const m = url.match(/^postgresql?:\/\/[^:]+:([^@]+)@/)
+    return m ? decodeURIComponent(m[1]) : null
+  } catch { return null }
+}
 
 // ── Runner ────────────────────────────────────────────────────────────────────
 
-async function runMigration() {
-  console.log(`\n  AgentQA — database migration`)
-  console.log(`   Host:  ${DB_HOST}`)
-  console.log(`   Steps: ${steps.length}\n`)
-
-  const client = new Client({ connectionString: DB_URL, ssl: { rejectUnauthorized: false } })
-
-  try {
-    await client.connect()
-  } catch (err) {
-    console.error(`\n  Could not connect to database: ${err.message}`)
-    console.error('   Check that SUPABASE_DB_PASSWORD is correct in .env.local\n')
-    process.exit(1)
-  }
-
+async function runSteps(client) {
   let passed = 0
   let failed = 0
 
@@ -546,14 +635,111 @@ async function runMigration() {
   }
 
   await client.end()
-
   console.log(`\n${'─'.repeat(60)}`)
   console.log(`   ${passed} passed    ${failed} failed`)
-
   if (failed === 0) {
     console.log(`\n   Migration complete! Your database is ready.\n`)
   } else {
     console.log(`\n   Some steps failed. Check the errors above.\n`)
+    process.exit(1)
+  }
+}
+
+// ── Management API path (HTTPS — works on any network) ────────────────────────
+
+async function runViaManagementAPI() {
+  const apiBase = `https://api.supabase.com/v1/projects/${PROJECT_REF}/database/query`
+  const headers = {
+    'Authorization': `Bearer ${ACCESS_TOKEN}`,
+    'Content-Type':  'application/json',
+  }
+
+  async function execSQL(sql) {
+    const res  = await fetch(apiBase, { method: 'POST', headers, body: JSON.stringify({ query: sql.trim() }) })
+    const body = await res.json().catch(() => ({}))
+    if (!res.ok) {
+      const msg = body?.message ?? body?.error ?? `HTTP ${res.status}`
+      throw new Error(msg)
+    }
+  }
+
+  let passed = 0
+  let failed = 0
+
+  for (const step of steps) {
+    process.stdout.write(`   ${step.label}... `)
+    try {
+      await execSQL(step.sql)
+      console.log('OK')
+      passed++
+    } catch (err) {
+      const msg = err.message || String(err)
+      if (/already exists/i.test(msg)) {
+        console.log('OK (already exists)')
+        passed++
+      } else {
+        console.log(`FAILED — ${msg}`)
+        failed++
+      }
+    }
+  }
+
+  console.log(`\n${'─'.repeat(60)}`)
+  console.log(`   ${passed} passed    ${failed} failed`)
+  if (failed === 0) {
+    console.log(`\n   Migration complete! Your database is ready.\n`)
+  } else {
+    console.log(`\n   Some steps failed. Check the errors above.\n`)
+    process.exit(1)
+  }
+}
+
+// ── Postgres path ─────────────────────────────────────────────────────────────
+
+async function runMigration() {
+  console.log(`\n  AgentQA — database migration`)
+  console.log(`   Steps: ${steps.length}\n`)
+
+  // Prefer Management API — works from any network over HTTPS
+  if (ACCESS_TOKEN) {
+    console.log(`   Mode:  Supabase Management API (HTTPS)\n`)
+    return runViaManagementAPI()
+  }
+
+  if (!DB_URL) {
+    console.error('  No connection configured. Add to .env.local:')
+    console.error('  SUPABASE_ACCESS_TOKEN=<PAT from supabase.com/dashboard/account/tokens>\n')
+    process.exit(1)
+  }
+
+  console.log(`   Host:  ${DB_HOST}\n`)
+
+  const client = new Client({ connectionString: DB_URL, ssl: { rejectUnauthorized: false } })
+
+  try {
+    await client.connect()
+    return runSteps(client)
+  } catch (err) {
+    const isDnsFailure = /ENOTFOUND|ECONNREFUSED|timeout/i.test(err.message)
+    // Auto-discover the session pooler when the current URL is a direct URL
+    if (isDnsFailure && isDirectUrl(DB_URL)) {
+      console.log('   Direct URL failed (IPv6-only) — probing session pooler regions...\n')
+      const projectRef = SUPABASE_URL.replace('https://', '').split('.')[0]
+      const password   = extractPassword(DB_URL) ?? DB_PASSWORD
+      if (projectRef && password) {
+        const found = await tryPoolerRegions(projectRef, password)
+        if (found) {
+          console.log(`   Connected via: ${found.host}`)
+          console.log(`   Save this to .env.local to skip probing next time:`)
+          console.log(`   SUPABASE_POOLER_URL=${found.url}\n`)
+          const poolerClient = new Client({ connectionString: found.url, ssl: { rejectUnauthorized: false } })
+          await poolerClient.connect()
+          return runSteps(poolerClient)
+        }
+      }
+    }
+    console.error(`\n  Could not connect: ${err.message}`)
+    console.error('  Set SUPABASE_POOLER_URL in .env.local (Session mode URI from Supabase dashboard)\n')
     process.exit(1)
   }
 }

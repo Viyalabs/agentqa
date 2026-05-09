@@ -104,14 +104,24 @@ async function findOrCreatePattern(
 /**
  * Persist a root cause + fix back to the pattern as a reusable template.
  * Writes only when the pattern has no template yet OR when needs_refresh = true
- * (set by negative user feedback). Resets needs_refresh after overwriting.
+ * (set by negative user feedback). Resets needs_refresh and records the model
+ * version so stale templates can be detected when the model is upgraded.
  */
 export async function updatePatternTemplates(
   patternId: string,
   rootCause: string,
   fix: string,
+  modelVersion: string,
 ): Promise<void> {
   const db = getAdminClient()
+
+  // Fetch current template_version to increment it correctly
+  const { data: current } = await db
+    .from('issue_patterns')
+    .select('template_version')
+    .eq('id', patternId)
+    .maybeSingle()
+
   await db
     .from('issue_patterns')
     .update({
@@ -119,6 +129,8 @@ export async function updatePatternTemplates(
       fix_template:        fix,
       needs_refresh:       false,
       template_updated_at: new Date().toISOString(),
+      last_model_version:  modelVersion,
+      template_version:    (current?.template_version ?? 1) + 1,
     })
     .eq('id', patternId)
     .or('root_cause_template.is.null,needs_refresh.eq.true')
