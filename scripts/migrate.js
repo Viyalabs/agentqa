@@ -530,7 +530,8 @@ GRANT EXECUTE ON FUNCTION record_issue_feedback(UUID, BOOLEAN) TO service_role;`
   {
     label: 'Rebuild issues_with_analysis view (add fix_helpful + needs_refresh)',
     sql: `
-CREATE OR REPLACE VIEW issues_with_analysis AS
+DROP VIEW IF EXISTS issues_with_analysis;
+CREATE VIEW issues_with_analysis AS
 SELECT
   i.id, i.scan_id, i.page_id, i.type, i.severity, i.title,
   i.description, i.details, i.fingerprint, i.framework,

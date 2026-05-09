@@ -10,7 +10,8 @@
 
 -- ── 1. Rebuild view to include fix_helpful + needs_refresh ────────────────────
 
-CREATE OR REPLACE VIEW issues_with_analysis AS
+DROP VIEW IF EXISTS issues_with_analysis;
+CREATE VIEW issues_with_analysis AS
 SELECT
   -- Raw issue fields
   i.id,
