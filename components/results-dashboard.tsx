@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState, useCallback, useTransition, useRef } from 'react'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import {
   CheckCircle2,
@@ -166,6 +166,13 @@ export function ResultsDashboard({ scanId }: ResultsDashboardProps) {
   const [elapsed, setElapsed] = useState(0)
   const [rescanPending, startRescan] = useTransition()
   const [pageSort, setPageSort] = useState<'default' | 'slowest' | 'issues'>('default')
+  const searchParams = useSearchParams()
+  const VALID_TABS = ['issues', 'network', 'pages', 'screenshots'] as const
+  type ValidTab = typeof VALID_TABS[number]
+  const tabParam = searchParams.get('tab') as ValidTab | null
+  const [activeTab, setActiveTab] = useState<ValidTab>(
+    tabParam && VALID_TABS.includes(tabParam) ? tabParam : 'issues'
+  )
   const [issueSearch, setIssueSearch] = useState('')
   const [networkTypeFilter, setNetworkTypeFilter] = useState<string>('all')
 
@@ -719,7 +726,7 @@ export function ResultsDashboard({ scanId }: ResultsDashboardProps) {
       )}
 
       {/* Main tabs */}
-      <Tabs defaultValue="issues">
+      <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as ValidTab)}>
         <TabsList>
           <TabsTrigger value="issues">
             Issues {issues.length > 0 && <span className="ml-1.5 tabular-nums">({issues.length})</span>}
