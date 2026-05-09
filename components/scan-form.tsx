@@ -58,6 +58,16 @@ export function ScanForm() {
 
         // cached: true means this URL was scanned recently — route to report directly
         const dest = data.cached ? `/report/${data.scanId}` : `/scan/${data.scanId}`
+
+        // Remember last scan for returning visitor prompt on homepage
+        try {
+          localStorage.setItem('aqLastScan', JSON.stringify({
+            url: toValidate,
+            scanId: data.scanId,
+            ts: Date.now(),
+          }))
+        } catch { /* ok */ }
+
         router.push(dest)
       } catch {
         setError('Network error. Please check your connection and try again.')
