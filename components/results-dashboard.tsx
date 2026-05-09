@@ -162,6 +162,7 @@ export function ResultsDashboard({ scanId }: ResultsDashboardProps) {
   const [severityFilter, setSeverityFilter] = useState<SeverityFilter>('all')
   const stopPollingTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const [copied, setCopied] = useState(false)
+  const [copiedIssues, setCopiedIssues] = useState(false)
   const [rescanPending, startRescan] = useTransition()
 
   const fetchResults = useCallback(async () => {
@@ -222,6 +223,33 @@ export function ResultsDashboard({ scanId }: ResultsDashboardProps) {
       setTimeout(() => setCopied(false), 2000)
     })
   }, [scanId])
+
+  const copyIssuesList = useCallback(() => {
+    if (!data) return
+    const { scan, issues } = data
+    const reportUrl = `${window.location.origin}/report/${scanId}`
+    const scoreText = scan.score !== null ? ` · Score: ${scan.score}/100` : ''
+    const lines: string[] = [
+      `## QA Report: ${scan.url}${scoreText}`,
+      `Report: ${reportUrl}`,
+      '',
+    ]
+    const bySeverity: Record<string, typeof issues> = { critical: [], medium: [], low: [] }
+    for (const issue of issues) bySeverity[issue.severity]?.push(issue)
+    for (const [sev, list] of Object.entries(bySeverity)) {
+      if (!list.length) continue
+      lines.push(`### ${sev.charAt(0).toUpperCase() + sev.slice(1)} (${list.length})`)
+      for (const issue of list) {
+        lines.push(`- [ ] **${issue.title}**${issue.description ? ` — ${issue.description}` : ''}`)
+        if (issue.fix_suggestion) lines.push(`  > Fix: ${issue.fix_suggestion}`)
+      }
+      lines.push('')
+    }
+    navigator.clipboard.writeText(lines.join('\n')).then(() => {
+      setCopiedIssues(true)
+      setTimeout(() => setCopiedIssues(false), 2000)
+    })
+  }, [data, scanId])
 
   const handleRescan = useCallback(() => {
     if (!data) return
@@ -375,6 +403,16 @@ export function ResultsDashboard({ scanId }: ResultsDashboardProps) {
                 </svg>
                 Post
               </a>
+              {issues.length > 0 && (
+                <button
+                  onClick={copyIssuesList}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-zinc-700 text-zinc-400 hover:text-zinc-200 hover:border-zinc-600 text-sm transition-colors"
+                  title="Copy issues as Markdown checklist (for Notion, Linear, GitHub)"
+                >
+                  {copiedIssues ? <Check className="h-3.5 w-3.5 text-green-400" /> : <Copy className="h-3.5 w-3.5" />}
+                  {copiedIssues ? 'Copied!' : 'Copy issues'}
+                </button>
+              )}
               <button
                 onClick={exportReport}
                 className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-zinc-700 text-zinc-400 hover:text-zinc-200 hover:border-zinc-600 text-sm transition-colors"
