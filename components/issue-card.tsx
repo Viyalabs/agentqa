@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
-import { AlertTriangle, AlertCircle, Info, ExternalLink, ChevronDown, ChevronUp, Layers, TrendingUp, ThumbsUp, ThumbsDown, RefreshCw } from 'lucide-react'
+import { AlertTriangle, AlertCircle, Info, ExternalLink, ChevronDown, ChevronUp, Layers, TrendingUp, ThumbsUp, ThumbsDown, RefreshCw, Copy, Check } from 'lucide-react'
 import { Badge } from './ui/badge'
 import { Card, CardContent } from './ui/card'
 import type { Issue } from '@/types'
@@ -359,6 +359,14 @@ function SectionRule({ label, accent }: { label: string; accent: SectionAccent }
 function AIPanel({ issue }: { issue: Issue }) {
   const hasAnalysis = Boolean(issue.ai_summary)
   const confidence  = hasAnalysis ? deriveConfidence(issue) : null
+  const [fixCopied, setFixCopied] = useState(false)
+
+  function copyFix(lines: string[]) {
+    navigator.clipboard.writeText(lines.join('\n')).then(() => {
+      setFixCopied(true)
+      setTimeout(() => setFixCopied(false), 2000)
+    })
+  }
   const impact      = IMPACT[issue.type] ?? (
     issue.severity === 'critical'
       ? 'Critical impact on user experience and core functionality'
@@ -443,6 +451,18 @@ function AIPanel({ issue }: { issue: Issue }) {
                 <div className="flex items-center gap-1.5 px-2.5 py-1 bg-zinc-800/50 border-b border-zinc-700/50">
                   <div className="h-1.5 w-1.5 rounded-full bg-emerald-500/60" />
                   <span className="text-[9px] font-mono text-zinc-500 tracking-wide">terminal</span>
+                  <button
+                    onClick={() => copyFix(fixLines)}
+                    className={`ml-auto flex items-center gap-1 text-[9px] font-mono px-1.5 py-0.5 rounded transition-colors ${
+                      fixCopied
+                        ? 'text-emerald-400 bg-emerald-500/10'
+                        : 'text-zinc-600 hover:text-zinc-400 hover:bg-zinc-700/50'
+                    }`}
+                    title="Copy fix to clipboard"
+                  >
+                    {fixCopied ? <Check className="h-2.5 w-2.5" /> : <Copy className="h-2.5 w-2.5" />}
+                    {fixCopied ? 'copied' : 'copy'}
+                  </button>
                 </div>
                 <div className="px-2.5 py-2 bg-zinc-900/60 space-y-1.5">
                   {fixLines.map((line, i) => (
