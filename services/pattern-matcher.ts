@@ -114,16 +114,12 @@ async function findOrCreatePattern(
     .maybeSingle()
 
   if (existing) {
-    const merged = [...new Set([...(existing.affected_frameworks ?? []), ...frameworks])]
-    await db
-      .from('issue_patterns')
-      .update({
-        occurrence_count:    existing.occurrence_count + 1,
-        total_scans_affected: (existing.total_scans_affected ?? 0) + 1,
-        last_seen_at:        now,
-        affected_frameworks: merged,
-      })
-      .eq('id', existing.id)
+    // Atomic increment via SQL RPC — avoids lost-update race when concurrent workers process the same fingerprint
+    await db.rpc('increment_pattern_occurrence', {
+      p_pattern_id: existing.id,
+      p_frameworks: frameworks.length > 0 ? frameworks : null,
+      p_now: now,
+    })
 
     // Time-series record — one row per (pattern, scan); UNIQUE constraint deduplicates
     await db
@@ -209,25 +205,13 @@ export async function updatePatternTemplates(
 ): Promise<void> {
   const db = getAdminClient()
 
-  // Fetch current template_version to increment it correctly
-  const { data: current } = await db
-    .from('issue_patterns')
-    .select('template_version')
-    .eq('id', patternId)
-    .maybeSingle()
-
-  await db
-    .from('issue_patterns')
-    .update({
-      root_cause_template: rootCause,
-      fix_template:        fix,
-      needs_refresh:       false,
-      template_updated_at: new Date().toISOString(),
-      last_model_version:  modelVersion,
-      template_version:    (current?.template_version ?? 1) + 1,
-    })
-    .eq('id', patternId)
-    .or('root_cause_template.is.null,needs_refresh.eq.true')
+  await db.rpc('update_pattern_template', {
+    p_pattern_id:   patternId,
+    p_root_cause:   rootCause,
+    p_fix:          fix,
+    p_model_ver:    modelVersion,
+    p_updated_at:   new Date().toISOString(),
+  })
 }
 
 /**

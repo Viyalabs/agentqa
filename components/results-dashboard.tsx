@@ -228,8 +228,8 @@ export function ResultsDashboard({ scanId }: ResultsDashboardProps) {
           if (stopPollingTimer.current) clearTimeout(stopPollingTimer.current)
           setIsPolling(false)
         } else if (!stopPollingTimer.current) {
-          // Keep polling up to 20s to catch AI analysis results
-          stopPollingTimer.current = setTimeout(() => setIsPolling(false), 20000)
+          // Keep polling up to 90s — AI analysis (Haiku + queue) can take 30-60s
+          stopPollingTimer.current = setTimeout(() => setIsPolling(false), 90_000)
         }
       }
     } catch (err) {

@@ -788,6 +788,84 @@ CREATE INDEX IF NOT EXISTS idx_scans_completed_at
 CREATE INDEX IF NOT EXISTS idx_issues_type_severity
   ON issues (type, severity);`
   },
+  {
+    label: 'Create reap_stuck_ai_jobs() function',
+    sql: `
+CREATE OR REPLACE FUNCTION reap_stuck_ai_jobs(p_timeout_minutes INT DEFAULT 10)
+RETURNS INT LANGUAGE plpgsql SECURITY DEFINER AS $$
+DECLARE
+  reaped INT;
+BEGIN
+  UPDATE ai_analysis_jobs
+  SET status = 'pending',
+      last_error = 'Reaped after timeout in running state',
+      scheduled_at = NOW()
+  WHERE status = 'running'
+    AND started_at < NOW() - (p_timeout_minutes || ' minutes')::INTERVAL
+    AND attempts < 3;
+  GET DIAGNOSTICS reaped = ROW_COUNT;
+  UPDATE ai_analysis_jobs
+  SET status = 'failed',
+      last_error = 'Reaped: max attempts exceeded'
+  WHERE status = 'running'
+    AND started_at < NOW() - (p_timeout_minutes || ' minutes')::INTERVAL
+    AND attempts >= 3;
+  RETURN reaped;
+END;
+$$;
+GRANT EXECUTE ON FUNCTION reap_stuck_ai_jobs(INT) TO service_role;`
+  },
+  {
+    label: 'Create update_pattern_template() function',
+    sql: `
+CREATE OR REPLACE FUNCTION update_pattern_template(
+  p_pattern_id  UUID,
+  p_root_cause  TEXT,
+  p_fix         TEXT,
+  p_model_ver   TEXT,
+  p_updated_at  TIMESTAMPTZ DEFAULT NOW()
+)
+RETURNS VOID LANGUAGE plpgsql SECURITY DEFINER AS $$
+BEGIN
+  UPDATE issue_patterns
+  SET
+    root_cause_template  = p_root_cause,
+    fix_template         = p_fix,
+    needs_refresh        = FALSE,
+    template_updated_at  = p_updated_at,
+    last_model_version   = p_model_ver,
+    template_version     = COALESCE(template_version, 0) + 1
+  WHERE id = p_pattern_id
+    AND (root_cause_template IS NULL OR needs_refresh = TRUE);
+END;
+$$;
+GRANT EXECUTE ON FUNCTION update_pattern_template(UUID, TEXT, TEXT, TEXT, TIMESTAMPTZ) TO service_role;`
+  },
+  {
+    label: 'Create increment_pattern_occurrence() function',
+    sql: `
+CREATE OR REPLACE FUNCTION increment_pattern_occurrence(
+  p_pattern_id UUID,
+  p_frameworks TEXT[],
+  p_now TIMESTAMPTZ DEFAULT NOW()
+)
+RETURNS VOID LANGUAGE plpgsql SECURITY DEFINER AS $$
+BEGIN
+  UPDATE issue_patterns
+  SET
+    occurrence_count      = occurrence_count + 1,
+    total_scans_affected  = total_scans_affected + 1,
+    affected_frameworks   = CASE
+                              WHEN p_frameworks IS NOT NULL AND array_length(p_frameworks, 1) > 0
+                              THEN p_frameworks
+                              ELSE affected_frameworks
+                            END,
+    last_seen_at          = p_now
+  WHERE id = p_pattern_id;
+END;
+$$;
+GRANT EXECUTE ON FUNCTION increment_pattern_occurrence(UUID, TEXT[], TIMESTAMPTZ) TO service_role;`
+  },
 ]
 
 // ── Pooler auto-discovery ─────────────────────────────────────────────────────

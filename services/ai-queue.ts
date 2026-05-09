@@ -41,7 +41,8 @@ export async function enqueueAIJobs(scanId: string): Promise<void> {
  */
 export async function claimNextJob(): Promise<AIJob | null> {
   const db = getAdminClient()
-  const { data } = await db.rpc('claim_next_ai_job')
+  const { data, error } = await db.rpc('claim_next_ai_job')
+  if (error) throw new Error(`claimNextJob RPC failed: ${error.message}`)
   return (data?.[0] as AIJob) ?? null
 }
 
@@ -70,9 +71,9 @@ export async function failJob(
   await db
     .from('ai_analysis_jobs')
     .update({
-      status:       exhausted ? 'failed' : 'pending',
-      last_error:   error.slice(0, 500),
-      scheduled_at: exhausted ? undefined : new Date(Date.now() + delayMs).toISOString(),
+      status:     exhausted ? 'failed' : 'pending',
+      last_error: error.slice(0, 500),
+      ...(exhausted ? {} : { scheduled_at: new Date(Date.now() + delayMs).toISOString() }),
     })
     .eq('id', jobId)
 }

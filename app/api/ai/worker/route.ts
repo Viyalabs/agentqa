@@ -37,14 +37,16 @@ async function runScanOverview(
   const db = getAdminClient()
 
   // issue_batch runs first (priority 1) so these counts reflect analyzed issues
-  const [{ count: critCount }, { count: medCount }] = await Promise.all([
+  const [{ count: critCount }, { count: medCount }, { count: lowCount }] = await Promise.all([
     db.from('issues').select('*', { count: 'exact', head: true })
       .eq('scan_id', scanId).eq('severity', 'critical'),
     db.from('issues').select('*', { count: 'exact', head: true })
       .eq('scan_id', scanId).eq('severity', 'medium'),
+    db.from('issues').select('*', { count: 'exact', head: true })
+      .eq('scan_id', scanId).eq('severity', 'low'),
   ])
 
-  await generateScanOverview(scanId, appUrl, score, critCount ?? 0, medCount ?? 0, frameworks)
+  await generateScanOverview(scanId, appUrl, score, critCount ?? 0, medCount ?? 0, frameworks, lowCount ?? 0)
 }
 
 // ── Queue drainer ─────────────────────────────────────────────────────────────
@@ -106,6 +108,9 @@ async function processOne(): Promise<boolean> {
  * Uses an iterative loop — not recursion — to avoid stack growth.
  */
 async function drainQueue(): Promise<void> {
+  // Reset jobs stuck in 'running' after a crashed lambda so they re-enter the queue.
+  await getAdminClient().rpc('reap_stuck_ai_jobs', { p_timeout_minutes: 10 })
+
   let processed = 0
   while (processed < MAX_JOBS_PER_INVOCATION) {
     const hadWork = await processOne()

@@ -37,7 +37,6 @@ export async function GET(
     db.from('issues_with_analysis')
       .select('*')
       .eq('scan_id', scanId)
-      .order('severity', { ascending: true })
       .order('created_at', { ascending: true }),
 
     db.from('scan_logs')
@@ -64,6 +63,14 @@ export async function GET(
 
   const frameworkNames = (fws ?? []).map((f: { framework: string }) => f.framework)
 
+  // Sort issues: critical → medium → low (alphabetical DB sort gives wrong order)
+  const severityOrder: Record<string, number> = { critical: 0, medium: 1, low: 2 }
+  const sortedIssues = (issues ?? []).sort((a, b) => {
+    const aOrd = severityOrder[a.severity as string] ?? 3
+    const bOrd = severityOrder[b.severity as string] ?? 3
+    return aOrd !== bOrd ? aOrd - bOrd : 0
+  })
+
   // Fetch prior completed scans for same URL (after we have scan.url)
   const { data: historyRows } = await db
     .from('scans')
@@ -77,7 +84,7 @@ export async function GET(
   return NextResponse.json({
     scan,
     pages:      pages ?? [],
-    issues:     issues ?? [],
+    issues:     sortedIssues,
     logs:       logsData ?? [],
     frameworks: frameworkNames,
     history:    historyRows ?? [],

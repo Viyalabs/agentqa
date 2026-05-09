@@ -1,10 +1,8 @@
-import Anthropic from '@anthropic-ai/sdk'
 import { getAdminClient } from '@/lib/supabase'
 import { updatePatternTemplates } from './pattern-matcher'
+import { callClaude, isClaudeConfigured, CLAUDE_HAIKU, logClaudeError } from '@/services/ai/claude'
 import type { IssueType, IssueSeverity, PatternMatchResult } from '@/types'
 
-// Haiku: fast + cheap for post-scan analysis that runs in background
-const MODEL      = 'claude-haiku-4-5-20251001'
 const BATCH_SIZE = 14 // issues per Claude call; ~170 output tokens each = ~2380 max_tokens
 
 interface IssueForAnalysis {
@@ -219,18 +217,21 @@ function extractJSON(text: string): unknown {
  * Throws on API failure so the caller can fall back to individual calls.
  */
 async function analyzeBatch(
-  client: Anthropic,
   appUrl: string,
   issues: IssueForAnalysis[],
   frameworks: string[],
 ): Promise<Map<string, AIAnalysis>> {
-  const message = await client.messages.create({
-    model:      MODEL,
-    max_tokens: Math.max(170 * issues.length, 400),
-    messages:   [{ role: 'user', content: buildBatchPrompt(appUrl, issues, frameworks) }],
+  const claudeResult = await callClaude({
+    prompt:    buildBatchPrompt(appUrl, issues, frameworks),
+    model:     CLAUDE_HAIKU,
+    maxTokens: Math.max(170 * issues.length, 400),
+    timeoutMs: 60_000,
   })
-
-  const text   = message.content[0]?.type === 'text' ? message.content[0].text : ''
+  if (!claudeResult.ok) {
+    logClaudeError('batch-analysis', claudeResult.error)
+    throw new Error(claudeResult.error.message)
+  }
+  const text = claudeResult.data
   const parsed = extractJSON(text) as Array<{
     i: number
     summary?: string
@@ -376,8 +377,7 @@ export async function analyzeIssues(
   frameworks: string[] = [],
   severities: string[] = ['critical', 'medium'],
 ): Promise<void> {
-  const apiKey = process.env.ANTHROPIC_API_KEY
-  if (!apiKey) {
+  if (!isClaudeConfigured()) {
     console.warn('[ai-analyzer] ANTHROPIC_API_KEY not set — skipping issue analysis')
     return
   }
@@ -392,8 +392,6 @@ export async function analyzeIssues(
     .is('ai_summary', null)
 
   if (error || !issues || issues.length === 0) return
-
-  const client = new Anthropic({ apiKey })
 
   // --- Step 1: apply cached templates from pattern DB (free, instant) ----------
   const needsAnalysis: IssueForAnalysis[] = []
@@ -416,7 +414,7 @@ export async function analyzeIssues(
           root_cause:       match.rootCauseTemplate,
           fix_suggestion:   match.fixTemplate,
           analysis_data:    { tags: [issue.type, issue.severity], category: issueCategory(issue.type) },
-          model_version:    MODEL,
+          model_version:    CLAUDE_HAIKU,
           from_pattern:     true,
           pattern_id:       match.patternId,
           analyzed_at:      new Date().toISOString(),
@@ -462,14 +460,14 @@ export async function analyzeIssues(
   for (let i = 0; i < representatives.length; i += BATCH_SIZE) {
     const batch = representatives.slice(i, i + BATCH_SIZE)
     try {
-      const batchResults = await analyzeBatch(client, appUrl, batch, frameworks)
+      const batchResults = await analyzeBatch(appUrl, batch, frameworks)
       for (const [cacheKey, analysis] of batchResults) {
         analysisCache.set(cacheKey, analysis)
         const rep = batch.find((r) => (r.fingerprint ?? r.type) === cacheKey)
         if (rep) {
           const match = patternMatches.get(rep.id)
           if (match?.patternId && analysis.rootCause && analysis.fixSuggestion) {
-            await updatePatternTemplates(match.patternId, analysis.rootCause, analysis.fixSuggestion, MODEL)
+            await updatePatternTemplates(match.patternId, analysis.rootCause, analysis.fixSuggestion, CLAUDE_HAIKU)
               .catch((err) => console.error('[ai-analyzer] pattern template update failed:', err))
           }
         }
@@ -480,18 +478,22 @@ export async function analyzeIssues(
         batch.map(async (rep) => {
           const cacheKey = rep.fingerprint ?? rep.type
           try {
-            const message = await client.messages.create({
-              model:      MODEL,
-              max_tokens: 300,
-              messages:   [{ role: 'user', content: buildSoloPrompt(appUrl, rep, frameworks) }],
+            const soloResult = await callClaude({
+              prompt:    buildSoloPrompt(appUrl, rep, frameworks),
+              model:     CLAUDE_HAIKU,
+              maxTokens: 300,
+              timeoutMs: 30_000,
             })
-            const text     = message.content[0]?.type === 'text' ? message.content[0].text : ''
-            const analysis = parseSoloResponse(text)
+            if (!soloResult.ok) {
+              logClaudeError('solo-analysis', soloResult.error)
+              throw new Error(soloResult.error.message)
+            }
+            const analysis = parseSoloResponse(soloResult.data)
             if (analysis.summary) {
               analysisCache.set(cacheKey, analysis)
               const match = patternMatches.get(rep.id)
               if (match?.patternId && analysis.rootCause && analysis.fixSuggestion) {
-                await updatePatternTemplates(match.patternId, analysis.rootCause, analysis.fixSuggestion, MODEL)
+                await updatePatternTemplates(match.patternId, analysis.rootCause, analysis.fixSuggestion, CLAUDE_HAIKU)
                   .catch((e) => console.error('[ai-analyzer] pattern template update failed:', e))
               }
             }
@@ -527,7 +529,7 @@ export async function analyzeIssues(
         fix_suggestion:  analysis.fixSuggestion,
         confidence:      confidenceToFloat(analysis.confidence),
         analysis_data:   buildAnalysisData(issue, cat),
-        model_version:   MODEL,
+        model_version:   CLAUDE_HAIKU,
         from_pattern:    false,
         pattern_id:      match?.patternId ?? null,
         analyzed_at:     new Date().toISOString(),
@@ -555,11 +557,11 @@ export async function generateScanOverview(
   criticalCount: number,
   mediumCount: number,
   frameworks: string[] = [],
+  lowCount = 0,
 ): Promise<void> {
-  const apiKey = process.env.ANTHROPIC_API_KEY
-  if (!apiKey) return
+  if (!isClaudeConfigured()) return
 
-  const totalIssues = criticalCount + mediumCount
+  const totalIssues = criticalCount + mediumCount + lowCount
   if (totalIssues === 0) return
 
   try {
@@ -570,18 +572,18 @@ export async function generateScanOverview(
       return
     }
 
-    const client = new Anthropic({ apiKey })
-
-    const message = await client.messages.create({
-      model: MODEL,
-      max_tokens: 160,
-      messages: [{
-        role: 'user',
-        content: buildOverviewPrompt(appUrl, score, totalIssues, criticalCount, mediumCount, frameworks),
-      }],
+    const result = await callClaude({
+      prompt:    buildOverviewPrompt(appUrl, score, totalIssues, criticalCount, mediumCount, frameworks),
+      model:     CLAUDE_HAIKU,
+      maxTokens: 160,
     })
 
-    const overview = message.content[0]?.type === 'text' ? message.content[0].text.trim() : ''
+    if (!result.ok) {
+      logClaudeError('scan-overview', result.error)
+      return
+    }
+
+    const overview = result.data.trim()
     if (!overview) return
 
     await db.from('scans').update({ ai_overview: overview }).eq('id', scanId)
