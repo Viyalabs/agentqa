@@ -163,6 +163,7 @@ export function ResultsDashboard({ scanId }: ResultsDashboardProps) {
   const stopPollingTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const [copied, setCopied] = useState(false)
   const [copiedIssues, setCopiedIssues] = useState(false)
+  const [copiedBadge, setCopiedBadge] = useState(false)
   const [elapsed, setElapsed] = useState(0)
   const [rescanPending, startRescan] = useTransition()
   const [pageSort, setPageSort] = useState<'default' | 'slowest' | 'issues'>('default')
@@ -272,6 +273,17 @@ export function ResultsDashboard({ scanId }: ResultsDashboardProps) {
       setTimeout(() => setCopiedIssues(false), 2000)
     })
   }, [data, scanId])
+
+  const copyBadge = useCallback(() => {
+    const origin = typeof window !== 'undefined' ? window.location.origin : 'https://qa.viyalabs.com'
+    const badgeUrl = `${origin}/api/badge/${scanId}`
+    const reportUrl = `${origin}/report/${scanId}`
+    const md = `[![AgentQA](${badgeUrl})](${reportUrl})`
+    navigator.clipboard.writeText(md).then(() => {
+      setCopiedBadge(true)
+      setTimeout(() => setCopiedBadge(false), 2000)
+    })
+  }, [scanId])
 
   const handleRescan = useCallback(() => {
     if (!data) return
@@ -452,6 +464,14 @@ export function ResultsDashboard({ scanId }: ResultsDashboardProps) {
                   {copiedIssues ? 'Copied!' : 'Copy issues'}
                 </button>
               )}
+              <button
+                onClick={copyBadge}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-zinc-700 text-zinc-400 hover:text-zinc-200 hover:border-zinc-600 text-sm transition-colors"
+                title="Copy Markdown badge for GitHub README"
+              >
+                {copiedBadge ? <Check className="h-3.5 w-3.5 text-green-400" /> : <Download className="h-3.5 w-3.5" />}
+                {copiedBadge ? 'Copied!' : 'Badge'}
+              </button>
               <button
                 onClick={exportReport}
                 className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-zinc-700 text-zinc-400 hover:text-zinc-200 hover:border-zinc-600 text-sm transition-colors"
