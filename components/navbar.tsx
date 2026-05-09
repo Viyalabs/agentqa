@@ -39,6 +39,9 @@ export function Navbar() {
           <a href="#pricing" className="hover:text-white transition-colors">
             Pricing
           </a>
+          <a href="/patterns" className="hover:text-white transition-colors">
+            Patterns
+          </a>
           <a href="/docs" className="hover:text-white transition-colors">
             Docs
           </a>

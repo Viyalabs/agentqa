@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import Link from 'next/link'
 import { AlertTriangle, AlertCircle, Info, ExternalLink, ChevronDown, ChevronUp, Layers, TrendingUp, ThumbsUp, ThumbsDown, RefreshCw } from 'lucide-react'
 import { Badge } from './ui/badge'
 import { Card, CardContent } from './ui/card'
@@ -173,13 +174,15 @@ export function IssueCard({ issue, pageCount, totalCount }: IssueCardProps) {
                   </span>
                 )}
                 {issue.pattern_count != null && issue.pattern_count > 1 && (
-                  <span
-                    className="flex items-center gap-1 text-[10px] text-orange-400 bg-orange-500/10 border border-orange-500/20 rounded px-1.5 py-0.5 font-mono"
-                    title={`This pattern has been seen ${issue.pattern_count} times across all AgentQA scans`}
+                  <Link
+                    href={`/patterns?type=${issue.type}&sort=frequency`}
+                    className="flex items-center gap-1 text-[10px] text-orange-400 bg-orange-500/10 border border-orange-500/20 rounded px-1.5 py-0.5 font-mono hover:bg-orange-500/20 transition-colors"
+                    title={`This pattern has been seen ${issue.pattern_count} times — view similar patterns`}
+                    onClick={(e) => e.stopPropagation()}
                   >
                     <TrendingUp className="h-2.5 w-2.5" />
                     {issue.pattern_count >= 100 ? '100+×' : `${issue.pattern_count}×`} known
-                  </span>
+                  </Link>
                 )}
                 {(issue.total_scans_affected ?? 0) >= 3 && (
                   <span
