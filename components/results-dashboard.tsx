@@ -346,6 +346,8 @@ export function ResultsDashboard({ scanId }: ResultsDashboardProps) {
     (p) => (p.network_details as NetworkRequest[] | null) ?? []
   )
   const failedNetworkRequests = allNetworkRequests.filter((r) => r.failed)
+  const clientErrorRequests  = allNetworkRequests.filter((r) => !r.failed && r.statusCode !== null && r.statusCode >= 400 && r.statusCode < 500)
+  const serverErrorRequests  = allNetworkRequests.filter((r) => !r.failed && r.statusCode !== null && r.statusCode >= 500)
 
   return (
     <div className="max-w-6xl mx-auto px-6 py-8 space-y-6">
@@ -684,9 +686,11 @@ export function ResultsDashboard({ scanId }: ResultsDashboardProps) {
           <TabsTrigger value="network">
             Network {allNetworkRequests.length > 0 && (
               <span className="ml-1.5 tabular-nums">
-                ({failedNetworkRequests.length > 0 ? (
-                  <span className="text-red-400">{failedNetworkRequests.length} failed</span>
-                ) : allNetworkRequests.length})
+                {(failedNetworkRequests.length + clientErrorRequests.length + serverErrorRequests.length) > 0 ? (
+                  <span className="text-red-400">
+                    {failedNetworkRequests.length + clientErrorRequests.length + serverErrorRequests.length} err
+                  </span>
+                ) : <span>({allNetworkRequests.length})</span>}
               </span>
             )}
           </TabsTrigger>
@@ -807,19 +811,35 @@ export function ResultsDashboard({ scanId }: ResultsDashboardProps) {
           ) : (
             <div className="space-y-4">
               {/* Summary row */}
-              <div className="flex items-center gap-4 text-xs text-zinc-500">
+              <div className="flex flex-wrap items-center gap-3 text-xs text-zinc-500">
                 <span className="flex items-center gap-1.5">
                   <Wifi className="h-3.5 w-3.5 text-green-400" />
-                  {allNetworkRequests.filter((r) => !r.failed).length} successful
+                  <span className="text-green-400 font-mono font-medium">
+                    {allNetworkRequests.filter((r) => !r.failed && (r.statusCode ?? 0) < 400).length}
+                  </span>
+                  <span>2xx ok</span>
                 </span>
+                {clientErrorRequests.length > 0 && (
+                  <span className="flex items-center gap-1.5">
+                    <span className="font-mono font-medium text-yellow-400">{clientErrorRequests.length}</span>
+                    <span className="text-yellow-500">4xx client</span>
+                  </span>
+                )}
+                {serverErrorRequests.length > 0 && (
+                  <span className="flex items-center gap-1.5">
+                    <span className="font-mono font-medium text-orange-400">{serverErrorRequests.length}</span>
+                    <span className="text-orange-500">5xx server</span>
+                  </span>
+                )}
                 {failedNetworkRequests.length > 0 && (
                   <span className="flex items-center gap-1.5 text-red-400">
                     <WifiOff className="h-3.5 w-3.5" />
-                    {failedNetworkRequests.length} failed
+                    <span className="font-mono font-medium">{failedNetworkRequests.length}</span>
+                    <span>net fail</span>
                   </span>
                 )}
-                <span className="text-zinc-700">
-                  Across {pages.filter((p) => p.network_details).length} pages
+                <span className="text-zinc-700 ml-auto">
+                  {allNetworkRequests.length} req · {pages.filter((p) => p.network_details).length} pages
                 </span>
               </div>
 
