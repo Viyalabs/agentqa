@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import { Chrome, Zap, Smartphone, AlertCircle, WifiOff, ShieldCheck } from 'lucide-react'
 import { ScanForm } from './scan-form'
+import { RecentScansStrip } from './recent-scans-strip'
 import type { HomeStats } from '@/lib/stats'
 
 const FLOOR = { appsScanned: 1200, bugsCaught: 8400, pagesScanned: 6000, patternsLearned: 240 }
@@ -249,6 +250,7 @@ export function Hero({ stats }: { stats?: HomeStats }) {
 
               <div className="max-w-xl mx-auto lg:mx-0">
                 <ScanForm />
+                <RecentScansStrip />
               </div>
 
               {/* Trust signals */}
