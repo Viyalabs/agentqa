@@ -147,3 +147,62 @@ export function fingerprint(issue: IssueClassified): string {
 
   return slugify(parts.filter(Boolean).join(':'))
 }
+
+/**
+ * Compute a "family" cluster key — a less-specific version of the fingerprint
+ * that groups similar issues into the same pattern cluster.
+ *
+ * Examples:
+ *   js_error:typeerror:cannot-read-property-of-null  → "js_error:typeerror"
+ *   network_failure:get:/api/users/:id               → "network_failure:get"
+ *   slow_load:5s+                                    → "slow_load:elevated"
+ */
+export function clusterKey(issue: IssueClassified): string {
+  const d = issue.details ?? {}
+
+  switch (issue.type) {
+    case 'js_error': {
+      const errors = (d.errors as string[] | undefined) ?? []
+      const raw = errors[0] ?? issue.description ?? ''
+      const errorClass = raw.match(/^([A-Za-z]+Error|[A-Za-z]+Exception)/)?.[1] ?? 'Error'
+      return `js_error:${errorClass.toLowerCase()}`
+    }
+
+    case 'console_error': {
+      const errors = (d.errors as string[] | undefined) ?? []
+      const raw = errors[0] ?? issue.description ?? ''
+      const STOP = new Set(['error', 'failed', 'cannot', 'could', 'warning', 'uncaught', 'undefined'])
+      const tokens = raw.toLowerCase().replace(/[^a-z0-9\s]/g, ' ').split(/\s+/).filter(Boolean)
+      const key = tokens.find(t => t.length > 3 && !STOP.has(t)) ?? 'generic'
+      return `console_error:${key.slice(0, 24)}`
+    }
+
+    case 'network_failure': {
+      const failures = (d.failures as Array<{ method?: string }> | undefined) ?? []
+      const method = failures[0]?.method?.toLowerCase() ?? 'get'
+      return `network_failure:${method}`
+    }
+
+    case 'slow_load': {
+      const ms = (d.loadTimeMs as number | undefined) ?? 0
+      return `slow_load:${ms > 20_000 ? 'severe' : ms > 10_000 ? 'high' : 'elevated'}`
+    }
+
+    case 'large_asset': {
+      const assets = (d.assets as Array<{ sizeKb: number }> | undefined) ?? []
+      const totalKb = assets.reduce((s, a) => s + a.sizeKb, 0)
+      return `large_asset:${totalKb > 2000 ? 'critical' : 'high'}`
+    }
+
+    case 'console_warning': {
+      const errors = (d.errors as string[] | undefined) ?? []
+      const raw = errors[0] ?? issue.description ?? ''
+      const tokens = raw.toLowerCase().replace(/[^a-z0-9\s]/g, ' ').split(/\s+/).filter(Boolean)
+      const key = tokens.find(t => t.length > 4) ?? 'generic'
+      return `console_warning:${key.slice(0, 20)}`
+    }
+
+    default:
+      return issue.type
+  }
+}

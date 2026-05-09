@@ -25,6 +25,8 @@ const IMPACT: Record<string, string> = {
 
 function deriveConfidence(issue: Issue): number | null {
   if (!issue.ai_summary) return null
+  // Prefer the real numeric confidence from issues_enriched (0-1 float)
+  if (issue.confidence != null) return Math.round(issue.confidence * 100)
   let score = 40
   if (issue.root_cause)    score += 15
   if (issue.fix_suggestion) score += 15
@@ -34,19 +36,45 @@ function deriveConfidence(issue: Issue): number | null {
   return Math.min(score, 95)
 }
 
-function ConfidenceBar({ pct }: { pct: number }) {
-  const color = pct >= 80 ? 'from-emerald-500 to-emerald-400'
-              : pct >= 60 ? 'from-blue-500 to-blue-400'
-              :             'from-amber-500 to-amber-400'
+type ConfidenceLevel = 'HIGH' | 'MEDIUM' | 'LOW'
+
+function confidenceLevel(pct: number): ConfidenceLevel {
+  return pct >= 80 ? 'HIGH' : pct >= 55 ? 'MEDIUM' : 'LOW'
+}
+
+function parseFixLines(fix: string): string[] {
+  const lines = fix.split('\n').map(l => l.replace(/^\d+\.\s+/, '').trim()).filter(Boolean)
+  return lines.length > 1 ? lines : [fix.trim()]
+}
+
+function ConfidenceBar({ pct, fromPattern }: { pct: number; fromPattern?: boolean | null }) {
+  const level = confidenceLevel(pct)
+  const filled = Math.round(pct / 10)
+  const palette = level === 'HIGH'
+    ? { dot: 'bg-emerald-400', dim: 'bg-emerald-400/15', label: 'text-emerald-400' }
+    : level === 'MEDIUM'
+    ? { dot: 'bg-blue-400',    dim: 'bg-blue-400/15',    label: 'text-blue-400' }
+    : { dot: 'bg-amber-400',   dim: 'bg-amber-400/15',   label: 'text-amber-400' }
+
   return (
-    <div className="flex items-center gap-2">
-      <div className="flex-1 h-1 bg-zinc-800 rounded-full overflow-hidden">
-        <div
-          className={`h-full bg-gradient-to-r ${color} rounded-full`}
-          style={{ width: `${pct}%` }}
-        />
+    <div className="space-y-1.5">
+      <div className="flex items-center justify-between">
+        <span className="text-[9px] font-mono font-bold tracking-[0.12em] text-zinc-500 uppercase">
+          confidence
+        </span>
+        <div className="flex items-center gap-2">
+          {fromPattern && (
+            <span className="text-[9px] font-mono text-violet-400/70 tracking-wide">⚡ pattern-verified</span>
+          )}
+          <span className={`text-[9px] font-mono font-bold tracking-wider ${palette.label}`}>{level}</span>
+          <span className="text-[9px] font-mono text-zinc-500 tabular-nums">{pct}%</span>
+        </div>
       </div>
-      <span className="text-[10px] font-mono text-zinc-400 tabular-nums w-7 text-right">{pct}%</span>
+      <div className="flex items-center gap-0.5">
+        {Array.from({ length: 10 }, (_, i) => (
+          <div key={i} className={`flex-1 h-1.5 rounded-sm transition-colors ${i < filled ? palette.dot : palette.dim}`} />
+        ))}
+      </div>
     </div>
   )
 }
@@ -304,6 +332,27 @@ function FeedbackButtons({ issueId, initial }: { issueId: string; initial: boole
   )
 }
 
+type SectionAccent = 'amber' | 'red' | 'emerald'
+
+const SECTION_RULE_CLASSES: Record<SectionAccent, { line: string; text: string }> = {
+  amber:   { line: 'bg-amber-500/20',   text: 'text-amber-500/70' },
+  red:     { line: 'bg-red-500/20',     text: 'text-red-500/70' },
+  emerald: { line: 'bg-emerald-500/20', text: 'text-emerald-500/70' },
+}
+
+function SectionRule({ label, accent }: { label: string; accent: SectionAccent }) {
+  const cls = SECTION_RULE_CLASSES[accent]
+  return (
+    <div className="flex items-center gap-2">
+      <div className={`h-px flex-1 ${cls.line}`} />
+      <span className={`text-[9px] font-mono font-bold tracking-[0.15em] uppercase ${cls.text}`}>
+        {label}
+      </span>
+      <div className={`h-px flex-1 ${cls.line}`} />
+    </div>
+  )
+}
+
 function AIPanel({ issue }: { issue: Issue }) {
   const hasAnalysis = Boolean(issue.ai_summary)
   const confidence  = hasAnalysis ? deriveConfidence(issue) : null
@@ -312,73 +361,93 @@ function AIPanel({ issue }: { issue: Issue }) {
       ? 'Critical impact on user experience and core functionality'
       : 'Degrades user experience and application reliability'
   )
+  const fixLines = issue.fix_suggestion ? parseFixLines(issue.fix_suggestion) : []
+  const patternBadge = issue.from_pattern && issue.pattern_count && issue.pattern_count > 1
 
   return (
     <div className="mt-3 rounded-lg border border-zinc-700/40 bg-zinc-950 overflow-hidden">
 
-      {/* Header bar */}
-      <div className="flex items-center justify-between px-3 py-1.5 bg-zinc-900/80 border-b border-zinc-800/60">
-        <div className="flex items-center gap-2">
-          <div className={`h-1.5 w-1.5 rounded-full ${hasAnalysis ? 'bg-blue-400' : 'bg-zinc-600 animate-pulse'}`} />
-          <span className="text-[9px] font-mono font-bold tracking-[0.15em] text-zinc-400 uppercase">
-            AI Analysis
+      {/* Terminal chrome header */}
+      <div className="flex items-center gap-2.5 px-3 py-1.5 bg-zinc-900 border-b border-zinc-800">
+        <div className="flex items-center gap-1 shrink-0">
+          <div className="h-2.5 w-2.5 rounded-full bg-zinc-700" />
+          <div className="h-2.5 w-2.5 rounded-full bg-zinc-700" />
+          <div className={`h-2.5 w-2.5 rounded-full ${hasAnalysis ? 'bg-emerald-500' : 'bg-amber-500 animate-pulse'}`} />
+        </div>
+        <div className="flex flex-1 items-center justify-between min-w-0">
+          <div className="flex items-center gap-2 min-w-0">
+            <span className="text-[9px] font-mono font-bold tracking-[0.15em] text-zinc-300 uppercase shrink-0">
+              AI Analysis
+            </span>
+            {patternBadge && (
+              <span className="flex items-center gap-0.5 text-[9px] font-mono text-violet-400 bg-violet-500/10 border border-violet-500/20 rounded px-1.5 py-0.5 shrink-0">
+                ⚡ {(issue.pattern_count ?? 0) >= 100 ? '100+' : issue.pattern_count}× verified
+              </span>
+            )}
+          </div>
+          <span className="text-[9px] font-mono text-zinc-600 shrink-0 ml-2">
+            {hasAnalysis ? 'claude-haiku-4-5' : 'analyzing…'}
           </span>
         </div>
-        <span className="text-[9px] font-mono text-zinc-600">
-          {hasAnalysis ? 'claude-haiku' : 'analyzing…'}
-        </span>
       </div>
 
-      {/* Pending state — async worker hasn't run yet */}
+      {/* Pending state */}
       {!hasAnalysis && (
-        <div className="px-3 py-3 space-y-2.5">
-          {['w-3/4', 'w-5/6', 'w-2/3'].map((w, i) => (
-            <div key={i} className={`h-2 ${w} rounded bg-zinc-800 animate-pulse`} />
+        <div className="px-3 py-3 space-y-2">
+          <div className="flex items-center gap-2 mb-3">
+            <div className="h-1.5 w-1.5 rounded-full bg-amber-500/60 animate-pulse" />
+            <span className="text-[9px] font-mono text-zinc-600 tracking-wide">running analysis pipeline…</span>
+          </div>
+          {[
+            { w: 'w-3/4', label: 'scanning patterns' },
+            { w: 'w-5/6', label: 'generating root cause' },
+            { w: 'w-2/3', label: 'building fix suggestion' },
+          ].map(({ w, label }, i) => (
+            <div key={i} className="space-y-1">
+              <span className="text-[9px] font-mono text-zinc-700">{label}</span>
+              <div className={`h-1.5 ${w} rounded bg-zinc-800 animate-pulse`} style={{ animationDelay: `${i * 150}ms` }} />
+            </div>
           ))}
-          <p className="text-[10px] font-mono text-zinc-600 pt-0.5">
-            AI analysis queued — refreshing shortly
-          </p>
         </div>
       )}
 
       {/* Analysis content */}
       {hasAnalysis && (
-        <div className="divide-y divide-zinc-800/50">
+        <div className="divide-y divide-zinc-800/40">
 
           {/* Root cause */}
           {issue.root_cause && (
-            <div className="px-3 py-2.5">
-              <div className="text-[9px] font-mono font-bold tracking-[0.12em] text-amber-500/60 uppercase mb-1.5">
-                root_cause
-              </div>
-              <div className="flex gap-2">
-                <span className="text-amber-600/50 font-mono text-xs shrink-0 mt-px select-none">›</span>
-                <p className="text-xs text-zinc-300 leading-relaxed">{issue.root_cause}</p>
+            <div className="px-3 py-2.5 space-y-2">
+              <SectionRule label="root cause" accent="amber" />
+              <div className="flex gap-2.5 pl-0.5">
+                <div className="w-0.5 self-stretch bg-amber-500/30 rounded-full shrink-0" />
+                <p className="text-xs text-zinc-200 leading-relaxed">{issue.root_cause}</p>
               </div>
             </div>
           )}
 
           {/* Impact */}
-          <div className="px-3 py-2.5">
-            <div className="text-[9px] font-mono font-bold tracking-[0.12em] text-red-500/60 uppercase mb-1.5">
-              impact
-            </div>
-            <div className="flex gap-2">
-              <span className="text-red-600/50 font-mono text-xs shrink-0 mt-px select-none">›</span>
-              <p className="text-xs text-zinc-400 leading-relaxed">{impact}</p>
-            </div>
+          <div className="px-3 py-2.5 space-y-2">
+            <SectionRule label="impact" accent="red" />
+            <p className="text-xs text-zinc-400 leading-relaxed pl-1">{impact}</p>
           </div>
 
-          {/* Fix */}
-          {issue.fix_suggestion && (
-            <div className="px-3 py-2.5">
-              <div className="text-[9px] font-mono font-bold tracking-[0.12em] text-emerald-500/60 uppercase mb-1.5">
-                fix
-              </div>
-              <div className="bg-emerald-950/25 border border-emerald-900/30 rounded-md px-2.5 py-2">
-                <div className="flex gap-2">
-                  <span className="text-emerald-600 font-mono text-xs shrink-0 mt-px select-none">$</span>
-                  <p className="text-xs text-emerald-300 leading-relaxed">{issue.fix_suggestion}</p>
+          {/* Fix — terminal box */}
+          {fixLines.length > 0 && (
+            <div className="px-3 py-2.5 space-y-2">
+              <SectionRule label="fix" accent="emerald" />
+              <div className="rounded-md border border-zinc-800 overflow-hidden">
+                <div className="flex items-center gap-1.5 px-2.5 py-1 bg-zinc-800/50 border-b border-zinc-700/50">
+                  <div className="h-1.5 w-1.5 rounded-full bg-emerald-500/60" />
+                  <span className="text-[9px] font-mono text-zinc-500 tracking-wide">terminal</span>
+                </div>
+                <div className="px-2.5 py-2 bg-zinc-900/60 space-y-1.5">
+                  {fixLines.map((line, i) => (
+                    <div key={i} className="flex gap-2 items-start">
+                      <span className="text-emerald-500 font-mono text-xs shrink-0 select-none mt-px">$</span>
+                      <p className="text-xs font-mono text-emerald-200 leading-relaxed break-words">{line}</p>
+                    </div>
+                  ))}
                 </div>
               </div>
             </div>
@@ -387,17 +456,7 @@ function AIPanel({ issue }: { issue: Issue }) {
           {/* Confidence */}
           {confidence !== null && (
             <div className="px-3 py-2.5">
-              <div className="flex items-center justify-between mb-1.5">
-                <div className="text-[9px] font-mono font-bold tracking-[0.12em] text-zinc-500 uppercase">
-                  confidence
-                </div>
-                {issue.pattern_count != null && issue.pattern_count > 1 && (
-                  <span className="text-[9px] font-mono text-zinc-600">
-                    {issue.pattern_count >= 100 ? '100+' : issue.pattern_count}× cross-scan
-                  </span>
-                )}
-              </div>
-              <ConfidenceBar pct={confidence} />
+              <ConfidenceBar pct={confidence} fromPattern={issue.from_pattern} />
             </div>
           )}
 

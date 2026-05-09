@@ -569,6 +569,175 @@ CREATE INDEX IF NOT EXISTS idx_ie_model_version_asc
   WHERE model_version IS NOT NULL;`
   },
 
+  // ── Migration 008 ─────────────────────────────────────────────────────────────
+  {
+    label: 'Create pattern_clusters table',
+    sql: `
+CREATE TABLE IF NOT EXISTS pattern_clusters (
+  id                UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
+  cluster_key       TEXT        NOT NULL UNIQUE,
+  type              TEXT        NOT NULL,
+  canonical_title   TEXT        NOT NULL,
+  pattern_count     INTEGER     NOT NULL DEFAULT 1,
+  representative_id UUID        REFERENCES issue_patterns(id) ON DELETE SET NULL,
+  created_at        TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at        TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS idx_pc_cluster_key  ON pattern_clusters (cluster_key);
+CREATE INDEX IF NOT EXISTS idx_pc_type         ON pattern_clusters (type);
+CREATE INDEX IF NOT EXISTS idx_pc_occurrences  ON pattern_clusters (pattern_count DESC);
+ALTER TABLE pattern_clusters ENABLE ROW LEVEL SECURITY;
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename='pattern_clusters' AND policyname='Public access to pattern_clusters') THEN
+    CREATE POLICY "Public access to pattern_clusters" ON pattern_clusters FOR ALL USING (true);
+  END IF;
+END $$;`
+  },
+  {
+    label: 'Add cluster + feedback + velocity columns to issue_patterns',
+    sql: `
+ALTER TABLE issue_patterns
+  ADD COLUMN IF NOT EXISTS cluster_key       TEXT,
+  ADD COLUMN IF NOT EXISTS cluster_id        UUID REFERENCES pattern_clusters(id) ON DELETE SET NULL,
+  ADD COLUMN IF NOT EXISTS feedback_positive INTEGER NOT NULL DEFAULT 0,
+  ADD COLUMN IF NOT EXISTS feedback_negative INTEGER NOT NULL DEFAULT 0,
+  ADD COLUMN IF NOT EXISTS trend_velocity    REAL;
+CREATE INDEX IF NOT EXISTS idx_ip_cluster_key ON issue_patterns (cluster_key) WHERE cluster_key IS NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_ip_cluster_id  ON issue_patterns (cluster_id)  WHERE cluster_id  IS NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_ip_trend_vel   ON issue_patterns (trend_velocity DESC NULLS LAST);
+CREATE INDEX IF NOT EXISTS idx_ip_feedback    ON issue_patterns (feedback_positive DESC, feedback_negative DESC);`
+  },
+  {
+    label: 'Update record_issue_feedback() to track feedback counts',
+    sql: `
+CREATE OR REPLACE FUNCTION record_issue_feedback(
+  p_issue_id UUID,
+  p_helpful  BOOLEAN
+) RETURNS void
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+BEGIN
+  UPDATE issues SET fix_helpful = p_helpful WHERE id = p_issue_id;
+  IF p_helpful THEN
+    UPDATE issue_patterns
+    SET feedback_positive = COALESCE(feedback_positive, 0) + 1
+    WHERE id IN (
+      SELECT pattern_id FROM issue_pattern_matches WHERE issue_id = p_issue_id
+    );
+  ELSE
+    UPDATE issue_patterns
+    SET
+      feedback_negative = COALESCE(feedback_negative, 0) + 1,
+      needs_refresh     = true
+    WHERE id IN (
+      SELECT pattern_id FROM issue_pattern_matches WHERE issue_id = p_issue_id
+    );
+  END IF;
+END;
+$$;
+GRANT EXECUTE ON FUNCTION record_issue_feedback(UUID, BOOLEAN) TO service_role;`
+  },
+  {
+    label: 'Create refresh_cluster_counts() function',
+    sql: `
+CREATE OR REPLACE FUNCTION refresh_cluster_counts()
+RETURNS void
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+BEGIN
+  -- Recompute pattern_count from the actual issue_patterns rows
+  UPDATE pattern_clusters pc
+  SET
+    pattern_count     = sub.cnt,
+    representative_id = sub.rep_id,
+    updated_at        = NOW()
+  FROM (
+    SELECT
+      cluster_id,
+      COUNT(*)                                                  AS cnt,
+      (ARRAY_AGG(id ORDER BY occurrence_count DESC NULLS LAST))[1] AS rep_id
+    FROM issue_patterns
+    WHERE cluster_id IS NOT NULL
+    GROUP BY cluster_id
+  ) sub
+  WHERE pc.id = sub.cluster_id;
+END;
+$$;
+GRANT EXECUTE ON FUNCTION refresh_cluster_counts() TO service_role;`
+  },
+  {
+    label: 'Create refresh_pattern_velocities() function',
+    sql: `
+CREATE OR REPLACE FUNCTION refresh_pattern_velocities()
+RETURNS void
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+BEGIN
+  -- Set velocity = occurrences-in-7-days / 7 for active patterns
+  UPDATE issue_patterns ip
+  SET trend_velocity = sub.velocity
+  FROM (
+    SELECT pattern_id, COUNT(*)::REAL / 7.0 AS velocity
+    FROM   pattern_occurrences
+    WHERE  occurred_at >= NOW() - INTERVAL '7 days'
+    GROUP  BY pattern_id
+  ) sub
+  WHERE ip.id = sub.pattern_id;
+
+  -- Zero out patterns not seen in last 7 days
+  UPDATE issue_patterns
+  SET trend_velocity = 0
+  WHERE (trend_velocity IS NULL OR trend_velocity > 0)
+    AND id NOT IN (
+      SELECT DISTINCT pattern_id
+      FROM   pattern_occurrences
+      WHERE  occurred_at >= NOW() - INTERVAL '7 days'
+    );
+END;
+$$;
+GRANT EXECUTE ON FUNCTION refresh_pattern_velocities() TO service_role;`
+  },
+  {
+    label: 'Rebuild issues_with_analysis view (add feedback + cluster columns)',
+    sql: `
+DROP VIEW IF EXISTS issues_with_analysis;
+CREATE VIEW issues_with_analysis AS
+SELECT
+  i.id, i.scan_id, i.page_id, i.type, i.severity, i.title,
+  i.description, i.details, i.fingerprint, i.framework,
+  i.fix_helpful,
+  i.created_at,
+  ie.summary          AS ai_summary,
+  ie.root_cause,
+  ie.fix_suggestion,
+  ie.confidence,
+  ie.analysis_data,
+  ie.model_version,
+  ie.analysis_version,
+  ie.from_pattern,
+  ie.pattern_id,
+  ie.analyzed_at,
+  ip.occurrence_count              AS pattern_count,
+  ip.affected_frameworks           AS pattern_frameworks,
+  ip.total_scans_affected,
+  ip.needs_refresh                 AS pattern_needs_refresh,
+  ip.feedback_positive             AS pattern_feedback_positive,
+  ip.feedback_negative             AS pattern_feedback_negative,
+  ip.cluster_key,
+  ip.cluster_id
+FROM issues i
+LEFT JOIN issues_enriched ie ON ie.issue_id = i.id
+LEFT JOIN issue_patterns  ip ON ip.id = ie.pattern_id;`
+  },
+  {
+    label: 'Backfill cluster_key on existing issue_patterns',
+    sql: `
+UPDATE issue_patterns SET cluster_key = type WHERE cluster_key IS NULL;`
+  },
+
   // ── Migration 007 ─────────────────────────────────────────────────────────────
   {
     label: 'Add rate-limit index on scans(ip, created_at)',

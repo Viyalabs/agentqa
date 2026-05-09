@@ -196,4 +196,5 @@ export interface PatternMatchResult {
   occurrenceCount: number
   rootCauseTemplate: string | null
   fixTemplate: string | null
+  needsRefresh: boolean
 }

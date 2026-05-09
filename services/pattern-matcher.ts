@@ -1,6 +1,27 @@
 import { getAdminClient } from '@/lib/supabase'
-import type { PatternMatchResult } from '@/types'
-import { fingerprint as computeFingerprint } from './issue-fingerprinter'
+import type { IssueClassified, PatternMatchResult } from '@/types'
+import { fingerprint as computeFingerprint, clusterKey as computeClusterKey } from './issue-fingerprinter'
+
+export interface TopPattern {
+  id: string
+  cluster_key: string | null
+  cluster_id: string | null
+  type: string
+  severity: string
+  title: string
+  occurrence_count: number
+  total_scans_affected: number
+  confidence_score: number | null
+  trend_velocity: number | null
+  feedback_positive: number
+  feedback_negative: number
+  affected_frameworks: string[]
+  root_cause_template: string | null
+  fix_template: string | null
+  needs_refresh: boolean
+  first_seen_at: string
+  last_seen_at: string
+}
 
 interface StoredIssue {
   id: string
@@ -9,6 +30,64 @@ interface StoredIssue {
   title: string
   description: string | null
   details: Record<string, unknown> | null
+}
+
+function toClassifiedLike(issue: StoredIssue, scanId: string): IssueClassified {
+  return {
+    scan_id: scanId,
+    page_id: null,
+    type: issue.type as IssueClassified['type'],
+    severity: issue.severity as IssueClassified['severity'],
+    title: issue.title,
+    description: issue.description,
+    details: issue.details,
+  }
+}
+
+/**
+ * Find or create a pattern cluster for a given cluster_key.
+ * Handles concurrent inserts via unique-violation retry.
+ */
+async function findOrCreateCluster(
+  ck: string,
+  type: string,
+  title: string,
+): Promise<string> {
+  const db = getAdminClient()
+  const now = new Date().toISOString()
+
+  const { data: existing } = await db
+    .from('pattern_clusters')
+    .select('id, pattern_count')
+    .eq('cluster_key', ck)
+    .maybeSingle()
+
+  if (existing) {
+    // pattern_count is a denormalized counter refreshed periodically —
+    // skip per-write increments to avoid lost-update races under concurrency.
+    return existing.id as string
+  }
+
+  const { data: created, error } = await db
+    .from('pattern_clusters')
+    .insert({ cluster_key: ck, type, canonical_title: title, pattern_count: 1, created_at: now, updated_at: now })
+    .select('id')
+    .single()
+
+  if (error) {
+    if (error.code === '23505') {
+      // Another concurrent worker won the insert race — fetch the winner
+      const { data: raceSurvivor } = await db
+        .from('pattern_clusters')
+        .select('id')
+        .eq('cluster_key', ck)
+        .maybeSingle()
+      if (raceSurvivor) return raceSurvivor.id as string
+    }
+    throw new Error(`[pattern-matcher] cluster insert failed: ${error.message}`)
+  }
+
+  return created!.id as string
 }
 
 /**
@@ -30,7 +109,7 @@ async function findOrCreatePattern(
 
   const { data: existing } = await db
     .from('issue_patterns')
-    .select('id, occurrence_count, total_scans_affected, root_cause_template, fix_template, affected_frameworks')
+    .select('id, occurrence_count, total_scans_affected, root_cause_template, fix_template, affected_frameworks, cluster_id, needs_refresh')
     .eq('fingerprint', fp)
     .maybeSingle()
 
@@ -61,8 +140,13 @@ async function findOrCreatePattern(
       occurrenceCount:   existing.occurrence_count + 1,
       rootCauseTemplate: existing.root_cause_template ?? null,
       fixTemplate:       existing.fix_template ?? null,
+      needsRefresh:      (existing.needs_refresh as boolean) ?? false,
     }
   }
+
+  // Compute cluster key and find/create a cluster for this new pattern family
+  const ck = computeClusterKey(toClassifiedLike(issue, scanId))
+  const clusterId = await findOrCreateCluster(ck, issue.type, issue.title)
 
   const { data: created, error } = await db
     .from('issue_patterns')
@@ -74,6 +158,8 @@ async function findOrCreatePattern(
       occurrence_count:    1,
       total_scans_affected: 1,
       affected_frameworks: frameworks,
+      cluster_key:         ck,
+      cluster_id:          clusterId,
       first_seen_at:       now,
       last_seen_at:        now,
     })
@@ -83,6 +169,13 @@ async function findOrCreatePattern(
   if (error || !created) {
     throw new Error(`[pattern-matcher] insert failed: ${error?.message}`)
   }
+
+  // Set this as the cluster representative if none is set yet
+  await db
+    .from('pattern_clusters')
+    .update({ representative_id: created.id, updated_at: now })
+    .eq('id', clusterId)
+    .is('representative_id', null)
 
   await db
     .from('pattern_occurrences')
@@ -98,6 +191,7 @@ async function findOrCreatePattern(
     occurrenceCount:   1,
     rootCauseTemplate: null,
     fixTemplate:       null,
+    needsRefresh:      false,
   }
 }
 
@@ -166,7 +260,7 @@ export async function getPatternMatchesForScan(
 
   const { data: patterns } = await db
     .from('issue_patterns')
-    .select('id, fingerprint, occurrence_count, root_cause_template, fix_template')
+    .select('id, fingerprint, occurrence_count, root_cause_template, fix_template, needs_refresh')
     .in('id', patternIds)
 
   const patternMap = new Map((patterns ?? []).map((p) => [p.id as string, p]))
@@ -182,6 +276,7 @@ export async function getPatternMatchesForScan(
       occurrenceCount:   p.occurrence_count as number,
       rootCauseTemplate: (p.root_cause_template as string | null) ?? null,
       fixTemplate:       (p.fix_template as string | null) ?? null,
+      needsRefresh:      (p.needs_refresh as boolean) ?? false,
     })
   }
   return result
@@ -265,4 +360,111 @@ export async function matchScanIssues(
   )
 
   return results
+}
+
+// ── Pattern intelligence ──────────────────────────────────────────────────────
+
+/**
+ * Recalculate and store confidence_score for a pattern.
+ * Factors: AI-derived base + feedback ratio nudge + occurrence-count boost.
+ * Called after recording feedback or writing new AI templates.
+ */
+export async function updatePatternConfidence(patternId: string): Promise<void> {
+  const db = getAdminClient()
+
+  const { data } = await db
+    .from('issue_patterns')
+    .select('confidence_score, feedback_positive, feedback_negative, occurrence_count')
+    .eq('id', patternId)
+    .maybeSingle()
+
+  if (!data) return
+
+  const pos   = (data.feedback_positive  as number) ?? 0
+  const neg   = (data.feedback_negative  as number) ?? 0
+  const total = pos + neg
+  const base  = (data.confidence_score   as number | null) ?? 0.5
+
+  // ±0.15 nudge once ≥3 feedback votes arrive
+  const feedbackNudge = total >= 3 ? (pos / total - 0.5) * 0.3 : 0
+  // +0 to +0.10 logarithmic boost from occurrence count
+  const occurrenceBoost = Math.min(0.1, Math.log10(Math.max(1, (data.occurrence_count as number) ?? 1)) * 0.05)
+
+  const newScore = Math.max(0.05, Math.min(0.97, base + feedbackNudge + occurrenceBoost))
+
+  await db
+    .from('issue_patterns')
+    .update({ confidence_score: newScore })
+    .eq('id', patternId)
+}
+
+/**
+ * Batch-refresh trend_velocity on all issue_patterns by counting
+ * pattern_occurrences in the last 7 days.
+ *
+ * Also re-computes cluster pattern_count + representative_id via SQL
+ * (avoids the application-layer lost-update race from per-write increments).
+ *
+ * Call from the AI worker at the end of each drain cycle.
+ */
+export async function refreshPatternVelocities(): Promise<void> {
+  const db = getAdminClient()
+  const [velResult, clusterResult] = await Promise.all([
+    db.rpc('refresh_pattern_velocities'),
+    db.rpc('refresh_cluster_counts'),
+  ])
+  if (velResult.error)     console.error('[pattern-matcher] refresh_pattern_velocities:', velResult.error.message)
+  if (clusterResult.error) console.error('[pattern-matcher] refresh_cluster_counts:', clusterResult.error.message)
+}
+
+/**
+ * Return the top issue patterns sorted by frequency, trend velocity,
+ * recency, or confidence.  Used by the patterns intelligence API.
+ */
+export async function getTopPatterns(opts: {
+  sort?:   'frequency' | 'trending' | 'recent' | 'confidence'
+  type?:   string
+  limit?:  number
+  offset?: number
+} = {}): Promise<{ patterns: TopPattern[]; total: number }> {
+  const db     = getAdminClient()
+  const limit  = Math.min(opts.limit ?? 20, 100)
+  const offset = opts.offset ?? 0
+
+  let query = db
+    .from('issue_patterns')
+    .select(
+      `id, cluster_key, cluster_id, type, severity, title,
+       occurrence_count, total_scans_affected, confidence_score, trend_velocity,
+       feedback_positive, feedback_negative, affected_frameworks,
+       root_cause_template, fix_template, needs_refresh,
+       first_seen_at, last_seen_at`,
+      { count: 'exact' },
+    )
+    .range(offset, offset + limit - 1)
+
+  if (opts.type) query = query.eq('type', opts.type)
+
+  switch (opts.sort ?? 'frequency') {
+    case 'trending':
+      query = query.order('trend_velocity', { ascending: false, nullsFirst: false })
+      break
+    case 'recent':
+      query = query.order('last_seen_at', { ascending: false })
+      break
+    case 'confidence':
+      query = query.order('confidence_score', { ascending: false, nullsFirst: false })
+      break
+    default:
+      query = query.order('occurrence_count', { ascending: false })
+  }
+
+  const { data, count, error } = await query
+
+  if (error) {
+    console.error('[pattern-matcher] getTopPatterns:', error.message)
+    return { patterns: [], total: 0 }
+  }
+
+  return { patterns: (data ?? []) as TopPattern[], total: count ?? 0 }
 }

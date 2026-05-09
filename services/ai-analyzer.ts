@@ -5,7 +5,7 @@ import type { IssueType, IssueSeverity, PatternMatchResult } from '@/types'
 
 // Haiku: fast + cheap for post-scan analysis that runs in background
 const MODEL      = 'claude-haiku-4-5-20251001'
-const BATCH_SIZE = 8  // issues per Claude call; ~180 output tokens each = ~1440 max_tokens
+const BATCH_SIZE = 14 // issues per Claude call; ~170 output tokens each = ~2380 max_tokens
 
 interface IssueForAnalysis {
   id: string
@@ -44,6 +44,57 @@ function buildAnalysisData(issue: IssueForAnalysis, category: IssueCategory): Re
     tags,
     category,
     ...(errorClass ? { error_class: errorClass } : {}),
+  }
+}
+
+/**
+ * Extract only the semantically useful fields from issue.details per type.
+ * Avoids sending large JSON blobs (full network request arrays, long stacks)
+ * when Claude only needs a focused excerpt.
+ *
+ * @param limit Maximum output length in characters (batch vs solo differ).
+ */
+function extractDetails(issue: IssueForAnalysis, limit = 200): string {
+  const d = issue.details
+  if (!d) return 'none'
+  switch (issue.type) {
+    case 'js_error': {
+      const errors = (d.errors as string[] | undefined) ?? []
+      const msg    = errors[0]?.slice(0, 120) ?? ''
+      const stack  = (d.stacks as string[] | undefined)?.[0]?.split('\n')[1]?.trim().slice(0, 80) ?? ''
+      return [msg, stack ? `at ${stack}` : ''].filter(Boolean).join(' ').slice(0, limit) || 'none'
+    }
+    case 'console_error':
+    case 'console_warning': {
+      const errors = (d.errors as string[] | undefined) ?? []
+      return errors.slice(0, 3).map(e => e.slice(0, 90)).join(' | ').slice(0, limit) || 'none'
+    }
+    case 'network_failure': {
+      const failures = (d.failures as Array<{ url?: string; method?: string; status?: number }> | undefined) ?? []
+      return failures.slice(0, 3).map(f =>
+        `${f.method ?? 'GET'} ${String(f.url ?? '').slice(0, 60)} [${f.status ?? '?'}]`
+      ).join(' | ').slice(0, limit) || 'none'
+    }
+    case 'slow_load':
+      return `loadTime:${(d.loadTimeMs as number | undefined) ?? '?'}ms`
+    case 'large_asset': {
+      const assets = (d.assets as Array<{ url: string; sizeKb: number }> | undefined) ?? []
+      const total  = assets.reduce((s, a) => s + a.sizeKb, 0)
+      const top    = assets.slice(0, 2).map(a => `${String(a.url).slice(-40)}(${a.sizeKb}KB)`).join(', ')
+      return `total:${total}KB top:[${top}]`.slice(0, limit)
+    }
+    case 'page_not_found':
+    case 'page_crash':
+    case 'navigation_failure':
+    case 'broken_form':
+    case 'mobile_layout':
+      return d.url ? `url:${String(d.url).slice(0, 90)}` : 'none'
+    case 'missing_image': {
+      const images = (d.images as string[] | undefined) ?? []
+      return images.slice(0, 3).map(u => String(u).slice(0, 60)).join(' | ').slice(0, limit) || 'none'
+    }
+    default:
+      return JSON.stringify(d).slice(0, limit)
   }
 }
 
@@ -107,14 +158,11 @@ function buildBatchPrompt(
   const stack = frameworkLabel(frameworks)
 
   const issueLines = issues.map((issue, i) => {
-    const details = issue.details
-      ? JSON.stringify(issue.details).slice(0, 200)
-      : 'none'
     return [
-      `[${i + 1}] category:${issueCategory(issue.type)}  type:${issue.type}  severity:${issue.severity}`,
+      `[${i + 1}] ${issueCategory(issue.type)}/${issue.type}/${issue.severity}`,
       `    title: ${issue.title}`,
       `    desc:  ${issue.description ?? 'none'}`,
-      `    data:  ${details}`,
+      `    data:  ${extractDetails(issue, 180)}`,
     ].join('\n')
   }).join('\n\n')
 
@@ -164,7 +212,7 @@ async function analyzeBatch(
 ): Promise<Map<string, AIAnalysis>> {
   const message = await client.messages.create({
     model:      MODEL,
-    max_tokens: Math.max(200 * issues.length, 400),
+    max_tokens: Math.max(170 * issues.length, 400),
     messages:   [{ role: 'user', content: buildBatchPrompt(appUrl, issues, frameworks) }],
   })
 
@@ -203,9 +251,7 @@ async function analyzeBatch(
 
 /** Single-issue fallback prompt with JSON output and type-specific analysis guidance */
 function buildSoloPrompt(appUrl: string, issue: IssueForAnalysis, frameworks: string[]): string {
-  const detailText = issue.details
-    ? JSON.stringify(issue.details, null, 2).slice(0, 800)
-    : 'none'
+  const detailText = extractDetails(issue, 400)
   const category = issueCategory(issue.type)
   const guidance = issueTypeGuidance(category)
   const stack = frameworkLabel(frameworks)
@@ -341,7 +387,7 @@ export async function analyzeIssues(
   await Promise.allSettled(
     (issues as IssueForAnalysis[]).map(async (issue) => {
       const match = patternMatches.get(issue.id)
-      if (match?.rootCauseTemplate && match?.fixTemplate) {
+      if (match?.rootCauseTemplate && match?.fixTemplate && !match.needsRefresh) {
         // Pattern already has a solution — reuse it without calling Claude
         await db.from('issues').update({
           ai_summary:    `${issue.title} — see root cause below.`,
@@ -422,7 +468,7 @@ export async function analyzeIssues(
           try {
             const message = await client.messages.create({
               model:      MODEL,
-              max_tokens: 350,
+              max_tokens: 300,
               messages:   [{ role: 'user', content: buildSoloPrompt(appUrl, rep, frameworks) }],
             })
             const text     = message.content[0]?.type === 'text' ? message.content[0].text : ''
@@ -503,11 +549,18 @@ export async function generateScanOverview(
   if (totalIssues === 0) return
 
   try {
+    const db = getAdminClient()
+    const { data: scanRow } = await db.from('scans').select('ai_overview').eq('id', scanId).maybeSingle()
+    if (scanRow?.ai_overview) {
+      console.log(`[ai-analyzer] ${scanId}: overview already exists — skipping`)
+      return
+    }
+
     const client = new Anthropic({ apiKey })
 
     const message = await client.messages.create({
       model: MODEL,
-      max_tokens: 200,
+      max_tokens: 160,
       messages: [{
         role: 'user',
         content: buildOverviewPrompt(appUrl, score, totalIssues, criticalCount, mediumCount, frameworks),
@@ -517,7 +570,6 @@ export async function generateScanOverview(
     const overview = message.content[0]?.type === 'text' ? message.content[0].text.trim() : ''
     if (!overview) return
 
-    const db = getAdminClient()
     await db.from('scans').update({ ai_overview: overview }).eq('id', scanId)
 
     console.log(`[ai-analyzer] ${scanId}: scan overview generated`)

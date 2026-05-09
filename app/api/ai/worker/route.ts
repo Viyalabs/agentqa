@@ -3,7 +3,7 @@ import { waitUntil } from '@vercel/functions'
 import { getAdminClient } from '@/lib/supabase'
 import { claimNextJob, completeJob, failJob } from '@/services/ai-queue'
 import { analyzeIssues, generateScanOverview } from '@/services/ai-analyzer'
-import { getPatternMatchesForScan } from '@/services/pattern-matcher'
+import { getPatternMatchesForScan, refreshPatternVelocities } from '@/services/pattern-matcher'
 
 export const runtime    = 'nodejs'
 export const maxDuration = 300   // Vercel max — gives ~5 min to drain the queue
@@ -112,6 +112,7 @@ async function drainQueue(): Promise<void> {
   }
   if (processed > 0) {
     console.log(`[ai-worker] drained ${processed} job(s) this invocation`)
+    await refreshPatternVelocities()
   }
 }
 
