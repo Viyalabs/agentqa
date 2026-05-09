@@ -80,7 +80,7 @@ Authorization: Bearer your_secret_key`}</Block>
               POST
             </span>
             <code className="text-zinc-200 font-mono text-sm">
-              https://qa.viyalabs.com/api/webhook/scan
+              https://agentqa.viyalabs.com/api/webhook/scan
             </code>
           </div>
         </Section>
@@ -127,7 +127,7 @@ Authorization: Bearer your_secret_key`}</Block>
   "failThreshold": 75,
   "scanId": "3fa85f64-...",
   "url": "https://your-app.vercel.app",
-  "reportUrl": "https://qa.viyalabs.com/report/3fa85f64-...",
+  "reportUrl": "https://agentqa.viyalabs.com/report/3fa85f64-...",
   "summary": {
     "totalPages": 8,
     "totalIssues": 3,
@@ -167,7 +167,7 @@ Authorization: Bearer your_secret_key`}</Block>
         {/* Examples */}
         <Section id="examples" title="Examples">
           <h3 className="text-sm font-semibold text-zinc-300 uppercase tracking-wider">curl</h3>
-          <Block>{`curl -f -X POST https://qa.viyalabs.com/api/webhook/scan \\
+          <Block>{`curl -f -X POST https://agentqa.viyalabs.com/api/webhook/scan \\
   -H "x-api-key: $AGENTQA_API_KEY" \\
   -H "Content-Type: application/json" \\
   -d '{"url":"https://your-app.vercel.app","failThreshold":75}'`}</Block>
@@ -186,7 +186,7 @@ jobs:
     steps:
       - name: Run QA scan
         run: |
-          curl -f -X POST https://qa.viyalabs.com/api/webhook/scan \\
+          curl -f -X POST https://agentqa.viyalabs.com/api/webhook/scan \\
             -H "x-api-key: \${{ secrets.AGENTQA_API_KEY }}" \\
             -H "Content-Type: application/json" \\
             -d '{"url":"\${{ github.event.deployment_status.target_url }}","failThreshold":75}'`}</Block>
@@ -195,7 +195,7 @@ jobs:
           <Block>{`# Use Vercel's deployment URL from the CLI output
 PREVIEW_URL=$(vercel deploy --token $VERCEL_TOKEN)
 
-curl -f -X POST https://qa.viyalabs.com/api/webhook/scan \\
+curl -f -X POST https://agentqa.viyalabs.com/api/webhook/scan \\
   -H "x-api-key: $AGENTQA_API_KEY" \\
   -H "Content-Type: application/json" \\
   -d "{\"url\":\"$PREVIEW_URL\",\"failThreshold\":80}"`}</Block>

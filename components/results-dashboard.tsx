@@ -207,6 +207,7 @@ export function ResultsDashboard({ scanId }: ResultsDashboardProps) {
   const [issueSearch, setIssueSearch] = useState('')
   const [categoryFilter, setCategoryFilter] = useState<IssueCategory>('all')
   const [networkTypeFilter, setNetworkTypeFilter] = useState<string>('all')
+  const [groupByUrl, setGroupByUrl] = useState(false)
 
   const fetchResults = useCallback(async () => {
     try {
@@ -1057,10 +1058,18 @@ export function ResultsDashboard({ scanId }: ResultsDashboardProps) {
                       </button>
                     )}
                   </div>
-                  <span className="text-xs text-zinc-600 flex items-center gap-1 shrink-0">
-                    <Layers className="h-3 w-3" />
-                    Grouped
-                  </span>
+                  <button
+                    onClick={() => setGroupByUrl((v) => !v)}
+                    aria-pressed={groupByUrl}
+                    className={`flex items-center gap-1 shrink-0 text-xs px-2.5 py-1 rounded-lg border transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 ${
+                      groupByUrl
+                        ? 'border-blue-500/40 bg-blue-500/10 text-blue-300'
+                        : 'border-zinc-700 text-zinc-500 hover:text-zinc-300 hover:border-zinc-600'
+                    }`}
+                  >
+                    {groupByUrl ? <Globe className="h-3 w-3" /> : <Layers className="h-3 w-3" />}
+                    {groupByUrl ? 'By URL' : 'By type'}
+                  </button>
                 </div>
               </div>
 
@@ -1097,7 +1106,91 @@ export function ResultsDashboard({ scanId }: ResultsDashboardProps) {
                 )
               })()}
 
-              {/* Grouped issue sections */}
+              {/* Issue list — toggled between "by type" and "by URL" */}
+              {groupByUrl ? (() => {
+                const pageMap = new Map(pages.map((p) => [p.id, p.url]))
+                const filtered = issues.filter((i) => {
+                  if (severityFilter !== 'all' && i.severity !== severityFilter) return false
+                  if (categoryFilter !== 'all' && (ISSUE_CATEGORY[i.type] ?? 'ux') !== categoryFilter) return false
+                  if (searchTerm) {
+                    return (
+                      i.title.toLowerCase().includes(searchTerm) ||
+                      i.type.toLowerCase().includes(searchTerm) ||
+                      (i.description ?? '').toLowerCase().includes(searchTerm)
+                    )
+                  }
+                  return true
+                })
+
+                const byUrl = new Map<string, Issue[]>()
+                for (const issue of filtered) {
+                  const url =
+                    (issue.page_id ? pageMap.get(issue.page_id) : null) ??
+                    (typeof issue.details?.url === 'string' ? issue.details.url : null) ??
+                    '(unknown page)'
+                  if (!byUrl.has(url)) byUrl.set(url, [])
+                  byUrl.get(url)!.push(issue)
+                }
+
+                if (byUrl.size === 0) {
+                  return (
+                    <div className="flex flex-col items-center justify-center py-12 text-zinc-600">
+                      <CheckCircle2 className="h-6 w-6 text-green-500 mb-2" />
+                      <p className="text-sm">No issues found.</p>
+                    </div>
+                  )
+                }
+
+                const sortedUrls = Array.from(byUrl.entries()).sort(([, a], [, b]) => {
+                  const score = (arr: Issue[]) =>
+                    arr.filter((i) => i.severity === 'critical').length * 10 +
+                    arr.filter((i) => i.severity === 'medium').length * 3 +
+                    arr.length
+                  return score(b) - score(a)
+                })
+
+                return (
+                  <div className="space-y-3">
+                    {sortedUrls.map(([url, urlIssues]) => {
+                      const crit = urlIssues.filter((i) => i.severity === 'critical').length
+                      const med  = urlIssues.filter((i) => i.severity === 'medium').length
+                      const low  = urlIssues.filter((i) => i.severity === 'low').length
+                      let displayPath = url
+                      try { displayPath = new URL(url).pathname || '/' } catch { /* ok */ }
+                      const sorted = [...urlIssues].sort((a, b) => {
+                        const order: Record<string, number> = { critical: 0, medium: 1, low: 2 }
+                        return (order[a.severity] ?? 3) - (order[b.severity] ?? 3)
+                      })
+                      return (
+                        <div key={url} className="rounded-xl border border-zinc-800 bg-zinc-900/30 overflow-hidden">
+                          <div className="flex items-center justify-between px-4 py-2.5 border-b border-zinc-800 bg-zinc-900/50">
+                            <a
+                              href={url}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="flex items-center gap-1.5 text-sm font-mono text-zinc-300 hover:text-white truncate min-w-0"
+                            >
+                              <Globe className="h-3.5 w-3.5 shrink-0 text-zinc-500" />
+                              <span className="truncate" title={url}>{displayPath}</span>
+                              <ExternalLink className="h-3 w-3 shrink-0 text-zinc-600" />
+                            </a>
+                            <div className="flex items-center gap-1.5 shrink-0 ml-3">
+                              {crit > 0 && <span className="text-[10px] font-medium text-red-400 bg-red-500/10 border border-red-500/20 px-1.5 py-0.5 rounded">{crit} crit</span>}
+                              {med  > 0 && <span className="text-[10px] font-medium text-yellow-400 bg-yellow-500/10 border border-yellow-500/20 px-1.5 py-0.5 rounded">{med} med</span>}
+                              {low  > 0 && <span className="text-[10px] font-medium text-blue-400 bg-blue-500/10 border border-blue-500/20 px-1.5 py-0.5 rounded">{low} low</span>}
+                            </div>
+                          </div>
+                          <div className="divide-y divide-zinc-800/60">
+                            {sorted.map((issue) => (
+                              <IssueCard key={issue.id} issue={issue} />
+                            ))}
+                          </div>
+                        </div>
+                      )
+                    })}
+                  </div>
+                )
+              })() : (
               <div className="space-y-6">
                 {(severityFilter === 'all' || severityFilter === 'critical') && filteredCritical.length > 0 && (
                   <IssueSection
@@ -1150,6 +1243,7 @@ export function ResultsDashboard({ scanId }: ResultsDashboardProps) {
                   </div>
                 )}
               </div>
+              )}
             </div>
           )}
         </TabsContent>

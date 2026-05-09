@@ -4,6 +4,8 @@ import { Activity, ArrowLeft, ArrowRight } from 'lucide-react'
 import { ResultsDashboard } from '@/components/results-dashboard'
 import { getAdminClient } from '@/lib/supabase'
 
+export const revalidate = 60
+
 interface PageProps {
   params: Promise<{ id: string }>
 }
