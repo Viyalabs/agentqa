@@ -10,6 +10,7 @@
     "test": "jest --testEnvironment node",
     "test:watch": "jest --watch --testEnvironment node",
     "install:browsers": "playwright install chromium --with-deps",
+    "db:migrate": "node scripts/migrate.js",
     "db:setup": "node scripts/setup-db.js",
     "postinstall": "node -e \"if(!process.env.VERCEL) require('child_process').execSync('playwright install chromium', {stdio:'inherit'});\""
   },
