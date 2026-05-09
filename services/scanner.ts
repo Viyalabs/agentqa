@@ -212,7 +212,7 @@ export async function runScan(scanId: string, url: string): Promise<void> {
     })
 
     if (notifyEmail) {
-      await sendScanCompletionEmail(notifyEmail, scanId, url, score).catch((err: unknown) => {
+      await sendScanCompletionEmail(notifyEmail, scanId, url, score, allIssues).catch((err: unknown) => {
         console.error(`[scanner] Failed to send notify email for ${scanId}:`, err)
       })
     }
@@ -276,31 +276,78 @@ async function sendScanCompletionEmail(
   scanId: string,
   scannedUrl: string,
   score: number,
+  issues: IssueClassified[],
 ): Promise<void> {
   const reportLink = `${APP_URL}/report/${scanId}`
+  const badgeUrl = `${APP_URL}/api/badge/${scanId}`
+
+  const critical = issues.filter((i) => i.severity === 'critical')
+  const medium   = issues.filter((i) => i.severity === 'medium')
+  const low      = issues.filter((i) => i.severity === 'low')
+
+  const scoreColor = score >= 85 ? '#22c55e' : score >= 70 ? '#eab308' : score >= 50 ? '#f97316' : '#ef4444'
+  const scoreLabel = score >= 85 ? 'Excellent' : score >= 70 ? 'Good' : score >= 50 ? 'Needs work' : 'Critical issues'
+
+  const topCritical = critical.slice(0, 3).map((i) => `
+    <div style="padding:10px 12px;border-radius:6px;background:#450a0a;border-left:3px solid #ef4444;margin-bottom:8px">
+      <div style="color:#fca5a5;font-size:13px;font-weight:600;margin-bottom:2px">${i.title}</div>
+      ${i.description ? `<div style="color:#7f1d1d;font-size:12px">${i.description}</div>` : ''}
+    </div>
+  `).join('')
+
+  const severityRow = `
+    <div style="display:flex;gap:12px;margin:16px 0">
+      ${critical.length ? `<span style="padding:4px 10px;border-radius:20px;background:#450a0a;color:#fca5a5;font-size:12px;font-weight:600">${critical.length} critical</span>` : ''}
+      ${medium.length  ? `<span style="padding:4px 10px;border-radius:20px;background:#422006;color:#fcd34d;font-size:12px;font-weight:600">${medium.length} medium</span>`  : ''}
+      ${low.length     ? `<span style="padding:4px 10px;border-radius:20px;background:#0c1a3a;color:#93c5fd;font-size:12px;font-weight:600">${low.length} low</span>`      : ''}
+      ${issues.length === 0 ? `<span style="padding:4px 10px;border-radius:20px;background:#052e16;color:#86efac;font-size:12px;font-weight:600">No issues found</span>` : ''}
+    </div>
+  `
+
   console.log(`[scanner] Sending completion email to ${email} for ${scanId}`)
   await resendPost({
     to: [email],
-    subject: `Your AgentQA scan is done — score: ${score}/100`,
+    subject: `AgentQA: ${score}/100 — ${scoreLabel} · ${issues.length} issue${issues.length !== 1 ? 's' : ''} on ${new URL(scannedUrl).hostname}`,
     html: `
-      <div style="font-family:system-ui,sans-serif;max-width:560px;margin:0 auto;background:#0A0A0F;color:#fff;padding:40px 32px;border-radius:12px">
-        <div style="display:flex;align-items:center;gap:10px;margin-bottom:32px">
-          <span style="font-size:20px">⚡</span>
-          <span style="font-weight:700;font-size:18px;color:#fff">AgentQA</span>
+      <div style="font-family:system-ui,sans-serif;max-width:560px;margin:0 auto;background:#09090b;color:#fff;padding:0;border-radius:12px;overflow:hidden">
+        <!-- Header -->
+        <div style="background:#18181b;padding:20px 28px;border-bottom:1px solid #27272a;display:flex;align-items:center;gap:10px">
+          <span style="font-size:18px">⚡</span>
+          <span style="font-weight:700;font-size:16px;color:#fff">AgentQA</span>
         </div>
-        <h1 style="font-size:22px;font-weight:700;color:#fff;margin:0 0 8px">Your QA scan is complete</h1>
-        <p style="color:#71717a;margin:0 0 8px;font-size:14px">Scanned: <span style="color:#a1a1aa">${scannedUrl}</span></p>
-        <p style="color:#71717a;margin:0 0 24px;font-size:14px">Score: <span style="color:#fff;font-weight:700">${score}/100</span></p>
-        <a href="${reportLink}" style="display:inline-block;background:#2563eb;color:#fff;text-decoration:none;padding:12px 24px;border-radius:8px;font-weight:600;font-size:15px;margin-bottom:32px">
-          View Full Report →
-        </a>
-        <p style="color:#52525b;font-size:13px;margin:0 0 8px">
-          This link is permanent — bookmark it or share it with your team.
-        </p>
-        <hr style="border:none;border-top:1px solid #27272a;margin:24px 0"/>
-        <p style="color:#3f3f46;font-size:12px;margin:0">
-          AgentQA by <a href="https://viyalabs.com" style="color:#3f3f46">Viyalabs</a>
-        </p>
+
+        <!-- Score hero -->
+        <div style="padding:32px 28px;text-align:center;border-bottom:1px solid #27272a">
+          <div style="font-size:60px;font-weight:800;color:${scoreColor};line-height:1;font-variant-numeric:tabular-nums">${score}</div>
+          <div style="font-size:18px;color:#71717a;margin-top:4px">/100 — ${scoreLabel}</div>
+          <img src="${badgeUrl}" alt="QA Score ${score}/100" style="margin:16px auto 0;display:block" />
+        </div>
+
+        <!-- Details -->
+        <div style="padding:24px 28px">
+          <p style="color:#71717a;font-size:13px;margin:0 0 4px">Scanned</p>
+          <p style="color:#a1a1aa;font-size:14px;font-family:monospace;margin:0 0 16px">${scannedUrl}</p>
+
+          ${severityRow}
+
+          ${topCritical ? `
+            <p style="color:#71717a;font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:0.08em;margin:20px 0 10px">Critical issues</p>
+            ${topCritical}
+            ${critical.length > 3 ? `<p style="color:#71717a;font-size:12px;margin:8px 0 0">+${critical.length - 3} more in the full report</p>` : ''}
+          ` : ''}
+
+          <a href="${reportLink}" style="display:block;background:#2563eb;color:#fff;text-decoration:none;padding:14px 24px;border-radius:8px;font-weight:600;font-size:15px;text-align:center;margin:24px 0 0">
+            View Full Report →
+          </a>
+        </div>
+
+        <!-- Footer -->
+        <div style="padding:16px 28px;background:#18181b;border-top:1px solid #27272a">
+          <p style="color:#52525b;font-size:12px;margin:0">
+            This report link is permanent. Share it with your team or embed the badge in your README.
+            &nbsp;·&nbsp; <a href="https://viyalabs.com" style="color:#3f3f46;text-decoration:none">AgentQA by Viyalabs</a>
+          </p>
+        </div>
       </div>
     `,
   })
