@@ -59,6 +59,14 @@ export async function POST(req: NextRequest) {
 
   const recent = recentRows?.[0]
   if (recent) {
+    // If the new request included an email, store it so the user gets notified
+    if (email) {
+      await db
+        .from('scans')
+        .update({ notify_email: email })
+        .eq('id', recent.id)
+        .is('notify_email', null)   // don't overwrite an existing email
+    }
     return NextResponse.json(
       { scanId: recent.id, cached: true },
       { status: 200 }

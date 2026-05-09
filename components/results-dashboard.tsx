@@ -163,6 +163,7 @@ export function ResultsDashboard({ scanId }: ResultsDashboardProps) {
   const stopPollingTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const [copied, setCopied] = useState(false)
   const [copiedIssues, setCopiedIssues] = useState(false)
+  const [elapsed, setElapsed] = useState(0)
   const [rescanPending, startRescan] = useTransition()
 
   const fetchResults = useCallback(async () => {
@@ -204,6 +205,17 @@ export function ResultsDashboard({ scanId }: ResultsDashboardProps) {
     const timer = setInterval(fetchResults, POLL_INTERVAL_MS)
     return () => clearInterval(timer)
   }, [isPolling, fetchResults])
+
+  // Tick elapsed seconds while scan is running
+  const isRunningRef = useRef(false)
+  useEffect(() => {
+    const running = data?.scan.status === 'running' || data?.scan.status === 'pending'
+    isRunningRef.current = running
+    if (!running) return
+    setElapsed(0)
+    const t = setInterval(() => setElapsed((s) => s + 1), 1000)
+    return () => clearInterval(t)
+  }, [data?.scan.status])
 
   const exportReport = useCallback(() => {
     if (!data) return
@@ -472,7 +484,14 @@ export function ResultsDashboard({ scanId }: ResultsDashboardProps) {
                   </>
                 : 'Starting scan…'}
             </span>
-            <span>{scan.total_pages} / {MAX_PAGES_PER_SCAN}</span>
+            <span className="flex items-center gap-3 tabular-nums">
+              <span className="font-mono">{elapsed}s elapsed</span>
+              {elapsed < 110 && (
+                <span className="text-zinc-600">
+                  ~{Math.max(10, 120 - elapsed)}s remaining
+                </span>
+              )}
+            </span>
           </div>
           <Progress value={scanProgress} className="h-1.5" />
         </div>

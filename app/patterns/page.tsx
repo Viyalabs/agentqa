@@ -56,12 +56,19 @@ function velocityLabel(v: number | null): string | null {
   return `${(v * 7).toFixed(1)}/wk`
 }
 
-function buildHref(sort: Sort, type: TypeFilter, nextSort?: Sort, nextType?: string | null): string {
-  const params = new URLSearchParams()
-  if (nextSort ?? sort) params.set('sort', nextSort ?? sort)
-  if (nextType !== null && (nextType ?? type)) params.set('type', nextType ?? type ?? '')
-  const qs = params.toString()
-  return `/patterns${qs ? `?${qs}` : ''}`
+function buildHref(
+  sort: Sort,
+  type: TypeFilter,
+  nextSort?: Sort,
+  nextType?: string | null,
+  nextPage?: number,
+): string {
+  const p = new URLSearchParams()
+  p.set('sort', nextSort ?? sort)
+  const t = nextType !== undefined ? nextType : type
+  if (t) p.set('type', t)
+  if (nextPage && nextPage > 1) p.set('page', String(nextPage))
+  return `/patterns?${p.toString()}`
 }
 
 // ── pattern card ─────────────────────────────────────────────────────────────
@@ -194,16 +201,21 @@ function PatternCard({ pattern, sort }: { pattern: TopPattern; sort: Sort }) {
 
 // ── page ─────────────────────────────────────────────────────────────────────
 
+const PAGE_SIZE = 30
+
 interface Props {
-  searchParams: Promise<{ sort?: string; type?: string }>
+  searchParams: Promise<{ sort?: string; type?: string; page?: string }>
 }
 
 export default async function PatternsPage({ searchParams }: Props) {
   const params = await searchParams
-  const sort  = (params.sort ?? 'frequency') as Sort
-  const type  = params.type || undefined
+  const sort   = (params.sort ?? 'frequency') as Sort
+  const type   = params.type || undefined
+  const page   = Math.max(1, parseInt(params.page ?? '1', 10) || 1)
+  const offset = (page - 1) * PAGE_SIZE
 
-  const { patterns, total } = await getTopPatterns({ sort, type, limit: 30 })
+  const { patterns, total } = await getTopPatterns({ sort, type, limit: PAGE_SIZE, offset })
+  const totalPages = Math.ceil(total / PAGE_SIZE)
 
   const typeKeys = Object.keys(TYPE_LABELS)
 
@@ -300,11 +312,40 @@ export default async function PatternsPage({ searchParams }: Props) {
             </Link>
           </div>
         ) : (
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-            {patterns.map((p) => (
-              <PatternCard key={p.id} pattern={p} sort={sort} />
-            ))}
-          </div>
+          <>
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+              {patterns.map((p) => (
+                <PatternCard key={p.id} pattern={p} sort={sort} />
+              ))}
+            </div>
+
+            {/* Pagination */}
+            {totalPages > 1 && (
+              <div className="flex items-center justify-between mt-8 pt-6 border-t border-zinc-800/60">
+                <span className="text-xs text-zinc-600 font-mono">
+                  Page {page} of {totalPages} · {total} patterns
+                </span>
+                <div className="flex items-center gap-2">
+                  {page > 1 && (
+                    <Link
+                      href={buildHref(sort, type, undefined, undefined, page - 1)}
+                      className="px-3 py-1.5 text-xs rounded-lg border border-zinc-700 text-zinc-400 hover:text-zinc-200 hover:border-zinc-600 transition-colors"
+                    >
+                      ← Prev
+                    </Link>
+                  )}
+                  {page < totalPages && (
+                    <Link
+                      href={buildHref(sort, type, undefined, undefined, page + 1)}
+                      className="px-3 py-1.5 text-xs rounded-lg border border-zinc-700 text-zinc-400 hover:text-zinc-200 hover:border-zinc-600 transition-colors"
+                    >
+                      Next →
+                    </Link>
+                  )}
+                </div>
+              </div>
+            )}
+          </>
         )}
       </main>
     </div>
