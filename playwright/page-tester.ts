@@ -62,6 +62,7 @@ export async function testPage(
   let missingAltCount = 0
   let missingMetaDescription = false
   let missingViewport = false
+  let missingOgImage = false
   let h1Count = 0
   let forms: PageTestResult['forms'] = []
   let links: string[] = []
@@ -224,6 +225,12 @@ export async function testPage(
         )
         .catch(() => false)
 
+      missingOgImage = await page
+        .evaluate(
+          () => !document.querySelector('meta[property="og:image"]')
+        )
+        .catch(() => false)
+
       h1Count = await page
         .evaluate(() => document.querySelectorAll('h1').length)
         .catch(() => 0)
@@ -324,6 +331,7 @@ export async function testPage(
     missingAltCount,
     missingMetaDescription,
     missingViewport,
+    missingOgImage,
     h1Count,
     forms,
     links,

@@ -594,6 +594,18 @@ function classifyPageIssues(
     )
   }
 
+  if (result.missingOgImage && !result.is404) {
+    issues.push(
+      issue(
+        'missing_meta',
+        'low',
+        'Missing Open Graph Image',
+        'Page has no <meta property="og:image"> tag. Without it, shared links on Slack, Twitter/X, LinkedIn, and iMessage show no preview image — dramatically reducing click-through rates.',
+        { url: result.url }
+      )
+    )
+  }
+
   if (!result.is404 && !result.isCrash && !result.isUnreachable) {
     if (result.h1Count === 0) {
       issues.push(

@@ -112,6 +112,7 @@ export interface PageTestResult {
   missingAltCount: number
   missingMetaDescription: boolean
   missingViewport: boolean
+  missingOgImage: boolean
   h1Count: number
   forms: Array<{
     action: string | null
