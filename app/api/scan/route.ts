@@ -13,7 +13,8 @@ const MAX_CONCURRENT_SCANS = 20
 const MAX_SCANS_PER_IP_PER_HOUR = 3
 
 const RequestSchema = z.object({
-  url: z.string().min(1, 'URL is required').max(2048, 'URL is too long'),
+  url:   z.string().min(1, 'URL is required').max(2048, 'URL is too long'),
+  email: z.string().email().optional().or(z.literal('')),
 })
 
 export async function POST(req: NextRequest) {
@@ -32,7 +33,7 @@ export async function POST(req: NextRequest) {
     )
   }
 
-  const { url: rawUrl } = parsed.data
+  const { url: rawUrl, email } = parsed.data
   const url = normalizeUrl(rawUrl)
 
   const { valid, error: urlError } = validateUrl(url)
@@ -97,7 +98,7 @@ export async function POST(req: NextRequest) {
   // ── Create scan record ───────────────────────────────────────────────────────
   const { data: scan, error: dbError } = await db
     .from('scans')
-    .insert({ url, status: 'pending', ip: clientIp ?? null })
+    .insert({ url, status: 'pending', ip: clientIp ?? null, notify_email: email || null })
     .select('id')
     .single()
 

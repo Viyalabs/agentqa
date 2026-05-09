@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
-import { ArrowRight, Loader2, AlertCircle } from 'lucide-react'
+import { ArrowRight, Loader2, AlertCircle, Mail } from 'lucide-react'
 import { Button } from './ui/button'
 import { Input } from './ui/input'
 import { validateUrl } from '@/lib/utils'
@@ -10,6 +10,8 @@ import { validateUrl } from '@/lib/utils'
 export function ScanForm() {
   const router = useRouter()
   const [url, setUrl] = useState('')
+  const [email, setEmail] = useState('')
+  const [showEmail, setShowEmail] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [isPending, startTransition] = useTransition()
 
@@ -36,7 +38,7 @@ export function ScanForm() {
         const res = await fetch('/api/scan', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ url: toValidate }),
+          body: JSON.stringify({ url: toValidate, email: email.trim() || undefined }),
         })
 
         const data = await res.json()
@@ -91,6 +93,31 @@ export function ScanForm() {
           )}
         </Button>
       </div>
+
+      {/* Optional email — revealed on demand */}
+      {showEmail ? (
+        <div className="mt-3 flex items-center gap-2">
+          <Mail className="h-3.5 w-3.5 shrink-0 text-zinc-500" />
+          <Input
+            type="email"
+            placeholder="you@company.com — get the report by email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            disabled={isPending}
+            className="h-9 text-sm bg-zinc-900/60 border-zinc-700 focus:border-blue-500"
+            aria-label="Email address for report delivery"
+          />
+        </div>
+      ) : (
+        <button
+          type="button"
+          onClick={() => setShowEmail(true)}
+          className="mt-3 text-xs text-zinc-600 hover:text-zinc-400 transition-colors flex items-center gap-1.5"
+        >
+          <Mail className="h-3 w-3" />
+          Email me the report
+        </button>
+      )}
 
       {error && (
         <div className="flex items-center gap-2 mt-3 text-sm text-red-400">
