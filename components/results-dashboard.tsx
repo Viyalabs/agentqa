@@ -165,6 +165,7 @@ export function ResultsDashboard({ scanId }: ResultsDashboardProps) {
   const [copiedIssues, setCopiedIssues] = useState(false)
   const [elapsed, setElapsed] = useState(0)
   const [rescanPending, startRescan] = useTransition()
+  const [pageSort, setPageSort] = useState<'default' | 'slowest' | 'issues'>('default')
 
   const fetchResults = useCallback(async () => {
     try {
@@ -882,77 +883,132 @@ export function ResultsDashboard({ scanId }: ResultsDashboardProps) {
               <Loader2 className="h-6 w-6 animate-spin mb-3" />
               <p className="text-sm">Crawling pages…</p>
             </div>
-          ) : (
-            <div className="space-y-2">
-              {pages.map((page) => (
-                <Card key={page.id}>
-                  <CardContent className="p-4">
-                    <div className="flex items-center gap-3">
-                      <div className="shrink-0">
-                        {page.status_code === 200 ? (
-                          <Badge variant="success">{page.status_code}</Badge>
-                        ) : page.status_code === 404 ? (
-                          <Badge variant="critical">{page.status_code}</Badge>
-                        ) : page.status_code ? (
-                          <Badge variant="medium">{page.status_code}</Badge>
-                        ) : (
-                          <Badge variant="secondary">ERR</Badge>
-                        )}
-                      </div>
+          ) : (() => {
+            const issueCountByPage = new Map<string, number>()
+            for (const issue of issues) {
+              if (issue.page_id) issueCountByPage.set(issue.page_id, (issueCountByPage.get(issue.page_id) ?? 0) + 1)
+            }
 
-                      <div className="flex-1 min-w-0">
-                        <a
-                          href={page.url}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="text-sm text-zinc-300 hover:text-white transition-colors font-mono flex items-center gap-1 truncate"
-                        >
-                          {truncateUrl(page.url, 65)}
-                          <ExternalLink className="h-3 w-3 shrink-0" />
-                        </a>
-                        {page.title && (
-                          <p className="text-xs text-zinc-600 mt-0.5 truncate">{page.title}</p>
-                        )}
-                      </div>
+            const sortedPages = [...pages].sort((a, b) => {
+              if (pageSort === 'slowest') return (b.load_time_ms ?? 0) - (a.load_time_ms ?? 0)
+              if (pageSort === 'issues') return (issueCountByPage.get(b.id) ?? 0) - (issueCountByPage.get(a.id) ?? 0)
+              return 0
+            })
 
-                      <div className="shrink-0 flex items-center gap-3 text-xs text-zinc-600">
-                        {page.load_time_ms && (
-                          <span title="Load time">{formatDuration(page.load_time_ms)}</span>
-                        )}
-                        {page.has_console_errors && (
-                          <span className="text-red-500 font-medium">Errors</span>
-                        )}
-                        {page.has_network_failures && (
-                          <span className="text-yellow-500 font-medium">Net</span>
-                        )}
-                        {page.has_mobile_issues && (
-                          <span
-                            className="flex items-center gap-0.5 text-orange-400 font-medium"
-                            title="Mobile layout overflow detected"
-                          >
-                            <Smartphone className="h-3 w-3" />
-                            Mobile
-                          </span>
-                        )}
-                        {page.video_url && (
-                          <a
-                            href={page.video_url}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="flex items-center gap-0.5 text-blue-400 hover:text-blue-300 transition-colors font-medium"
-                            title="Watch failure replay video"
-                          >
-                            <Video className="h-3 w-3" />
-                            Replay
-                          </a>
-                        )}
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-          )}
+            const avgLoad = pages.reduce((s, p) => s + (p.load_time_ms ?? 0), 0) / pages.length
+
+            return (
+              <div className="space-y-3">
+                {/* Sort controls + stats */}
+                <div className="flex items-center gap-3 flex-wrap">
+                  <div className="flex items-center gap-1 p-0.5 rounded-lg bg-zinc-800/60 border border-zinc-700/50">
+                    {([['default', 'URL order'], ['slowest', 'Slowest first'], ['issues', 'Most issues']] as const).map(([val, label]) => (
+                      <button
+                        key={val}
+                        onClick={() => setPageSort(val)}
+                        className={`px-2.5 py-1 rounded-md text-[11px] font-medium transition-all ${
+                          pageSort === val ? 'bg-zinc-700 text-white' : 'text-zinc-500 hover:text-zinc-300'
+                        }`}
+                      >
+                        {label}
+                      </button>
+                    ))}
+                  </div>
+                  {avgLoad > 0 && (
+                    <span className="text-xs text-zinc-600 font-mono ml-auto">
+                      avg load: <span className={avgLoad > 3000 ? 'text-red-400' : avgLoad > 1500 ? 'text-yellow-400' : 'text-zinc-400'}>{Math.round(avgLoad)}ms</span>
+                    </span>
+                  )}
+                </div>
+
+                {/* Page rows */}
+                <div className="space-y-2">
+                  {sortedPages.map((page) => {
+                    const pageIssueCount = issueCountByPage.get(page.id) ?? 0
+                    const isSlow = (page.load_time_ms ?? 0) > 3000
+                    const isVerySlow = (page.load_time_ms ?? 0) > 6000
+
+                    return (
+                      <Card key={page.id} className={isSlow ? 'border-orange-500/20' : ''}>
+                        <CardContent className="p-4">
+                          <div className="flex items-center gap-3">
+                            <div className="shrink-0">
+                              {page.status_code === 200 ? (
+                                <Badge variant="success">{page.status_code}</Badge>
+                              ) : page.status_code === 404 ? (
+                                <Badge variant="critical">{page.status_code}</Badge>
+                              ) : page.status_code ? (
+                                <Badge variant="medium">{page.status_code}</Badge>
+                              ) : (
+                                <Badge variant="secondary">ERR</Badge>
+                              )}
+                            </div>
+
+                            <div className="flex-1 min-w-0">
+                              <a
+                                href={page.url}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-sm text-zinc-300 hover:text-white transition-colors font-mono flex items-center gap-1 truncate"
+                              >
+                                {truncateUrl(page.url, 65)}
+                                <ExternalLink className="h-3 w-3 shrink-0" />
+                              </a>
+                              {page.title && (
+                                <p className="text-xs text-zinc-600 mt-0.5 truncate">{page.title}</p>
+                              )}
+                            </div>
+
+                            <div className="shrink-0 flex items-center gap-3 text-xs text-zinc-600">
+                              {page.load_time_ms && (
+                                <span
+                                  title="Load time"
+                                  className={isVerySlow ? 'text-red-400 font-semibold' : isSlow ? 'text-orange-400 font-medium' : ''}
+                                >
+                                  {formatDuration(page.load_time_ms)}
+                                  {isSlow && <span className="ml-1 text-[10px]">{isVerySlow ? '🐢' : '⚠'}</span>}
+                                </span>
+                              )}
+                              {pageIssueCount > 0 && (
+                                <span className="text-red-400 font-medium">{pageIssueCount} issue{pageIssueCount !== 1 ? 's' : ''}</span>
+                              )}
+                              {page.has_console_errors && (
+                                <span className="text-red-500 font-medium">Errors</span>
+                              )}
+                              {page.has_network_failures && (
+                                <span className="text-yellow-500 font-medium">Net</span>
+                              )}
+                              {page.has_mobile_issues && (
+                                <span
+                                  className="flex items-center gap-0.5 text-orange-400 font-medium"
+                                  title="Mobile layout overflow detected"
+                                >
+                                  <Smartphone className="h-3 w-3" />
+                                  Mobile
+                                </span>
+                              )}
+                              {page.video_url && (
+                                <a
+                                  href={page.video_url}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="flex items-center gap-0.5 text-blue-400 hover:text-blue-300 transition-colors font-medium"
+                                  title="Watch failure replay video"
+                                >
+                                  <Video className="h-3 w-3" />
+                                  Replay
+                                </a>
+                              )}
+                            </div>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    )
+                  })}
+                </div>
+              </div>
+            )
+          })()}
         </TabsContent>
 
         {/* Screenshots tab */}
