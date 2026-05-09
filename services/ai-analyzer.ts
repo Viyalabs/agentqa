@@ -93,12 +93,18 @@ function extractDetails(issue: IssueForAnalysis, limit = 200): string {
       const images = (d.images as string[] | undefined) ?? []
       return images.slice(0, 3).map(u => String(u).slice(0, 60)).join(' | ').slice(0, limit) || 'none'
     }
+    case 'missing_alt':
+      return `count:${(d.count as number | undefined) ?? '?'} url:${String(d.url ?? '').slice(0, 80)}`
+    case 'missing_meta':
+      return d.count
+        ? `count:${d.count} url:${String(d.url ?? '').slice(0, 80)}`
+        : `url:${String(d.url ?? '').slice(0, 80)}`
     default:
       return JSON.stringify(d).slice(0, limit)
   }
 }
 
-type IssueCategory = 'JS_ERROR' | 'NETWORK' | 'MOBILE' | 'PERFORMANCE' | 'UI' | 'OTHER'
+type IssueCategory = 'JS_ERROR' | 'NETWORK' | 'MOBILE' | 'PERFORMANCE' | 'UI' | 'ACCESSIBILITY' | 'SEO' | 'OTHER'
 
 function frameworkLabel(frameworks: string[]): string {
   if (frameworks.length === 0) return 'unknown stack'
@@ -124,6 +130,10 @@ function issueCategory(type: IssueType): IssueCategory {
     case 'broken_form':
     case 'page_not_found':
       return 'UI'
+    case 'missing_alt':
+      return 'ACCESSIBILITY'
+    case 'missing_meta':
+      return 'SEO'
     default:
       return 'OTHER'
   }
@@ -141,6 +151,10 @@ function issueTypeGuidance(category: IssueCategory): string {
       return 'Core Web Vitals (LCP/FID/CLS), render-blocking resources, bundle splitting opportunities, Cache-Control/ETag headers, image format and size, lazy loading.'
     case 'UI':
       return 'Broken asset URL (check path casing and CDN origin), CSS z-index/overflow, layout overflow on small viewports, missing resource 404, form validation and submission flow.'
+    case 'ACCESSIBILITY':
+      return 'WCAG 2.1 compliance — missing alt attributes prevent screen reader users from understanding images. Add descriptive alt text; use alt="" for decorative images. Check image rendering pipeline (CMS, component library defaults).'
+    case 'SEO':
+      return 'Missing meta tags reduce search ranking and social sharing click-through. For meta description: add a unique 150-160 char description per page. For og:image: add a 1200×630 image. For H1: each page needs exactly one H1 matching the primary keyword.'
     default:
       return 'Specific symptom observed, most likely root cause given the detected stack, concrete actionable fix steps.'
   }
