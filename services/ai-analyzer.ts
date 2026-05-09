@@ -314,7 +314,7 @@ export async function analyzeIssues(
   appUrl: string,
   patternMatches: Map<string, PatternMatchResult> = new Map(),
   frameworks: string[] = [],
-  severities: string[] = ['critical', 'medium', 'low'],
+  severities: string[] = ['critical', 'medium'],
 ): Promise<void> {
   const apiKey = process.env.ANTHROPIC_API_KEY
   if (!apiKey) {

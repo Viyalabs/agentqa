@@ -137,6 +137,57 @@ export async function updatePatternTemplates(
 }
 
 /**
+ * Reconstruct the patternMatches Map from the DB for a scan that was already
+ * processed during the scan phase. Used by the async AI worker so it can pass
+ * cached pattern templates to analyzeIssues and skip redundant Claude calls.
+ */
+export async function getPatternMatchesForScan(
+  scanId: string,
+): Promise<Map<string, PatternMatchResult>> {
+  const db = getAdminClient()
+
+  const { data: issueRows } = await db
+    .from('issues')
+    .select('id')
+    .eq('scan_id', scanId)
+
+  if (!issueRows?.length) return new Map()
+
+  const issueIds = issueRows.map((i) => i.id as string)
+
+  const { data: links } = await db
+    .from('issue_pattern_matches')
+    .select('issue_id, pattern_id')
+    .in('issue_id', issueIds)
+
+  if (!links?.length) return new Map()
+
+  const patternIds = [...new Set(links.map((l) => l.pattern_id as string))]
+
+  const { data: patterns } = await db
+    .from('issue_patterns')
+    .select('id, fingerprint, occurrence_count, root_cause_template, fix_template')
+    .in('id', patternIds)
+
+  const patternMap = new Map((patterns ?? []).map((p) => [p.id as string, p]))
+
+  const result = new Map<string, PatternMatchResult>()
+  for (const link of links) {
+    const p = patternMap.get(link.pattern_id as string)
+    if (!p) continue
+    result.set(link.issue_id as string, {
+      patternId:         p.id as string,
+      fingerprint:       p.fingerprint as string,
+      isNew:             false,
+      occurrenceCount:   p.occurrence_count as number,
+      rootCauseTemplate: (p.root_cause_template as string | null) ?? null,
+      fixTemplate:       (p.fix_template as string | null) ?? null,
+    })
+  }
+  return result
+}
+
+/**
  * Run the full pattern-matching pipeline for all issues in a completed scan:
  *
  * 1. Fetch issues from DB (they have IDs at this point).

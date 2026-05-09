@@ -3,42 +3,75 @@ import { waitUntil } from '@vercel/functions'
 import { getAdminClient } from '@/lib/supabase'
 import { claimNextJob, completeJob, failJob } from '@/services/ai-queue'
 import { analyzeIssues, generateScanOverview } from '@/services/ai-analyzer'
-import { matchScanIssues } from '@/services/pattern-matcher'
+import { getPatternMatchesForScan } from '@/services/pattern-matcher'
 
 export const runtime    = 'nodejs'
-export const maxDuration = 300
+export const maxDuration = 300   // Vercel max — gives ~5 min to drain the queue
 
-export async function POST(req: NextRequest) {
-  const secret = process.env.WORKER_SECRET
-  if (secret && req.headers.get('x-worker-secret') !== secret) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  }
+// Safety valve: never process more than this many jobs per HTTP invocation.
+// Each issue_batch job can take 5-30 s; 10 jobs fits comfortably within 300 s.
+const MAX_JOBS_PER_INVOCATION = 10
 
-  waitUntil(processNextJob())
-  return NextResponse.json({ ok: true }, { status: 202 })
+// ── Job handlers ──────────────────────────────────────────────────────────────
+
+async function runIssueBatch(
+  scanId: string,
+  appUrl: string,
+  frameworks: string[],
+): Promise<void> {
+  // Read existing pattern matches from DB — avoids re-fingerprinting issues
+  // that were already matched during the scan phase (matchScanIssues ran then).
+  // Any issue with a cached root_cause_template will skip the Claude call.
+  const patternMatches = await getPatternMatchesForScan(scanId)
+  await analyzeIssues(scanId, appUrl, patternMatches, frameworks, ['critical', 'medium'])
 }
 
-async function processNextJob(): Promise<void> {
-  const job = await claimNextJob()
-  if (!job) {
-    console.log('[ai-worker] queue empty — nothing to process')
-    return
-  }
+async function runScanOverview(
+  scanId: string,
+  appUrl: string,
+  score: number,
+  frameworks: string[],
+): Promise<void> {
+  const db = getAdminClient()
 
-  console.log(`[ai-worker] claimed job ${job.id} (${job.job_type}) attempt ${job.attempts}`)
+  // issue_batch runs first (priority 1) so these counts reflect analyzed issues
+  const [{ count: critCount }, { count: medCount }] = await Promise.all([
+    db.from('issues').select('*', { count: 'exact', head: true })
+      .eq('scan_id', scanId).eq('severity', 'critical'),
+    db.from('issues').select('*', { count: 'exact', head: true })
+      .eq('scan_id', scanId).eq('severity', 'medium'),
+  ])
+
+  await generateScanOverview(scanId, appUrl, score, critCount ?? 0, medCount ?? 0, frameworks)
+}
+
+// ── Queue drainer ─────────────────────────────────────────────────────────────
+
+/**
+ * Claim and execute one job.
+ * Returns true when a job was found (regardless of success/failure),
+ * false when the queue is empty so the loop can stop.
+ */
+async function processOne(): Promise<boolean> {
+  const job = await claimNextJob()
+  if (!job) return false
+
+  console.log(`[ai-worker] claimed ${job.job_type} job ${job.id} (attempt ${job.attempts})`)
   const db = getAdminClient()
 
   try {
-    // Load scan context — url, score needed for both job types
     const { data: scan } = await db
       .from('scans')
       .select('url, score')
       .eq('id', job.scan_id)
       .single()
 
-    if (!scan) throw new Error(`Scan ${job.scan_id} not found`)
+    // If the scan was deleted while the job was queued, silently complete
+    if (!scan) {
+      await completeJob(job.id)
+      return true
+    }
 
-    // Load detected frameworks (stored during scan, fast)
     const { data: fwRows } = await db
       .from('scan_frameworks')
       .select('framework')
@@ -47,37 +80,52 @@ async function processNextJob(): Promise<void> {
     const frameworks = (fwRows ?? []).map((r: { framework: string }) => r.framework)
 
     if (job.job_type === 'issue_batch') {
-      // Re-run pattern matching — idempotent, DB-only, provides cached templates
-      const patternMatches = await matchScanIssues(job.scan_id, frameworks)
-      // Only analyze medium + critical issues (low severity skipped to save cost)
-      await analyzeIssues(job.scan_id, scan.url, patternMatches, frameworks, ['critical', 'medium'])
+      await runIssueBatch(job.scan_id, scan.url as string, frameworks)
     } else {
-      // scan_overview: needs issue counts
-      const [{ count: critCount }, { count: medCount }] = await Promise.all([
-        db.from('issues').select('*', { count: 'exact', head: true })
-          .eq('scan_id', job.scan_id).eq('severity', 'critical'),
-        db.from('issues').select('*', { count: 'exact', head: true })
-          .eq('scan_id', job.scan_id).eq('severity', 'medium'),
-      ])
-
-      await generateScanOverview(
-        job.scan_id,
-        scan.url,
-        scan.score ?? 0,
-        critCount ?? 0,
-        medCount  ?? 0,
-        frameworks,
-      )
+      await runScanOverview(job.scan_id, scan.url as string, (scan.score as number) ?? 0, frameworks)
     }
 
     await completeJob(job.id)
-    console.log(`[ai-worker] completed job ${job.id} (${job.job_type})`)
-
-    // Tail-call: drain any remaining pending jobs in this same execution
-    await processNextJob()
+    console.log(`[ai-worker] ${job.job_type} ${job.id} — completed`)
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err)
-    console.error(`[ai-worker] job ${job.id} failed (attempt ${job.attempts}):`, msg)
+    console.error(`[ai-worker] ${job.job_type} ${job.id} attempt ${job.attempts} — failed: ${msg}`)
+    // failJob resets to 'pending' with back-off delay if attempts < MAX_ATTEMPTS,
+    // otherwise marks permanently 'failed'.
     await failJob(job.id, job.attempts, msg)
+    // Return true — there may be other jobs in the queue even though this one failed
   }
+
+  return true
+}
+
+/**
+ * Drain up to MAX_JOBS_PER_INVOCATION jobs from the queue.
+ * Uses an iterative loop — not recursion — to avoid stack growth.
+ */
+async function drainQueue(): Promise<void> {
+  let processed = 0
+  while (processed < MAX_JOBS_PER_INVOCATION) {
+    const hadWork = await processOne()
+    if (!hadWork) break
+    processed++
+  }
+  if (processed > 0) {
+    console.log(`[ai-worker] drained ${processed} job(s) this invocation`)
+  }
+}
+
+// ── HTTP handler ──────────────────────────────────────────────────────────────
+
+export async function POST(req: NextRequest) {
+  const workerSecret = process.env.WORKER_SECRET
+  if (workerSecret && req.headers.get('x-worker-secret') !== workerSecret) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  }
+
+  // Respond immediately — Vercel keeps the function alive via waitUntil
+  // while drainQueue runs in the background without blocking the HTTP response.
+  waitUntil(drainQueue())
+
+  return NextResponse.json({ ok: true }, { status: 202 })
 }
