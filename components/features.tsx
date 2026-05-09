@@ -7,6 +7,8 @@ import {
   CodeXml,
   ImageOff,
   Timer,
+  Eye,
+  Search,
 } from 'lucide-react'
 
 const GROUPS = [
@@ -87,6 +89,28 @@ const GROUPS = [
         description: 'Flags pages that load above 5s and assets over 500 KB — the low-hanging wins to fix before users notice.',
         color: 'text-cyan-400',
         bg: 'bg-cyan-500/10',
+      },
+    ],
+  },
+  {
+    category: 'Accessibility & SEO',
+    eyebrow: 'Reach more users, rank higher',
+    color: 'text-violet-400',
+    borderColor: 'border-violet-500/20',
+    items: [
+      {
+        icon: Eye,
+        title: 'Accessibility Checks',
+        description: 'Detects images without alt text (WCAG 2.1), missing viewport tags, and broken mobile layouts that exclude screen reader users.',
+        color: 'text-violet-400',
+        bg: 'bg-violet-500/10',
+      },
+      {
+        icon: Search,
+        title: 'SEO Health',
+        description: 'Flags missing meta descriptions, H1 issues, and absent Open Graph images that lower search rankings and kill social share previews.',
+        color: 'text-indigo-400',
+        bg: 'bg-indigo-500/10',
       },
     ],
   },
