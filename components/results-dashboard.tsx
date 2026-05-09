@@ -166,6 +166,7 @@ export function ResultsDashboard({ scanId }: ResultsDashboardProps) {
   const [elapsed, setElapsed] = useState(0)
   const [rescanPending, startRescan] = useTransition()
   const [pageSort, setPageSort] = useState<'default' | 'slowest' | 'issues'>('default')
+  const [issueSearch, setIssueSearch] = useState('')
 
   const fetchResults = useCallback(async () => {
     try {
@@ -333,14 +334,29 @@ export function ResultsDashboard({ scanId }: ResultsDashboardProps) {
   const groupedMedium = groupIssues(mediumIssues)
   const groupedLow = groupIssues(lowIssues)
 
+  const searchTerm = issueSearch.trim().toLowerCase()
+  const filterGroup = (groups: GroupedIssue[]) =>
+    searchTerm
+      ? groups.filter((g) =>
+          g.title.toLowerCase().includes(searchTerm) ||
+          g.type.toLowerCase().includes(searchTerm) ||
+          (g.description ?? '').toLowerCase().includes(searchTerm) ||
+          g.affectedUrls.some((u) => u.toLowerCase().includes(searchTerm))
+        )
+      : groups
+
+  const filteredCritical = filterGroup(groupedCritical)
+  const filteredMedium   = filterGroup(groupedMedium)
+  const filteredLow      = filterGroup(groupedLow)
+
   const filteredGroups =
     severityFilter === 'all'
-      ? [...groupedCritical, ...groupedMedium, ...groupedLow]
+      ? [...filteredCritical, ...filteredMedium, ...filteredLow]
       : severityFilter === 'critical'
-      ? groupedCritical
+      ? filteredCritical
       : severityFilter === 'medium'
-      ? groupedMedium
-      : groupedLow
+      ? filteredMedium
+      : filteredLow
 
   // All network requests across all pages (for the network tab)
   const allNetworkRequests: NetworkRequest[] = pages.flatMap(
@@ -720,71 +736,103 @@ export function ResultsDashboard({ scanId }: ResultsDashboardProps) {
             </div>
           ) : (
             <div className="space-y-4">
-              {/* Severity filter */}
-              <div className="flex items-center gap-2 flex-wrap">
-                {(['all', 'critical', 'medium', 'low'] as SeverityFilter[]).map((f) => {
-                  const count =
-                    f === 'all' ? issues.length :
-                    f === 'critical' ? criticalIssues.length :
-                    f === 'medium' ? mediumIssues.length :
-                    lowIssues.length
-                  const isActive = severityFilter === f
-                  const colorClass =
-                    f === 'critical'
-                      ? isActive ? 'border-red-500/50 bg-red-500/10 text-red-400' : 'border-zinc-700 text-zinc-500 hover:text-red-400 hover:border-red-500/30'
-                      : f === 'medium'
-                      ? isActive ? 'border-yellow-500/50 bg-yellow-500/10 text-yellow-400' : 'border-zinc-700 text-zinc-500 hover:text-yellow-400 hover:border-yellow-500/30'
-                      : f === 'low'
-                      ? isActive ? 'border-blue-500/50 bg-blue-500/10 text-blue-400' : 'border-zinc-700 text-zinc-500 hover:text-blue-400 hover:border-blue-500/30'
-                      : isActive ? 'border-zinc-600 bg-zinc-800 text-zinc-200' : 'border-zinc-700 text-zinc-500 hover:text-zinc-300'
-                  return (
-                    <button
-                      key={f}
-                      onClick={() => setSeverityFilter(f)}
-                      aria-pressed={isActive}
-                      className={`px-3 py-1 rounded-lg border text-xs font-medium transition-colors capitalize focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 ${colorClass}`}
-                    >
-                      {f === 'all' ? 'All' : f.charAt(0).toUpperCase() + f.slice(1)} ({count})
-                    </button>
-                  )
-                })}
-                <span className="ml-auto text-xs text-zinc-600 flex items-center gap-1">
-                  <Layers className="h-3 w-3" />
-                  Grouped by type
-                </span>
+              {/* Severity filter + search */}
+              <div className="flex flex-col sm:flex-row sm:items-center gap-2">
+                <div className="flex items-center gap-2 flex-wrap">
+                  {(['all', 'critical', 'medium', 'low'] as SeverityFilter[]).map((f) => {
+                    const count =
+                      f === 'all' ? issues.length :
+                      f === 'critical' ? criticalIssues.length :
+                      f === 'medium' ? mediumIssues.length :
+                      lowIssues.length
+                    const isActive = severityFilter === f
+                    const colorClass =
+                      f === 'critical'
+                        ? isActive ? 'border-red-500/50 bg-red-500/10 text-red-400' : 'border-zinc-700 text-zinc-500 hover:text-red-400 hover:border-red-500/30'
+                        : f === 'medium'
+                        ? isActive ? 'border-yellow-500/50 bg-yellow-500/10 text-yellow-400' : 'border-zinc-700 text-zinc-500 hover:text-yellow-400 hover:border-yellow-500/30'
+                        : f === 'low'
+                        ? isActive ? 'border-blue-500/50 bg-blue-500/10 text-blue-400' : 'border-zinc-700 text-zinc-500 hover:text-blue-400 hover:border-blue-500/30'
+                        : isActive ? 'border-zinc-600 bg-zinc-800 text-zinc-200' : 'border-zinc-700 text-zinc-500 hover:text-zinc-300'
+                    return (
+                      <button
+                        key={f}
+                        onClick={() => setSeverityFilter(f)}
+                        aria-pressed={isActive}
+                        className={`px-3 py-1 rounded-lg border text-xs font-medium transition-colors capitalize focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 ${colorClass}`}
+                      >
+                        {f === 'all' ? 'All' : f.charAt(0).toUpperCase() + f.slice(1)} ({count})
+                      </button>
+                    )
+                  })}
+                </div>
+                <div className="sm:ml-auto flex items-center gap-2">
+                  <div className="relative">
+                    <input
+                      type="search"
+                      placeholder="Search issues…"
+                      value={issueSearch}
+                      onChange={(e) => setIssueSearch(e.target.value)}
+                      className="w-44 bg-zinc-800/60 border border-zinc-700/60 rounded-lg px-3 py-1 text-xs text-zinc-300 placeholder:text-zinc-600 focus:outline-none focus:border-zinc-500 focus:ring-1 focus:ring-zinc-500/40 transition-colors"
+                    />
+                    {issueSearch && (
+                      <button
+                        onClick={() => setIssueSearch('')}
+                        className="absolute right-2 top-1/2 -translate-y-1/2 text-zinc-600 hover:text-zinc-400"
+                        aria-label="Clear search"
+                      >
+                        ×
+                      </button>
+                    )}
+                  </div>
+                  <span className="text-xs text-zinc-600 flex items-center gap-1 shrink-0">
+                    <Layers className="h-3 w-3" />
+                    Grouped
+                  </span>
+                </div>
               </div>
 
               {/* Grouped issue sections */}
               <div className="space-y-6">
-                {(severityFilter === 'all' || severityFilter === 'critical') && groupedCritical.length > 0 && (
+                {(severityFilter === 'all' || severityFilter === 'critical') && filteredCritical.length > 0 && (
                   <IssueSection
                     label="Critical"
-                    groups={groupedCritical}
+                    groups={filteredCritical}
                     iconColor="text-red-400"
                     Icon={AlertCircle}
                   />
                 )}
-                {(severityFilter === 'all' || severityFilter === 'medium') && groupedMedium.length > 0 && (
+                {(severityFilter === 'all' || severityFilter === 'medium') && filteredMedium.length > 0 && (
                   <IssueSection
                     label="Medium"
-                    groups={groupedMedium}
+                    groups={filteredMedium}
                     iconColor="text-yellow-400"
                     Icon={AlertTriangle}
                   />
                 )}
-                {(severityFilter === 'all' || severityFilter === 'low') && groupedLow.length > 0 && (
+                {(severityFilter === 'all' || severityFilter === 'low') && filteredLow.length > 0 && (
                   <IssueSection
                     label="Low"
-                    groups={groupedLow}
+                    groups={filteredLow}
                     iconColor="text-blue-400"
                     Icon={Info}
                   />
                 )}
 
-                {filteredGroups.length === 0 && severityFilter !== 'all' && (
+                {filteredGroups.length === 0 && (
                   <div className="flex flex-col items-center justify-center py-12 text-zinc-600">
-                    <CheckCircle2 className="h-6 w-6 text-green-500 mb-2" />
-                    <p className="text-sm">No {severityFilter} issues found.</p>
+                    {searchTerm ? (
+                      <>
+                        <Info className="h-6 w-6 mb-2 opacity-40" />
+                        <p className="text-sm">No issues match &ldquo;{issueSearch}&rdquo;</p>
+                        <button onClick={() => setIssueSearch('')} className="mt-2 text-xs text-blue-400 hover:text-blue-300">Clear search</button>
+                      </>
+                    ) : (
+                      <>
+                        <CheckCircle2 className="h-6 w-6 text-green-500 mb-2" />
+                        <p className="text-sm">No {severityFilter !== 'all' ? severityFilter : ''} issues found.</p>
+                      </>
+                    )}
                   </div>
                 )}
               </div>
