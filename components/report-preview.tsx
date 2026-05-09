@@ -12,8 +12,17 @@ const mockIssues = [
   },
   {
     severity: 'medium' as const,
-    title: 'Failed API Requests',
-    description: '2 network request(s) failed during page load.',
+    title: 'Images Missing Alt Text',
+    description: '7 images have no alt attribute — WCAG 2.1 accessibility violation.',
+    icon: AlertTriangle,
+    color: 'text-yellow-400',
+    bg: 'bg-yellow-500/10 border-yellow-500/20',
+    hasAI: false,
+  },
+  {
+    severity: 'medium' as const,
+    title: 'Mobile Layout Overflow',
+    description: 'Content overflows viewport on 375 px — users scroll sideways.',
     icon: AlertTriangle,
     color: 'text-yellow-400',
     bg: 'bg-yellow-500/10 border-yellow-500/20',
@@ -21,8 +30,8 @@ const mockIssues = [
   },
   {
     severity: 'low' as const,
-    title: 'Slow Page Load',
-    description: 'Homepage took 6.2s to load (threshold: 5s).',
+    title: 'Missing Open Graph Image',
+    description: 'No og:image tag — shared links on Slack & Twitter show no preview.',
     icon: Info,
     color: 'text-blue-400',
     bg: 'bg-blue-500/10 border-blue-500/20',
@@ -77,10 +86,10 @@ export function ReportPreview() {
               <div className="p-5 rounded-xl border border-yellow-500/20 bg-yellow-500/5">
                 <div className="text-xs text-zinc-500 uppercase tracking-wider mb-2">QA Score</div>
                 <div className="text-6xl font-bold text-yellow-400 tabular-nums">
-                  73
+                  68
                   <span className="text-2xl text-zinc-600">/100</span>
                 </div>
-                <div className="text-sm text-yellow-400 mt-1">Fair — 3 issues need attention</div>
+                <div className="text-sm text-yellow-400 mt-1">Fair — 4 issues need attention</div>
               </div>
 
               {/* Stats */}
@@ -94,7 +103,7 @@ export function ReportPreview() {
                 </div>
                 <div className="p-4 rounded-xl border border-zinc-800 bg-zinc-900/40">
                   <div className="text-xs text-zinc-500 uppercase tracking-wider mb-1">Issues</div>
-                  <div className="text-3xl font-bold text-white tabular-nums">3</div>
+                  <div className="text-3xl font-bold text-white tabular-nums">4</div>
                 </div>
               </div>
 
@@ -110,7 +119,7 @@ export function ReportPreview() {
                   <span className="flex items-center gap-1.5 text-yellow-400">
                     <AlertTriangle className="h-3.5 w-3.5" /> Medium
                   </span>
-                  <span className="font-mono font-bold text-yellow-400">1</span>
+                  <span className="font-mono font-bold text-yellow-400">2</span>
                 </div>
                 <div className="flex items-center justify-between text-sm">
                   <span className="flex items-center gap-1.5 text-blue-400">
