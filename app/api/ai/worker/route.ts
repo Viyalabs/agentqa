@@ -12,6 +12,10 @@ export const maxDuration = 300   // Vercel max — gives ~5 min to drain the que
 // Each issue_batch job can take 5-30 s; 10 jobs fits comfortably within 300 s.
 const MAX_JOBS_PER_INVOCATION = 10
 
+// A job stuck in 'running' for longer than this is presumed dead (lambda crashed).
+// Must exceed the longest legitimate job runtime (~60 s per batch) with margin.
+const STUCK_JOB_TIMEOUT_MINUTES = 15
+
 // ── Job handlers ──────────────────────────────────────────────────────────────
 
 async function runIssueBatch(
@@ -57,7 +61,16 @@ async function runScanOverview(
  * false when the queue is empty so the loop can stop.
  */
 async function processOne(): Promise<boolean> {
-  const job = await claimNextJob()
+  let job
+  try {
+    job = await claimNextJob()
+  } catch (err) {
+    // RPC failure on claim (e.g. DB unavailable, function missing) — log and stop
+    // draining for this invocation rather than crashing the whole waitUntil promise.
+    const msg = err instanceof Error ? err.message : String(err)
+    console.error(`[ai-worker] claimNextJob failed — stopping drain: ${msg}`)
+    return false
+  }
   if (!job) return false
 
   console.log(`[ai-worker] claimed ${job.job_type} job ${job.id} (attempt ${job.attempts})`)
@@ -109,7 +122,7 @@ async function processOne(): Promise<boolean> {
  */
 async function drainQueue(): Promise<void> {
   // Reset jobs stuck in 'running' after a crashed lambda so they re-enter the queue.
-  await getAdminClient().rpc('reap_stuck_ai_jobs', { p_timeout_minutes: 10 })
+  await getAdminClient().rpc('reap_stuck_ai_jobs', { p_timeout_minutes: STUCK_JOB_TIMEOUT_MINUTES })
 
   let processed = 0
   while (processed < MAX_JOBS_PER_INVOCATION) {

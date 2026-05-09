@@ -857,7 +857,11 @@ BEGIN
     total_scans_affected  = total_scans_affected + 1,
     affected_frameworks   = CASE
                               WHEN p_frameworks IS NOT NULL AND array_length(p_frameworks, 1) > 0
-                              THEN p_frameworks
+                              THEN (
+                                SELECT ARRAY(
+                                  SELECT DISTINCT unnest(affected_frameworks || p_frameworks)
+                                )
+                              )
                               ELSE affected_frameworks
                             END,
     last_seen_at          = p_now
