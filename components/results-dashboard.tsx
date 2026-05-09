@@ -916,6 +916,43 @@ export function ResultsDashboard({ scanId }: ResultsDashboardProps) {
                 </span>
               </div>
 
+              {/* Response time distribution */}
+              {allNetworkRequests.some((r) => r.responseTimeMs > 0) && (() => {
+                const reqs = allNetworkRequests.filter((r) => r.responseTimeMs > 0)
+                const buckets = [
+                  { label: '<100ms',    count: reqs.filter((r) => r.responseTimeMs < 100).length,   color: 'bg-emerald-500' },
+                  { label: '100–500ms', count: reqs.filter((r) => r.responseTimeMs >= 100 && r.responseTimeMs < 500).length, color: 'bg-blue-500' },
+                  { label: '500ms–1s',  count: reqs.filter((r) => r.responseTimeMs >= 500 && r.responseTimeMs < 1000).length, color: 'bg-yellow-500' },
+                  { label: '>1s',       count: reqs.filter((r) => r.responseTimeMs >= 1000).length, color: 'bg-red-500' },
+                ]
+                const max = Math.max(...buckets.map((b) => b.count), 1)
+                const p50 = [...reqs].sort((a, b) => a.responseTimeMs - b.responseTimeMs)[Math.floor(reqs.length * 0.5)]?.responseTimeMs
+                const p95 = [...reqs].sort((a, b) => a.responseTimeMs - b.responseTimeMs)[Math.floor(reqs.length * 0.95)]?.responseTimeMs
+                return (
+                  <div className="rounded-lg border border-zinc-800/50 bg-zinc-900/30 p-3">
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-[10px] font-mono text-zinc-600 uppercase tracking-widest">Response time distribution</span>
+                      <div className="flex items-center gap-3 text-[10px] font-mono text-zinc-600">
+                        <span>p50 <span className={p50 && p50 > 500 ? 'text-yellow-400' : 'text-zinc-400'}>{p50}ms</span></span>
+                        <span>p95 <span className={p95 && p95 > 1000 ? 'text-red-400' : p95 && p95 > 500 ? 'text-yellow-400' : 'text-zinc-400'}>{p95}ms</span></span>
+                      </div>
+                    </div>
+                    <div className="flex items-end gap-2 h-10">
+                      {buckets.map((b) => (
+                        <div key={b.label} className="flex-1 flex flex-col items-center gap-1">
+                          <div
+                            className={`w-full rounded-sm ${b.color} opacity-80 transition-all`}
+                            style={{ height: `${b.count === 0 ? 2 : Math.max(4, Math.round((b.count / max) * 32))}px` }}
+                            title={`${b.count} requests`}
+                          />
+                          <span className="text-[9px] text-zinc-600 font-mono whitespace-nowrap">{b.label}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )
+              })()}
+
               {/* Resource type filter */}
               {(() => {
                 const resourceTypes = Array.from(new Set(allNetworkRequests.map((r) => r.resourceType))).sort()
