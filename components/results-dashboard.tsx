@@ -270,6 +270,31 @@ export function ResultsDashboard({ scanId }: ResultsDashboardProps) {
     URL.revokeObjectURL(url)
   }, [data, scanId])
 
+  const exportCsv = useCallback(() => {
+    if (!data) return
+    const { issues, pages } = data
+    const pageMap = new Map(pages.map((p) => [p.id, p.url]))
+    const esc = (s: string) => `"${s.replace(/"/g, '""')}"`
+    const header = ['Severity', 'Type', 'Title', 'Description', 'Affected URL'].join(',')
+    const rows = issues.map((issue) =>
+      [
+        issue.severity,
+        issue.type,
+        esc(issue.title ?? ''),
+        esc(issue.description ?? ''),
+        esc(issue.page_id ? (pageMap.get(issue.page_id) ?? '') : ''),
+      ].join(',')
+    )
+    const csv = [header, ...rows].join('\n')
+    const blob = new Blob([csv], { type: 'text/csv' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `agentqa-issues-${scanId.slice(0, 8)}.csv`
+    a.click()
+    URL.revokeObjectURL(url)
+  }, [data, scanId])
+
   const copyShareLink = useCallback(() => {
     const shareUrl = `${window.location.origin}/report/${scanId}`
     navigator.clipboard.writeText(shareUrl).then(() => {
@@ -514,7 +539,14 @@ export function ResultsDashboard({ scanId }: ResultsDashboardProps) {
                 className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-zinc-700 text-zinc-400 hover:text-zinc-200 hover:border-zinc-600 text-sm transition-colors"
               >
                 <Download className="h-3.5 w-3.5" />
-                Export JSON
+                JSON
+              </button>
+              <button
+                onClick={exportCsv}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-zinc-700 text-zinc-400 hover:text-zinc-200 hover:border-zinc-600 text-sm transition-colors"
+              >
+                <Download className="h-3.5 w-3.5" />
+                CSV
               </button>
               <button
                 onClick={handleRescan}

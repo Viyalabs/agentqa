@@ -29,7 +29,8 @@ const SORT_TABS: { value: Sort; label: string; icon: React.ReactNode }[] = [
 const TYPE_LABELS: Record<string, string> = {
   js_error: 'JS Error', console_error: 'Console Error', network_failure: 'Network',
   page_crash: 'Page Crash', page_not_found: '404', navigation_failure: 'Navigation',
-  missing_image: 'Missing Image', broken_form: 'Broken Form', slow_load: 'Slow Load',
+  missing_image: 'Missing Image', missing_alt: 'Alt Text', missing_meta: 'Missing Meta',
+  broken_form: 'Broken Form', slow_load: 'Slow Load',
   console_warning: 'Warning', mobile_layout: 'Mobile Layout', large_asset: 'Large Asset',
 }
 
