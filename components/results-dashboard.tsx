@@ -764,6 +764,31 @@ export function ResultsDashboard({ scanId }: ResultsDashboardProps) {
         </div>
       )}
 
+      {/* Score regression / improvement banner */}
+      {isComplete && history.length > 0 && scan.score !== null && (() => {
+        const prev = history[0].score
+        if (prev === null) return null
+        const delta = scan.score - prev
+        if (Math.abs(delta) < 3) return null  // ignore noise
+        const isRegression = delta < 0
+        return (
+          <div className={`flex items-center gap-3 px-4 py-3 rounded-xl border text-sm ${
+            isRegression
+              ? 'border-red-500/25 bg-red-500/8 text-red-300'
+              : 'border-emerald-500/25 bg-emerald-500/8 text-emerald-300'
+          }`}>
+            <span className="text-lg font-bold font-mono shrink-0">
+              {isRegression ? `▼ ${delta}` : `▲ +${delta}`}
+            </span>
+            <span>
+              Score {isRegression ? 'dropped' : 'improved'} <strong>{Math.abs(delta)} point{Math.abs(delta) !== 1 ? 's' : ''}</strong> since
+              last scan ({prev}/100 → {scan.score}/100).
+              {isRegression ? ' Review new issues below to find regressions.' : ' Keep it up.'}
+            </span>
+          </div>
+        )
+      })()}
+
       {/* Performance summary row */}
       {isComplete && pages.some((p) => p.load_time_ms) && (() => {
         const timed = pages.filter((p) => p.load_time_ms !== null && p.load_time_ms > 0)
