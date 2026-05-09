@@ -675,6 +675,56 @@ export function ResultsDashboard({ scanId }: ResultsDashboardProps) {
         </div>
       )}
 
+      {/* Performance summary row */}
+      {isComplete && pages.some((p) => p.load_time_ms) && (() => {
+        const timed = pages.filter((p) => p.load_time_ms !== null && p.load_time_ms > 0)
+        const avg = Math.round(timed.reduce((s, p) => s + (p.load_time_ms ?? 0), 0) / timed.length)
+        const slowest = [...timed].sort((a, b) => (b.load_time_ms ?? 0) - (a.load_time_ms ?? 0))[0]
+        const totalBytes = allNetworkRequests.reduce((s, r) => s + (r.responseSizeBytes ?? 0), 0)
+        const slowCount = timed.filter((p) => (p.load_time_ms ?? 0) > 3000).length
+
+        return (
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            {[
+              {
+                label: 'Avg load time',
+                value: avg >= 1000 ? `${(avg / 1000).toFixed(1)}s` : `${avg}ms`,
+                color: avg > 3000 ? 'text-red-400' : avg > 1500 ? 'text-yellow-400' : 'text-emerald-400',
+              },
+              {
+                label: 'Slowest page',
+                value: (slowest.load_time_ms ?? 0) >= 1000
+                  ? `${((slowest.load_time_ms ?? 0) / 1000).toFixed(1)}s`
+                  : `${slowest.load_time_ms}ms`,
+                color: (slowest.load_time_ms ?? 0) > 3000 ? 'text-red-400' : (slowest.load_time_ms ?? 0) > 1500 ? 'text-yellow-400' : 'text-zinc-200',
+                sub: new URL(slowest.url).pathname || '/',
+              },
+              {
+                label: 'Slow pages (>3s)',
+                value: String(slowCount),
+                color: slowCount > 0 ? 'text-orange-400' : 'text-emerald-400',
+                sub: slowCount === 0 ? 'all pages fast' : undefined,
+              },
+              {
+                label: 'Data transferred',
+                value: totalBytes > 1_000_000
+                  ? `${(totalBytes / 1_000_000).toFixed(1)} MB`
+                  : totalBytes > 1_000
+                  ? `${(totalBytes / 1_000).toFixed(0)} KB`
+                  : `${totalBytes} B`,
+                color: 'text-zinc-200',
+              },
+            ].map(({ label, value, color, sub }) => (
+              <div key={label} className="rounded-xl border border-zinc-800 bg-zinc-900/30 px-4 py-3">
+                <div className="text-[10px] text-zinc-600 uppercase tracking-wider mb-1">{label}</div>
+                <div className={`text-xl font-bold font-mono tabular-nums ${color}`}>{value}</div>
+                {sub && <div className="text-[10px] text-zinc-700 mt-0.5 font-mono truncate">{sub}</div>}
+              </div>
+            ))}
+          </div>
+        )
+      })()}
+
       {/* Score history strip */}
       {isComplete && history.length > 0 && (
         <ScoreHistory current={scan.score} history={history} />
