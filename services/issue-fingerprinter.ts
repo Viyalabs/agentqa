@@ -195,7 +195,7 @@ export function clusterKey(issue: IssueClassified): string {
     }
 
     case 'console_warning': {
-      const errors = (d.errors as string[] | undefined) ?? []
+      const errors = (d.warnings as string[] | undefined) ?? []
       const raw = errors[0] ?? issue.description ?? ''
       const tokens = raw.toLowerCase().replace(/[^a-z0-9\s]/g, ' ').split(/\s+/).filter(Boolean)
       const key = tokens.find(t => t.length > 4) ?? 'generic'

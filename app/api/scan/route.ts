@@ -76,13 +76,14 @@ export async function POST(req: NextRequest) {
   // ── Per-IP rate limit ────────────────────────────────────────────────────────
   if (clientIp) {
     const hourAgo = new Date(Date.now() - 60 * 60 * 1000).toISOString()
-    const { count: ipCount } = await db
+    const { count: ipCount, error: ipCountError } = await db
       .from('scans')
       .select('*', { count: 'exact', head: true })
       .eq('ip', clientIp)
       .gte('created_at', hourAgo)
 
-    if ((ipCount ?? 0) >= MAX_SCANS_PER_IP_PER_HOUR) {
+    // Fail-safe: if the count query errors, treat as exceeded to prevent bypass
+    if (ipCountError || (ipCount ?? MAX_SCANS_PER_IP_PER_HOUR) >= MAX_SCANS_PER_IP_PER_HOUR) {
       return NextResponse.json(
         { error: "You've run too many scans recently. Please wait a moment and try again." },
         { status: 429 }
@@ -91,12 +92,13 @@ export async function POST(req: NextRequest) {
   }
 
   // ── Queue limit: prevent overloading the scanner ─────────────────────────────
-  const { count: activeCount } = await db
+  const { count: activeCount, error: activeCountError } = await db
     .from('scans')
     .select('*', { count: 'exact', head: true })
     .in('status', ['pending', 'running'])
 
-  if ((activeCount ?? 0) >= MAX_CONCURRENT_SCANS) {
+  // Fail-safe: if the count query errors, treat as busy to prevent queue flooding
+  if (activeCountError || (activeCount ?? MAX_CONCURRENT_SCANS) >= MAX_CONCURRENT_SCANS) {
     return NextResponse.json(
       { error: 'Scanner is busy right now. Please try again in a few minutes.' },
       { status: 429 }

@@ -191,6 +191,7 @@ export function ResultsDashboard({ scanId }: ResultsDashboardProps) {
   const [isPolling, setIsPolling] = useState(true)
   const [severityFilter, setSeverityFilter] = useState<SeverityFilter>('all')
   const stopPollingTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const isMounted = useRef(true)
   const [copied, setCopied] = useState(false)
   const [copiedIssues, setCopiedIssues] = useState(false)
   const [copiedBadge, setCopiedBadge] = useState(false)
@@ -229,18 +230,28 @@ export function ResultsDashboard({ scanId }: ResultsDashboardProps) {
           setIsPolling(false)
         } else if (!stopPollingTimer.current) {
           // Keep polling up to 90s — AI analysis (Haiku + queue) can take 30-60s
-          stopPollingTimer.current = setTimeout(() => setIsPolling(false), 90_000)
+          stopPollingTimer.current = setTimeout(() => {
+            if (isMounted.current) setIsPolling(false)
+          }, 90_000)
         }
       }
     } catch (err) {
       console.error('Poll error:', err)
+      if (isMounted.current) {
+        setFetchError(err instanceof Error ? err.message : 'Network error — could not reach scan API')
+        setIsPolling(false)
+      }
     }
   }, [scanId])
 
   useEffect(() => { fetchResults() }, [fetchResults])
 
   useEffect(() => {
-    return () => { if (stopPollingTimer.current) clearTimeout(stopPollingTimer.current) }
+    isMounted.current = true
+    return () => {
+      isMounted.current = false
+      if (stopPollingTimer.current) clearTimeout(stopPollingTimer.current)
+    }
   }, [])
 
   useEffect(() => {
@@ -301,7 +312,7 @@ export function ResultsDashboard({ scanId }: ResultsDashboardProps) {
     navigator.clipboard.writeText(shareUrl).then(() => {
       setCopied(true)
       setTimeout(() => setCopied(false), 2000)
-    })
+    }).catch(() => {})
   }, [scanId])
 
   const copyIssuesList = useCallback(() => {
@@ -328,18 +339,18 @@ export function ResultsDashboard({ scanId }: ResultsDashboardProps) {
     navigator.clipboard.writeText(lines.join('\n')).then(() => {
       setCopiedIssues(true)
       setTimeout(() => setCopiedIssues(false), 2000)
-    })
+    }).catch(() => {})
   }, [data, scanId])
 
   const copyBadge = useCallback(() => {
-    const origin = typeof window !== 'undefined' ? window.location.origin : 'https://qa.viyalabs.com'
+    const origin = typeof window !== 'undefined' ? window.location.origin : 'https://agentqa.viyalabs.com'
     const badgeUrl = `${origin}/api/badge/${scanId}`
     const reportUrl = `${origin}/report/${scanId}`
     const md = `[![AgentQA](${badgeUrl})](${reportUrl})`
     navigator.clipboard.writeText(md).then(() => {
       setCopiedBadge(true)
       setTimeout(() => setCopiedBadge(false), 2000)
-    })
+    }).catch(() => {})
   }, [scanId])
 
   const handleRescan = useCallback(() => {
