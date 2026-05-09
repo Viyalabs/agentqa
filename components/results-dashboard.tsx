@@ -615,6 +615,31 @@ export function ResultsDashboard({ scanId }: ResultsDashboardProps) {
 
       {isRunning && <NotifyWhenDone scanId={scanId} alreadySet={Boolean(scan.notify_email)} />}
 
+      {/* First-scan phase guide — visible until the first page is crawled */}
+      {isRunning && pages.length === 0 && (
+        <div className="p-4 rounded-xl border border-zinc-800 bg-zinc-900/40 space-y-3">
+          <p className="text-xs font-semibold text-zinc-400 uppercase tracking-wider">What&apos;s happening</p>
+          <div className="grid sm:grid-cols-3 gap-3">
+            {[
+              { n: '1', label: 'Crawl', desc: 'Discovering all pages linked from the root URL', active: elapsed < 15 },
+              { n: '2', label: 'Test each page', desc: 'Real browser loads every page, runs JS, captures screenshots', active: elapsed >= 15 && elapsed < 90 },
+              { n: '3', label: 'AI analysis', desc: 'Root causes and code fixes written for every issue found', active: elapsed >= 90 },
+            ].map((step) => (
+              <div key={step.n} className={`flex items-start gap-3 p-3 rounded-lg border transition-colors ${step.active ? 'border-blue-500/30 bg-blue-500/5' : 'border-zinc-800 bg-zinc-900/30'}`}>
+                <span className={`shrink-0 w-5 h-5 rounded-full text-xs font-bold flex items-center justify-center ${step.active ? 'bg-blue-500/20 text-blue-400' : 'bg-zinc-800 text-zinc-600'}`}>
+                  {step.n}
+                </span>
+                <div>
+                  <div className={`text-xs font-semibold mb-0.5 ${step.active ? 'text-blue-300' : 'text-zinc-500'}`}>{step.label}</div>
+                  <div className="text-xs text-zinc-600 leading-relaxed">{step.desc}</div>
+                </div>
+              </div>
+            ))}
+          </div>
+          <p className="text-xs text-zinc-600">Full scan typically takes 60–120 seconds depending on the number of pages.</p>
+        </div>
+      )}
+
       {/* Real-time scan log terminal */}
       {(isRunning || (isComplete && logs.length > 0)) && (
         <ScanLogTerminal logs={logs} isRunning={isRunning} />
