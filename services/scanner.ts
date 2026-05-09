@@ -575,6 +575,30 @@ function classifyPageIssues(
     )
   }
 
+  if (!result.is404 && !result.isCrash && !result.isUnreachable) {
+    if (result.h1Count === 0) {
+      issues.push(
+        issue(
+          'missing_meta',
+          'low',
+          'Missing H1 Heading',
+          'Page has no H1 tag. Every page should have exactly one H1 to signal the primary topic to search engines and assistive technologies.',
+          { url: result.url }
+        )
+      )
+    } else if (result.h1Count > 1) {
+      issues.push(
+        issue(
+          'missing_meta',
+          'low',
+          'Multiple H1 Tags',
+          `Page has ${result.h1Count} H1 tags. Exactly one H1 is the SEO and accessibility best practice — multiple H1s dilute keyword signals and confuse document structure.`,
+          { url: result.url, count: result.h1Count }
+        )
+      )
+    }
+  }
+
   if (result.loadTimeMs > 5000 && !result.is404) {
     issues.push(
       issue(

@@ -62,6 +62,7 @@ export async function testPage(
   let missingAltCount = 0
   let missingMetaDescription = false
   let missingViewport = false
+  let h1Count = 0
   let forms: PageTestResult['forms'] = []
   let links: string[] = []
   let isCrash = false
@@ -223,6 +224,10 @@ export async function testPage(
         )
         .catch(() => false)
 
+      h1Count = await page
+        .evaluate(() => document.querySelectorAll('h1').length)
+        .catch(() => 0)
+
       forms = await page
         .evaluate(() =>
           Array.from(document.querySelectorAll('form')).map((form) => ({
@@ -319,6 +324,7 @@ export async function testPage(
     missingAltCount,
     missingMetaDescription,
     missingViewport,
+    h1Count,
     forms,
     links,
     screenshot,
