@@ -5,7 +5,7 @@ import type { IssueType, IssueSeverity, PatternMatchResult } from '@/types'
 
 // Haiku: fast + cheap for post-scan analysis that runs in background
 const MODEL      = 'claude-haiku-4-5-20251001'
-const BATCH_SIZE = 8  // issues per Claude call; ~150 output tokens each = ~1200 max_tokens
+const BATCH_SIZE = 8  // issues per Claude call; ~180 output tokens each = ~1440 max_tokens
 
 interface IssueForAnalysis {
   id: string
@@ -23,14 +23,57 @@ interface AIAnalysis {
   fixSuggestion: string
 }
 
+type IssueCategory = 'JS_ERROR' | 'NETWORK' | 'MOBILE' | 'PERFORMANCE' | 'UI' | 'OTHER'
+
 function frameworkLabel(frameworks: string[]): string {
   if (frameworks.length === 0) return 'unknown stack'
   return frameworks.slice(0, 2).join(' + ')
 }
 
+function issueCategory(type: IssueType): IssueCategory {
+  switch (type) {
+    case 'js_error':
+    case 'console_error':
+    case 'console_warning':
+    case 'page_crash':
+      return 'JS_ERROR'
+    case 'network_failure':
+    case 'navigation_failure':
+      return 'NETWORK'
+    case 'mobile_layout':
+      return 'MOBILE'
+    case 'slow_load':
+    case 'large_asset':
+      return 'PERFORMANCE'
+    case 'missing_image':
+    case 'broken_form':
+    case 'page_not_found':
+      return 'UI'
+    default:
+      return 'OTHER'
+  }
+}
+
+function issueTypeGuidance(category: IssueCategory): string {
+  switch (category) {
+    case 'JS_ERROR':
+      return 'Stack trace origin, missing null/undefined checks, unhandled promise rejections, third-party script conflicts. Distinguish app code from vendor bundle errors.'
+    case 'NETWORK':
+      return 'HTTP status code meaning, CORS policy headers, request timeout vs connection refused, CDN misconfiguration, DNS resolution. Distinguish client-side fetch failures from server errors.'
+    case 'MOBILE':
+      return 'Viewport meta tag presence, touch target size (min 44×44px), CSS media query breakpoints, horizontal overflow, iOS/Android rendering differences, font scaling.'
+    case 'PERFORMANCE':
+      return 'Core Web Vitals (LCP/FID/CLS), render-blocking resources, bundle splitting opportunities, Cache-Control/ETag headers, image format and size, lazy loading.'
+    case 'UI':
+      return 'Broken asset URL (check path casing and CDN origin), CSS z-index/overflow, layout overflow on small viewports, missing resource 404, form validation and submission flow.'
+    default:
+      return 'Specific symptom observed, most likely root cause given the detected stack, concrete actionable fix steps.'
+  }
+}
+
 /**
- * Build a single prompt covering up to BATCH_SIZE issues.
- * Shared context (persona, URL, stack) is written once — major token saving vs N individual prompts.
+ * Build a batch prompt covering up to BATCH_SIZE issues with anti-hallucination constraints.
+ * Shared context is written once — major token saving vs N individual prompts.
  */
 function buildBatchPrompt(
   appUrl: string,
@@ -40,29 +83,38 @@ function buildBatchPrompt(
   const stack = frameworkLabel(frameworks)
 
   const issueLines = issues.map((issue, i) => {
-    // Truncate details to 200 chars per issue in batch mode (vs 800 in solo mode)
     const details = issue.details
       ? JSON.stringify(issue.details).slice(0, 200)
       : 'none'
     return [
-      `[${i + 1}] type:${issue.type}  severity:${issue.severity}`,
+      `[${i + 1}] category:${issueCategory(issue.type)}  type:${issue.type}  severity:${issue.severity}`,
       `    title: ${issue.title}`,
       `    desc:  ${issue.description ?? 'none'}`,
       `    data:  ${details}`,
     ].join('\n')
   }).join('\n\n')
 
-  return `You are an expert QA engineer. Analyze these ${issues.length} issues detected by an automated browser scanner.
+  return `You are an expert web developer analyzing automated QA scan findings.
 
 App: ${appUrl}
 Stack: ${stack}
 
+CONSTRAINTS:
+- Only state what the evidence in "data" supports. If uncertain, set confidence to "low".
+- root_cause must name a specific technical reason, not a generic statement.
+- Never invent error codes, file paths, or function names absent from the data.
+- summary: 1 sentence — what broke from the user's perspective.
+- root_cause: 1-2 sentences — specific technical explanation tied to the stack.
+- fix: array of 2-4 concrete ordered steps the developer can act on immediately.
+- confidence: "low" | "medium" | "high" based on data richness.
+
+Issues:
 ${issueLines}
 
-Return a JSON array with exactly ${issues.length} objects, one per issue in the same order:
-[{"i":1,"summary":"1 sentence — what broke","root_cause":"technical reason","fix":"actionable steps"},...]
+Return a JSON array with exactly ${issues.length} objects in the same order:
+[{"i":1,"summary":"...","root_cause":"...","fix":["step 1","step 2"],"confidence":"high"},...]
 
-Rules: valid JSON only, no markdown fences, preserve issue order.`
+Valid JSON only. No markdown fences. Preserve issue order.`
 }
 
 /** Three-pass JSON extraction: direct → fenced → bare object/array */
@@ -88,12 +140,18 @@ async function analyzeBatch(
 ): Promise<Map<string, AIAnalysis>> {
   const message = await client.messages.create({
     model:      MODEL,
-    max_tokens: Math.max(150 * issues.length, 300),
+    max_tokens: Math.max(200 * issues.length, 400),
     messages:   [{ role: 'user', content: buildBatchPrompt(appUrl, issues, frameworks) }],
   })
 
   const text   = message.content[0]?.type === 'text' ? message.content[0].text : ''
-  const parsed = extractJSON(text) as Array<{ i: number; summary?: string; root_cause?: string; fix?: string }>
+  const parsed = extractJSON(text) as Array<{
+    i: number
+    summary?: string
+    root_cause?: string
+    fix?: string | string[]
+    confidence?: string
+  }>
 
   if (!Array.isArray(parsed)) throw new TypeError('Batch response was not a JSON array')
 
@@ -101,9 +159,12 @@ async function analyzeBatch(
   for (const item of parsed) {
     const rep = issues[item.i - 1]
     if (!rep) continue
-    const summary      = item.summary?.trim()      ?? ''
-    const rootCause    = item.root_cause?.trim()   ?? ''
-    const fixSuggestion = item.fix?.trim()         ?? ''
+    const summary    = item.summary?.trim()    ?? ''
+    const rootCause  = item.root_cause?.trim() ?? ''
+    const fixRaw     = item.fix
+    const fixSuggestion = Array.isArray(fixRaw)
+      ? fixRaw.map((s, idx) => `${idx + 1}. ${s}`).join('\n')
+      : (fixRaw?.trim() ?? '')
     if (summary) {
       result.set(rep.fingerprint ?? rep.type, { summary, rootCause, fixSuggestion })
     }
@@ -111,38 +172,70 @@ async function analyzeBatch(
   return result
 }
 
-/** Single-issue fallback prompt (used when batch parsing fails for a specific item) */
+/** Single-issue fallback prompt with JSON output and type-specific analysis guidance */
 function buildSoloPrompt(appUrl: string, issue: IssueForAnalysis, frameworks: string[]): string {
   const detailText = issue.details
     ? JSON.stringify(issue.details, null, 2).slice(0, 800)
     : 'none'
-  return `You are an expert QA engineer reviewing a bug detected by an automated browser scanner.
+  const category = issueCategory(issue.type)
+  const guidance = issueTypeGuidance(category)
+  const stack = frameworkLabel(frameworks)
 
-App URL: ${appUrl}
-Detected stack: ${frameworkLabel(frameworks)}
+  return `You are an expert web developer analyzing a QA scan finding.
+
+App: ${appUrl}
+Stack: ${stack}
+Category: ${category}
 Issue type: ${issue.type}
 Severity: ${issue.severity}
 Title: ${issue.title}
 Description: ${issue.description ?? 'none'}
-Technical details: ${detailText}
+Technical data: ${detailText}
 
-Respond with exactly 3 lines:
-SUMMARY: [1 sentence — what the user experienced or what broke]
-ROOT_CAUSE: [1-2 sentences — the likely technical reason, specific to ${frameworkLabel(frameworks)} if relevant]
-FIX: [specific, actionable steps a developer can take to resolve this]
+FOCUS: ${guidance}
 
-Be precise and technical. No filler. Speak to the developer fixing it.`
+CONSTRAINTS:
+- Only state what the evidence in "Technical data" supports. If data is thin, set confidence to "low".
+- root_cause must name a specific technical reason tied to the stack, not a generic statement.
+- Never invent error codes, file paths, or function names absent from the data above.
+- summary: 1 sentence — what the user experienced or what broke.
+- root_cause: 1-2 sentences — specific technical explanation.
+- fix: array of 2-4 concrete ordered steps the developer can act on immediately.
+- confidence: "low" | "medium" | "high" based on how much the data confirms your analysis.
+
+Example:
+{"summary":"Login button throws an unhandled TypeError on mobile Safari","root_cause":"The click handler calls event.composedPath() which returns undefined in Safari <14. The polyfill is absent from the mobile bundle.","fix":["Add a composedPath polyfill to the app entry point","Or rewrite the handler to use event.target with a null guard","Verify fix on BrowserStack Safari 13 and 14"],"confidence":"high"}
+
+Respond with only the JSON object. No markdown, no extra text.`
 }
 
 function parseSoloResponse(text: string): AIAnalysis {
-  const lines = text.trim().split('\n')
-  let summary = '', rootCause = '', fixSuggestion = ''
-  for (const line of lines) {
-    if (line.startsWith('SUMMARY:'))         summary       = line.slice('SUMMARY:'.length).trim()
-    else if (line.startsWith('ROOT_CAUSE:')) rootCause     = line.slice('ROOT_CAUSE:'.length).trim()
-    else if (line.startsWith('FIX:'))        fixSuggestion = line.slice('FIX:'.length).trim()
+  // Try JSON first (new format), fall back to line-prefix format
+  try {
+    const parsed = extractJSON(text) as {
+      summary?: string
+      root_cause?: string
+      fix?: string | string[]
+    }
+    const fixRaw = parsed.fix
+    const fixSuggestion = Array.isArray(fixRaw)
+      ? fixRaw.map((s, idx) => `${idx + 1}. ${s}`).join('\n')
+      : (fixRaw?.trim() ?? '')
+    return {
+      summary:      parsed.summary?.trim()    ?? '',
+      rootCause:    parsed.root_cause?.trim() ?? '',
+      fixSuggestion,
+    }
+  } catch {
+    const lines = text.trim().split('\n')
+    let summary = '', rootCause = '', fixSuggestion = ''
+    for (const line of lines) {
+      if (line.startsWith('SUMMARY:'))         summary       = line.slice('SUMMARY:'.length).trim()
+      else if (line.startsWith('ROOT_CAUSE:')) rootCause     = line.slice('ROOT_CAUSE:'.length).trim()
+      else if (line.startsWith('FIX:'))        fixSuggestion = line.slice('FIX:'.length).trim()
+    }
+    return { summary, rootCause, fixSuggestion }
   }
-  return { summary, rootCause, fixSuggestion }
 }
 
 function buildOverviewPrompt(
@@ -153,22 +246,21 @@ function buildOverviewPrompt(
   mediumCount: number,
   frameworks: string[],
 ): string {
-  const stackLine = frameworks.length > 0
-    ? `Detected stack: ${frameworkLabel(frameworks)}\n`
-    : ''
+  const stackLine = frameworks.length > 0 ? `Stack: ${frameworkLabel(frameworks)}\n` : ''
+  const health = score >= 80 ? 'good' : score >= 60 ? 'fair' : 'poor'
 
-  return `You are a senior QA lead reviewing an automated scan of a web application.
+  return `You are a senior engineering lead reviewing a QA scan report.
 
-App URL: ${appUrl}
-${stackLine}QA Score: ${score}/100
-Total issues: ${totalIssues} (${criticalCount} critical, ${mediumCount} medium)
+App: ${appUrl}
+${stackLine}Score: ${score}/100 (${health})
+Issues: ${totalIssues} total — ${criticalCount} critical, ${mediumCount} medium
 
-Write a 2-3 sentence executive summary:
-1. State the overall app health clearly
-2. Call out the most urgent concern if any
-3. Give one concrete recommendation specific to the stack if relevant
+Write 2-3 sentences:
+1. Overall health with score context — state the number, don't just say "some issues".
+2. Most urgent concern — be specific (e.g. "3 JS errors crash checkout" not "there are critical issues").
+3. One concrete next step tied to the detected stack.
 
-Be direct. Speak to a developer or technical founder.`
+CONSTRAINTS: No filler ("it seems", "looks like", "please note"). No bullet points. Plain prose. Speak to the technical lead who will act on this today.`
 }
 
 /**
