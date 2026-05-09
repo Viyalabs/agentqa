@@ -64,11 +64,22 @@ export async function GET(
 
   const frameworkNames = (fws ?? []).map((f: { framework: string }) => f.framework)
 
+  // Fetch prior completed scans for same URL (after we have scan.url)
+  const { data: historyRows } = await db
+    .from('scans')
+    .select('id, score, completed_at')
+    .eq('url', scan.url as string)
+    .eq('status', 'completed')
+    .neq('id', scanId)
+    .order('completed_at', { ascending: false })
+    .limit(5)
+
   return NextResponse.json({
     scan,
     pages:      pages ?? [],
     issues:     issues ?? [],
     logs:       logsData ?? [],
     frameworks: frameworkNames,
+    history:    historyRows ?? [],
   })
 }

@@ -34,7 +34,7 @@ import { IssueCard } from './issue-card'
 import { ScreenshotViewer } from './screenshot-viewer'
 import { ReportEmailCapture } from './report-email-capture'
 import { NotifyWhenDone } from './notify-when-done'
-import type { Issue, IssueSeverity, IssueType, NetworkRequest, ScanLog, ScanStatusResponse } from '@/types'
+import type { Issue, IssueSeverity, IssueType, NetworkRequest, ScanLog, ScanStatusResponse, ScanHistoryEntry } from '@/types'
 import {
   getScoreColor,
   getScoreBgColor,
@@ -296,7 +296,7 @@ export function ResultsDashboard({ scanId }: ResultsDashboardProps) {
     )
   }
 
-  const { scan, pages, issues, logs, frameworks = [] } = data
+  const { scan, pages, issues, logs, frameworks = [], history = [] } = data
   const isRunning = scan.status === 'running' || scan.status === 'pending'
   const isFailed = scan.status === 'failed'
   const isComplete = scan.status === 'completed'
@@ -604,6 +604,11 @@ export function ResultsDashboard({ scanId }: ResultsDashboardProps) {
             </CardContent>
           </Card>
         </div>
+      )}
+
+      {/* Score history strip */}
+      {isComplete && history.length > 0 && (
+        <ScoreHistory current={scan.score} history={history} />
       )}
 
       {/* AI Overview */}
@@ -932,6 +937,57 @@ export function ResultsDashboard({ scanId }: ResultsDashboardProps) {
           </div>
         </div>
       )}
+    </div>
+  )
+}
+
+// ── ScoreHistory — sparkline of prior scores for the same URL ────────────────
+
+function ScoreHistory({ current, history }: { current: number | null; history: ScanHistoryEntry[] }) {
+  const entries = [
+    ...history.slice().reverse(),
+    { id: 'current', score: current, completed_at: new Date().toISOString() },
+  ]
+  const scores = entries.map((e) => e.score ?? 0)
+  const max = Math.max(...scores, 100)
+
+  return (
+    <div className="rounded-xl border border-zinc-800 bg-zinc-900/30 px-4 py-3">
+      <div className="flex items-center justify-between mb-3">
+        <span className="text-xs font-semibold text-zinc-500 uppercase tracking-wider">Score history</span>
+        <span className="text-xs text-zinc-600">{history.length + 1} scan{history.length !== 0 ? 's' : ''} · same URL</span>
+      </div>
+      <div className="flex items-end gap-1.5">
+        {entries.map((entry, i) => {
+          const score = entry.score ?? 0
+          const pct = Math.round((score / max) * 100)
+          const isCurrent = entry.id === 'current'
+          const color = score >= 90 ? 'bg-emerald-500' : score >= 75 ? 'bg-blue-500' : score >= 50 ? 'bg-amber-500' : 'bg-red-500'
+          const prev = i > 0 ? (entries[i - 1].score ?? 0) : null
+          const delta = prev !== null ? score - prev : null
+          return (
+            <div key={entry.id} className="flex flex-col items-center gap-1 flex-1 min-w-0">
+              <div className="flex flex-col items-center gap-0.5">
+                {delta !== null && delta !== 0 && (
+                  <span className={`text-[9px] font-mono ${delta > 0 ? 'text-emerald-400' : 'text-red-400'}`}>
+                    {delta > 0 ? '+' : ''}{delta}
+                  </span>
+                )}
+                <span className={`text-[10px] font-mono font-semibold tabular-nums ${isCurrent ? getScoreColor(score) : 'text-zinc-400'}`}>
+                  {score}
+                </span>
+              </div>
+              <div
+                className={`w-full rounded-sm transition-all ${color} ${isCurrent ? 'opacity-100 ring-1 ring-white/20' : 'opacity-50'}`}
+                style={{ height: `${Math.max(pct * 0.48, 4)}px` }}
+              />
+              <span className="text-[9px] text-zinc-700 font-mono truncate w-full text-center">
+                {isCurrent ? 'now' : formatTimestamp(entry.completed_at)}
+              </span>
+            </div>
+          )
+        })}
+      </div>
     </div>
   )
 }

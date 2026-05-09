@@ -132,12 +132,19 @@ export interface StartScanResponse {
   scanId: string
 }
 
+export interface ScanHistoryEntry {
+  id: string
+  score: number | null
+  completed_at: string
+}
+
 export interface ScanStatusResponse {
   scan: Scan
   pages: ScannedPage[]
   issues: Issue[]
   logs: ScanLog[]
   frameworks: string[]
+  history: ScanHistoryEntry[]
 }
 
 export interface IssueClassified {
