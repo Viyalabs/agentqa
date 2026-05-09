@@ -212,7 +212,17 @@ export async function runScan(scanId: string, url: string): Promise<void> {
     })
 
     if (notifyEmail) {
-      await sendScanCompletionEmail(notifyEmail, scanId, url, score, allIssues).catch((err: unknown) => {
+      const { data: prevRows } = await db
+        .from('scans')
+        .select('score')
+        .eq('url', url)
+        .eq('status', 'completed')
+        .neq('id', scanId)
+        .order('completed_at', { ascending: false })
+        .limit(1)
+      const previousScore = (prevRows?.[0] as { score: number | null } | undefined)?.score ?? null
+
+      await sendScanCompletionEmail(notifyEmail, scanId, url, score, allIssues, previousScore).catch((err: unknown) => {
         console.error(`[scanner] Failed to send notify email for ${scanId}:`, err)
       })
     }
@@ -277,6 +287,7 @@ async function sendScanCompletionEmail(
   scannedUrl: string,
   score: number,
   issues: IssueClassified[],
+  previousScore: number | null,
 ): Promise<void> {
   const reportLink = `${APP_URL}/report/${scanId}`
   const badgeUrl = `${APP_URL}/api/badge/${scanId}`
@@ -287,6 +298,14 @@ async function sendScanCompletionEmail(
 
   const scoreColor = score >= 85 ? '#22c55e' : score >= 70 ? '#eab308' : score >= 50 ? '#f97316' : '#ef4444'
   const scoreLabel = score >= 85 ? 'Excellent' : score >= 70 ? 'Good' : score >= 50 ? 'Needs work' : 'Critical issues'
+
+  const delta = previousScore !== null ? score - previousScore : null
+  const deltaHtml = delta !== null
+    ? `<span style="font-size:13px;font-weight:600;color:${delta > 0 ? '#22c55e' : delta < 0 ? '#ef4444' : '#a1a1aa'};margin-left:8px">${delta > 0 ? `▲ +${delta}` : delta < 0 ? `▼ ${delta}` : '→ no change'} vs last scan</span>`
+    : ''
+  const deltaSubject = delta !== null
+    ? (delta > 0 ? ` (+${delta} ↑)` : delta < 0 ? ` (${delta} ↓)` : '')
+    : ''
 
   const topCritical = critical.slice(0, 3).map((i) => `
     <div style="padding:10px 12px;border-radius:6px;background:#450a0a;border-left:3px solid #ef4444;margin-bottom:8px">
@@ -307,7 +326,7 @@ async function sendScanCompletionEmail(
   console.log(`[scanner] Sending completion email to ${email} for ${scanId}`)
   await resendPost({
     to: [email],
-    subject: `AgentQA: ${score}/100 — ${scoreLabel} · ${issues.length} issue${issues.length !== 1 ? 's' : ''} on ${new URL(scannedUrl).hostname}`,
+    subject: `AgentQA: ${score}/100${deltaSubject} — ${scoreLabel} · ${issues.length} issue${issues.length !== 1 ? 's' : ''} on ${new URL(scannedUrl).hostname}`,
     html: `
       <div style="font-family:system-ui,sans-serif;max-width:560px;margin:0 auto;background:#09090b;color:#fff;padding:0;border-radius:12px;overflow:hidden">
         <!-- Header -->
@@ -319,7 +338,7 @@ async function sendScanCompletionEmail(
         <!-- Score hero -->
         <div style="padding:32px 28px;text-align:center;border-bottom:1px solid #27272a">
           <div style="font-size:60px;font-weight:800;color:${scoreColor};line-height:1;font-variant-numeric:tabular-nums">${score}</div>
-          <div style="font-size:18px;color:#71717a;margin-top:4px">/100 — ${scoreLabel}</div>
+          <div style="font-size:18px;color:#71717a;margin-top:4px">/100 — ${scoreLabel}${deltaHtml}</div>
           <img src="${badgeUrl}" alt="QA Score ${score}/100" style="margin:16px auto 0;display:block" />
         </div>
 
