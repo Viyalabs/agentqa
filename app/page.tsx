@@ -10,6 +10,7 @@ import { AiMoat } from '@/components/ai-moat'
 import { Testimonials } from '@/components/testimonials'
 import { TechBar } from '@/components/tech-bar'
 import { Features } from '@/components/features'
+import { RecentReports } from '@/components/recent-reports'
 import { CtaBanner } from '@/components/cta-banner'
 import { Pricing } from '@/components/pricing'
 import { Footer } from '@/components/footer'
@@ -92,7 +93,10 @@ export default async function HomePage() {
         {/* 10. Social proof */}
         <Testimonials />
 
-        {/* 11. CTA before pricing */}
+        {/* 11. Live scan gallery */}
+        <RecentReports />
+
+        {/* 12. CTA before pricing */}
         <CtaBanner />
 
         {/* 13. Pricing */}
