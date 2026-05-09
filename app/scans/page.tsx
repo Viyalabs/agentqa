@@ -29,9 +29,10 @@ export default async function ScansPage() {
             <Activity className="h-5 w-5 text-blue-400" />
             AgentQA
           </Link>
-          <Link href="/" className="text-sm text-zinc-400 hover:text-zinc-200 transition-colors">
-            Run a scan →
-          </Link>
+          <div className="flex items-center gap-5 text-sm text-zinc-400">
+            <Link href="/patterns" className="hover:text-zinc-200 transition-colors">Patterns</Link>
+            <Link href="/" className="hover:text-zinc-200 transition-colors">Run a scan →</Link>
+          </div>
         </div>
       </nav>
 
