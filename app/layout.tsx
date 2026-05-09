@@ -6,7 +6,7 @@ import './globals.css'
 
 const inter = Inter({ subsets: ['latin'] })
 
-const APP_URL = 'https://qa.viyalabs.com'
+const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? 'https://qa.viyalabs.com'
 const TITLE = 'AgentQA — AI QA Agent. Catch Bugs Before Your Users Do'
 const DESCRIPTION =
   'AgentQA is your autonomous AI QA engineer. Paste a URL and get a full QA report in under 2 minutes — real Chrome browser, zero setup, no QA team required. Works with Cursor, Replit, Lovable, and any web app.'

@@ -249,7 +249,7 @@ export default async function ReportOGImage({
 
           {/* Footer */}
           <div style={{ color: '#3B82F6', fontSize: 16, marginTop: 28 }}>
-            qa.viyalabs.com
+            agentqa.viyalabs.com
           </div>
         </div>
       </div>

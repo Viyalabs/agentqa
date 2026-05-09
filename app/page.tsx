@@ -24,7 +24,7 @@ const jsonLd = {
   operatingSystem: 'Web',
   description:
     'AgentQA is an autonomous AI QA agent that tests your web app using a real browser, detects bugs, captures screenshots, finds JS errors, tests mobile responsiveness, and delivers a QA report in under 2 minutes.',
-  url: 'https://qa.viyalabs.com',
+  url: process.env.NEXT_PUBLIC_APP_URL ?? 'https://qa.viyalabs.com',
   offers: {
     '@type': 'Offer',
     price: '0',

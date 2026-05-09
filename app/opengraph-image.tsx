@@ -144,7 +144,7 @@ export default function OGImage() {
             letterSpacing: '0.3px',
           }}
         >
-          qa.viyalabs.com
+          agentqa.viyalabs.com
         </div>
       </div>
     ),

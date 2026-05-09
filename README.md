@@ -4,7 +4,7 @@
 
 Paste a deployed URL. AgentQA launches a real Chrome browser, crawls up to 5 pages, detects bugs, captures screenshots, and delivers a scored QA report in under 2 minutes — zero setup, no QA team required.
 
-Built by [Viyalabs](https://viyalabs.com) · [support@viyalabs.com](mailto:support@viyalabs.com) · [qa.viyalabs.com](https://qa.viyalabs.com)
+Built by [Viyalabs](https://viyalabs.com) · [support@viyalabs.com](mailto:support@viyalabs.com) · [agentqa.viyalabs.com](https://agentqa.viyalabs.com)
 
 ---
 
@@ -151,7 +151,7 @@ ALTER TABLE scans ADD COLUMN IF NOT EXISTS ip TEXT;
 
 ## CI/CD integration
 
-Automatically QA-gate every deployment. See [qa.viyalabs.com/docs](https://qa.viyalabs.com/docs) for full docs.
+Automatically QA-gate every deployment. See [agentqa.viyalabs.com/docs](https://agentqa.viyalabs.com/docs) for full docs.
 
 ### Setup
 
@@ -173,7 +173,7 @@ jobs:
     steps:
       - name: Run QA scan
         run: |
-          curl -f -X POST https://qa.viyalabs.com/api/webhook/scan \
+          curl -f -X POST https://agentqa.viyalabs.com/api/webhook/scan \
             -H "x-api-key: ${{ secrets.AGENTQA_API_KEY }}" \
             -H "Content-Type: application/json" \
             -d '{"url":"${{ github.event.deployment_status.target_url }}","failThreshold":75}'
@@ -190,7 +190,7 @@ Returns `200` when score ≥ `failThreshold`, `422` when score falls below — f
   "failThreshold": 75,
   "scanId": "uuid",
   "url": "https://your-app.com",
-  "reportUrl": "https://qa.viyalabs.com/report/uuid",
+  "reportUrl": "https://agentqa.viyalabs.com/report/uuid",
   "summary": { "totalPages": 8, "totalIssues": 3, "critical": 0, "medium": 2, "low": 1 },
   "criticalIssues": []
 }
@@ -288,13 +288,14 @@ agentqa/
 | `NEXT_PUBLIC_SUPABASE_URL` | ✅ | — | Supabase project URL |
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | ✅ | — | Supabase anon key (public reads) |
 | `SUPABASE_SERVICE_ROLE_KEY` | ✅ | — | Supabase service role key (writes) |
-| `NEXT_PUBLIC_APP_URL` | ✅ | `https://qa.viyalabs.com` | Base URL for report/email links |
+| `NEXT_PUBLIC_APP_URL` | ✅ | `https://qa.viyalabs.com` | Base URL for report/email links and AI worker trigger. Local dev: `http://localhost:3000`. Production: set in Vercel env vars |
+| `ANTHROPIC_API_KEY` | optional | — | Enables AI root-cause analysis and fix suggestions. Get at console.anthropic.com |
 | `RESEND_API_KEY` | optional | — | Enables all email delivery (report links, notifications) |
 | `RESEND_FROM_EMAIL` | optional | `AgentQA <noreply@viyalabs.com>` | Sender address — use `onboarding@resend.dev` until domain verified |
 | `RESEND_NOTIFY_EMAIL` | optional | `support@viyalabs.com` | Admin email for waitlist/lead notifications |
-| `WEBHOOK_API_KEY` | optional | — | Secret key for CI/CD webhook. Comma-separate for multiple keys. Generate: `openssl rand -hex 32` |
-| `CALLMEBOT_API_KEY` | optional | — | WhatsApp notification via CallMeBot |
-| `CALLMEBOT_PHONE` | optional | — | WhatsApp recipient phone (country code + number, no `+`). E.g. `919876543210` |
+| `WEBHOOK_API_KEY` | optional | — | Secret key for CI/CD webhook. Generate: `openssl rand -hex 32` |
+| `WORKER_SECRET` | optional | — | Protects `/api/scan/worker` and `/api/ai/worker`. Generate: `openssl rand -hex 32` |
+| `CRON_SECRET` | optional | — | Vercel sets this automatically on Pro. Required if self-hosting |
 | `PLAYWRIGHT_HEADLESS` | optional | `true` | Set `false` to see browser window during local dev |
 | `PLAYWRIGHT_TIMEOUT_MS` | optional | `10000` | Per-page navigation timeout in ms |
 | `MAX_PAGES_PER_SCAN` | optional | `5` | Max pages per scan |
