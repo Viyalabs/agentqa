@@ -4,7 +4,7 @@ import { getAdminClient } from '@/lib/supabase'
 import { claimNextJob, completeJob, failJob } from '@/services/ai-queue'
 import { analyzeIssues, generateScanOverview } from '@/services/ai-analyzer'
 import { getPatternMatchesForScan } from '@/services/pattern-matcher'
-import { AI_MAX_JOBS_PER_INVOCATION, AI_STUCK_JOB_TIMEOUT_MINUTES } from '@/services/ai-config'
+import { AI_MAX_JOBS_PER_INVOCATION, AI_JOB_TIMEOUT_MS, AI_STUCK_JOB_TIMEOUT_MINUTES } from '@/services/ai-config'
 
 export const runtime    = 'nodejs'
 export const maxDuration = 300   // Vercel max — gives ~5 min to drain the queue
@@ -44,6 +44,17 @@ async function runScanOverview(
   ])
 
   await generateScanOverview(scanId, appUrl, score, critCount ?? 0, medCount ?? 0, frameworks, lowCount ?? 0)
+}
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
+
+function withTimeout<T>(promise: Promise<T>, ms: number, label: string): Promise<T> {
+  return Promise.race([
+    promise,
+    new Promise<never>((_, reject) =>
+      setTimeout(() => reject(new Error(`${label} timed out after ${ms}ms`)), ms)
+    ),
+  ])
 }
 
 // ── Queue drainer ─────────────────────────────────────────────────────────────
@@ -90,9 +101,17 @@ async function processOne(): Promise<boolean> {
     const frameworks = (fwRows ?? []).map((r: { framework: string }) => r.framework)
 
     if (job.job_type === 'issue_batch') {
-      await runIssueBatch(job.scan_id, scan.url as string, frameworks)
+      await withTimeout(
+        runIssueBatch(job.scan_id, scan.url as string, frameworks),
+        AI_JOB_TIMEOUT_MS,
+        `[ai-worker] issue_batch ${job.id}`,
+      )
     } else {
-      await runScanOverview(job.scan_id, scan.url as string, (scan.score as number) ?? 0, frameworks)
+      await withTimeout(
+        runScanOverview(job.scan_id, scan.url as string, (scan.score as number) ?? 0, frameworks),
+        AI_JOB_TIMEOUT_MS,
+        `[ai-worker] scan_overview ${job.id}`,
+      )
     }
 
     await completeJob(job.id)
@@ -120,7 +139,12 @@ async function processOne(): Promise<boolean> {
  */
 async function drainQueue(): Promise<void> {
   // Reset jobs stuck in 'running' after a crashed lambda so they re-enter the queue.
-  await getAdminClient().rpc('reap_stuck_ai_jobs', { p_timeout_minutes: AI_STUCK_JOB_TIMEOUT_MINUTES })
+  // Non-fatal — a DB error here must not abort the drain loop.
+  try {
+    await getAdminClient().rpc('reap_stuck_ai_jobs', { p_timeout_minutes: AI_STUCK_JOB_TIMEOUT_MINUTES })
+  } catch (reapErr) {
+    console.error('[ai-worker] reap_stuck_ai_jobs failed (non-fatal):', reapErr)
+  }
 
   let processed = 0
   while (processed < AI_MAX_JOBS_PER_INVOCATION) {

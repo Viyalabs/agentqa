@@ -25,19 +25,12 @@ export interface AIJob {
  */
 export async function enqueueAIJobs(scanId: string): Promise<void> {
   const db = getAdminClient()
-
-  // Check before insert to avoid noisy unique-constraint violations on retries.
-  const { count } = await db
-    .from('ai_analysis_jobs')
-    .select('*', { count: 'exact', head: true })
-    .eq('scan_id', scanId)
-    .in('status', ['pending', 'running'])
-
-  if ((count ?? 0) > 0) return
-
-  await db.from('ai_analysis_jobs').insert([
-    { scan_id: scanId, job_type: 'issue_batch',  priority: 1 },
-    { scan_id: scanId, job_type: 'scan_overview', priority: 2 },
+  // Insert each job type individually. The UNIQUE partial index on (scan_id, job_type)
+  // WHERE status IN ('pending','running') guarantees at-most-one active job per type.
+  // Promise.allSettled silently absorbs unique-constraint violations on retries.
+  await Promise.allSettled([
+    db.from('ai_analysis_jobs').insert({ scan_id: scanId, job_type: 'issue_batch',  priority: 1 }),
+    db.from('ai_analysis_jobs').insert({ scan_id: scanId, job_type: 'scan_overview', priority: 2 }),
   ])
 }
 
@@ -56,10 +49,12 @@ export async function claimNextJob(): Promise<AIJob | null> {
 
 export async function completeJob(jobId: string): Promise<void> {
   const db = getAdminClient()
-  await db
+  const { error } = await db
     .from('ai_analysis_jobs')
     .update({ status: 'completed', completed_at: new Date().toISOString() })
     .eq('id', jobId)
+  // Non-fatal — the job handler already succeeded; reaper will clean up if this DB update fails.
+  if (error) console.error(`[ai-queue] completeJob failed for ${jobId}:`, error.message)
 }
 
 /**

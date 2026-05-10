@@ -1,7 +1,7 @@
 import { getAdminClient } from '@/lib/supabase'
 import { updatePatternTemplates } from './pattern-matcher'
 import { callClaude, isClaudeConfigured, CLAUDE_HAIKU, logClaudeError, extractJSON } from '@/services/ai/claude'
-import { AI_BATCH_SIZE } from '@/services/ai-config'
+import { AI_BATCH_SIZE, AI_BATCH_CONCURRENCY } from '@/services/ai-config'
 import type { IssueType, IssueSeverity, PatternMatchResult } from '@/types'
 
 const ANALYSIS_SYSTEM_PROMPT =
@@ -503,30 +503,60 @@ export async function analyzeIssues(
       .map(([, issue]) => issue),
   ]
 
-  // fingerprint (or type fallback) → analysis result
-  const analysisCache = new Map<string, AIAnalysis>()
+  // --- Step 2: call Claude in parallel batches, persist immediately per batch --
   let totalIn = 0, totalOut = 0
 
-  for (let i = 0; i < representatives.length; i += AI_BATCH_SIZE) {
-    const batch = representatives.slice(i, i + AI_BATCH_SIZE)
+  // Persist analysis to issues_enriched right after each batch resolves.
+  // Avoids losing results if the lambda is killed before all batches finish.
+  async function persistResults(batchReps: IssueForAnalysis[], results: Map<string, AIAnalysis>): Promise<void> {
+    const coveredKeys = new Set(batchReps.map(r => r.fingerprint ?? r.type))
+    await Promise.allSettled(
+      needsAnalysis.filter(issue => coveredKeys.has(issue.fingerprint ?? issue.type)).map(async (issue) => {
+        const cacheKey = issue.fingerprint ?? issue.type
+        const analysis = results.get(cacheKey)
+        if (!analysis) return
+        const cat   = issueCategory(issue.type)
+        const match = patternMatches.get(issue.id)
+        const { error: upsertErr } = await db.from('issues_enriched').upsert({
+          issue_id:       issue.id,
+          summary:        analysis.summary,
+          root_cause:     analysis.rootCause,
+          fix_suggestion: analysis.fixSuggestion,
+          confidence:     confidenceToFloat(analysis.confidence),
+          analysis_data:  buildAnalysisData(issue, cat),
+          model_version:  CLAUDE_HAIKU,
+          from_pattern:   false,
+          pattern_id:     match?.patternId ?? null,
+          analyzed_at:    new Date().toISOString(),
+        }, { onConflict: 'issue_id' })
+        if (upsertErr) console.error('[ai-analyzer] issues_enriched upsert failed:', upsertErr.message)
+      })
+    )
+  }
+
+  // Run one batch: Claude call with solo fallback, fire-and-forget pattern updates,
+  // immediate DB writes. Returns token counts for this batch only.
+  async function runOneBatch(batch: IssueForAnalysis[]): Promise<{ tokensIn: number; tokensOut: number }> {
+    let bIn = 0, bOut = 0
     try {
       const { results: batchResults, tokensIn, tokensOut } = await analyzeBatch(appUrl, batch, frameworks)
-      totalIn  += tokensIn
-      totalOut += tokensOut
+      bIn = tokensIn
+      bOut = tokensOut
       for (const [cacheKey, analysis] of batchResults) {
-        analysisCache.set(cacheKey, analysis)
-        const rep = batch.find((r) => (r.fingerprint ?? r.type) === cacheKey)
+        const rep = batch.find(r => (r.fingerprint ?? r.type) === cacheKey)
         if (rep) {
           const match = patternMatches.get(rep.id)
           if (match?.patternId && analysis.rootCause && analysis.fixSuggestion) {
-            await updatePatternTemplates(match.patternId, analysis.rootCause, analysis.fixSuggestion, CLAUDE_HAIKU)
-              .catch((err) => console.error('[ai-analyzer] pattern template update failed:', err))
+            updatePatternTemplates(match.patternId, analysis.rootCause, analysis.fixSuggestion, CLAUDE_HAIKU)
+              .catch(err => console.error('[ai-analyzer] pattern template update failed:', err))
           }
         }
       }
+      await persistResults(batch, batchResults)
     } catch (err) {
       const batchMsg = err instanceof Error ? err.message : String(err)
-      console.warn(`[ai-analyzer] Batch failed, falling back to individual calls:`, err)
+      console.warn('[ai-analyzer] Batch failed, falling back to individual calls:', err)
+      const soloResults = new Map<string, AIAnalysis>()
       await Promise.allSettled(
         batch.map(async (rep) => {
           const cacheKey = rep.fingerprint ?? rep.type
@@ -541,17 +571,17 @@ export async function analyzeIssues(
             if (!soloResult.ok) {
               logClaudeError('solo-analysis', soloResult.error)
               await logToScan(db, scanId, `AI analysis failed for issue type "${rep.type}": ${soloResult.error.message}`)
-              throw new Error(soloResult.error.message)
+              return
             }
-            totalIn  += soloResult.usage.inputTokens
-            totalOut += soloResult.usage.outputTokens
+            bIn  += soloResult.usage.inputTokens
+            bOut += soloResult.usage.outputTokens
             const analysis = parseSoloResponse(soloResult.data)
             if (analysis.summary) {
-              analysisCache.set(cacheKey, analysis)
+              soloResults.set(cacheKey, analysis)
               const match = patternMatches.get(rep.id)
               if (match?.patternId && analysis.rootCause && analysis.fixSuggestion) {
-                await updatePatternTemplates(match.patternId, analysis.rootCause, analysis.fixSuggestion, CLAUDE_HAIKU)
-                  .catch((e) => console.error('[ai-analyzer] pattern template update failed:', e))
+                updatePatternTemplates(match.patternId, analysis.rootCause, analysis.fixSuggestion, CLAUDE_HAIKU)
+                  .catch(e => console.error('[ai-analyzer] pattern template update failed:', e))
               }
             }
           } catch (e) {
@@ -559,35 +589,23 @@ export async function analyzeIssues(
           }
         })
       )
-      // Only log the batch failure to scan_logs once (not per-issue)
+      if (soloResults.size > 0) await persistResults(batch, soloResults)
       await logToScan(db, scanId, `AI batch analysis failed, used per-issue fallback: ${batchMsg}`)
     }
+    return { tokensIn: bIn, tokensOut: bOut }
   }
 
-  // --- Step 3: persist analysis to issues_enriched ----------------------------
-  await Promise.allSettled(
-    needsAnalysis.map(async (issue) => {
-      const cacheKey = issue.fingerprint ?? issue.type
-      const analysis = analysisCache.get(cacheKey)
-      if (!analysis) return
-
-      const cat   = issueCategory(issue.type)
-      const match = patternMatches.get(issue.id)
-      const { error: upsertErr } = await db.from('issues_enriched').upsert({
-        issue_id:        issue.id,
-        summary:         analysis.summary,
-        root_cause:      analysis.rootCause,
-        fix_suggestion:  analysis.fixSuggestion,
-        confidence:      confidenceToFloat(analysis.confidence),
-        analysis_data:   buildAnalysisData(issue, cat),
-        model_version:   CLAUDE_HAIKU,
-        from_pattern:    false,
-        pattern_id:      match?.patternId ?? null,
-        analyzed_at:     new Date().toISOString(),
-      }, { onConflict: 'issue_id' })
-      if (upsertErr) console.error('[ai-analyzer] issues_enriched upsert failed:', upsertErr.message)
-    })
-  )
+  // Build batch list and run AI_BATCH_CONCURRENCY batches in parallel.
+  const batches: IssueForAnalysis[][] = []
+  for (let i = 0; i < representatives.length; i += AI_BATCH_SIZE) {
+    batches.push(representatives.slice(i, i + AI_BATCH_SIZE))
+  }
+  for (let i = 0; i < batches.length; i += AI_BATCH_CONCURRENCY) {
+    const groupResults = await Promise.allSettled(batches.slice(i, i + AI_BATCH_CONCURRENCY).map(runOneBatch))
+    for (const r of groupResults) {
+      if (r.status === 'fulfilled') { totalIn += r.value.tokensIn; totalOut += r.value.tokensOut }
+    }
+  }
 
   if (totalIn > 0 || totalOut > 0) {
     await db.rpc('increment_scan_tokens', { p_scan_id: scanId, p_in: totalIn, p_out: totalOut })
@@ -626,12 +644,20 @@ export async function generateScanOverview(
       return
     }
 
-    // Fetch all issues so the prompt can reason across the full picture
-    const { data: issueRows } = await db
-      .from('issues')
-      .select('type, severity, title, fingerprint')
-      .eq('scan_id', scanId)
-      .order('severity', { ascending: true })
+    // Parallel: fetch all issues + previous scan for regression data
+    const [{ data: issueRows }, { data: prevScans }] = await Promise.all([
+      db.from('issues')
+        .select('type, severity, title, fingerprint')
+        .eq('scan_id', scanId)
+        .order('severity', { ascending: true }),
+      db.from('scans')
+        .select('id, score')
+        .eq('url', appUrl)
+        .eq('status', 'completed')
+        .neq('id', scanId)
+        .order('completed_at', { ascending: false })
+        .limit(1),
+    ])
 
     const issues: IssueOverviewItem[] = (issueRows ?? []).map(r => ({
       type:     r.type     as string,
@@ -645,15 +671,6 @@ export async function generateScanOverview(
     const currentFps = new Set(
       (issueRows ?? []).map(r => r.fingerprint as string | null).filter((f): f is string => Boolean(f))
     )
-
-    const { data: prevScans } = await db
-      .from('scans')
-      .select('id, score')
-      .eq('url', appUrl)
-      .eq('status', 'completed')
-      .neq('id', scanId)
-      .order('completed_at', { ascending: false })
-      .limit(1)
 
     let regressionNew = 0
     let regressionResolved = 0

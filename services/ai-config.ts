@@ -25,6 +25,14 @@ export const AI_STUCK_JOB_TIMEOUT_MINUTES = 8
 /** Max jobs processed per single HTTP invocation of the worker. */
 export const AI_MAX_JOBS_PER_INVOCATION = 10
 
+/** Max concurrent batch API calls in a single analyzeIssues run.
+ *  3 parallel batches is safe under Haiku's rate limits and avoids starvation. */
+export const AI_BATCH_CONCURRENCY = 3
+
+/** Per-job wall-clock timeout in the drain loop.
+ *  240 s leaves 60 s of buffer inside the 300 s Vercel maxDuration. */
+export const AI_JOB_TIMEOUT_MS = 240_000
+
 // ── Analysis batching ─────────────────────────────────────────────────────────
 
 /**
