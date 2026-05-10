@@ -4,6 +4,11 @@ import { callClaude, isClaudeConfigured, CLAUDE_HAIKU, logClaudeError, extractJS
 import { AI_BATCH_SIZE } from '@/services/ai-config'
 import type { IssueType, IssueSeverity, PatternMatchResult } from '@/types'
 
+const ANALYSIS_SYSTEM_PROMPT =
+  'You are a senior web developer analyzing automated QA scan findings. ' +
+  'Be precise: cite specific status codes, DOM APIs, and property names. ' +
+  'Never invent function names, file paths, or error codes absent from the provided data.'
+
 interface IssueForAnalysis {
   id: string
   type: IssueType
@@ -57,9 +62,16 @@ function extractDetails(issue: IssueForAnalysis, limit = 200): string {
   switch (issue.type) {
     case 'js_error': {
       const errors = (d.errors as string[] | undefined) ?? []
-      const msg    = errors[0]?.slice(0, 120) ?? ''
-      const stack  = (d.stacks as string[] | undefined)?.[0]?.split('\n')[1]?.trim().slice(0, 80) ?? ''
-      return [msg, stack ? `at ${stack}` : ''].filter(Boolean).join(' ').slice(0, limit) || 'none'
+      const stacks = (d.stacks as string[] | undefined) ?? []
+      const parts = errors.slice(0, 2).map((msg, i) => {
+        const frames = (stacks[i] ?? '').split('\n')
+          .slice(1, 4)
+          .map(l => l.trim().slice(0, 80))
+          .filter(Boolean)
+        const frameStr = frames.length ? ` at: ${frames.join(' → ')}` : ''
+        return `${msg.slice(0, 150)}${frameStr}`
+      })
+      return parts.join(' | ').slice(0, limit) || 'none'
     }
     case 'console_error':
     case 'console_warning': {
@@ -67,13 +79,20 @@ function extractDetails(issue: IssueForAnalysis, limit = 200): string {
       return errors.slice(0, 3).map(e => e.slice(0, 90)).join(' | ').slice(0, limit) || 'none'
     }
     case 'network_failure': {
-      const failures = (d.failures as Array<{ url?: string; method?: string; status?: number }> | undefined) ?? []
-      return failures.slice(0, 3).map(f =>
-        `${f.method ?? 'GET'} ${String(f.url ?? '').slice(0, 60)} [${f.status ?? '?'}]`
-      ).join(' | ').slice(0, limit) || 'none'
+      const raw = (d.failures as Array<{ url?: string; method?: string; error?: string } | string> | undefined) ?? []
+      return raw.slice(0, 3).map(f => {
+        if (typeof f === 'string') return String(f).slice(0, 80)
+        const method = f.method ?? 'GET'
+        const url    = String(f.url ?? '').slice(0, 70)
+        const err    = f.error ? ` (${String(f.error).slice(0, 50)})` : ''
+        return `${method} ${url}${err}`
+      }).join(' | ').slice(0, limit) || 'none'
     }
-    case 'slow_load':
-      return `loadTime:${(d.loadTimeMs as number | undefined) ?? '?'}ms`
+    case 'slow_load': {
+      const ms  = (d.loadTimeMs as number | undefined) ?? '?'
+      const url = d.url ? ` url:${String(d.url).slice(0, 80)}` : ''
+      return `loadTime:${ms}ms${url}`
+    }
     case 'large_asset': {
       const assets = (d.assets as Array<{ url: string; sizeKb: number }> | undefined) ?? []
       const total  = assets.reduce((s, a) => s + a.sizeKb, 0)
@@ -141,7 +160,7 @@ function issueTypeGuidance(category: IssueCategory): string {
     case 'JS_ERROR':
       return 'Stack trace origin, missing null/undefined checks, unhandled promise rejections, third-party script conflicts. Distinguish app code from vendor bundle errors.'
     case 'NETWORK':
-      return 'HTTP status code meaning, CORS policy headers, request timeout vs connection refused, CDN misconfiguration, DNS resolution. Distinguish client-side fetch failures from server errors.'
+      return 'HTTP 401/403 = auth/permissions (check session token, CORS preflight, missing header). HTTP 0 or ECONNREFUSED = server unreachable or DNS failure. Timeout = latency or gateway. Check the error field in data — it is the browser error text, not a status code.'
     case 'MOBILE':
       return 'Viewport meta tag presence, touch target size (min 44×44px), CSS media query breakpoints, horizontal overflow, iOS/Android rendering differences, font scaling.'
     case 'PERFORMANCE':
@@ -157,6 +176,19 @@ function issueTypeGuidance(category: IssueCategory): string {
   }
 }
 
+function issueCategoryHint(category: IssueCategory): string {
+  switch (category) {
+    case 'JS_ERROR':      return 'stack origin, missing null-checks, polyfill gaps, app vs third-party code'
+    case 'NETWORK':       return '401/403=auth/permissions, 0=server unreachable, CORS, DNS; check error field'
+    case 'MOBILE':        return 'viewport meta tag, horizontal overflow at 375px, touch target size (44px min)'
+    case 'PERFORMANCE':   return 'render-blocking scripts/CSS, uncompressed images, missing lazy loading, Cache-Control'
+    case 'UI':            return 'broken asset URL path/casing, CDN origin, CSS overflow, 404 on nested route'
+    case 'ACCESSIBILITY': return 'descriptive alt text required; alt="" for decorative; check CMS/component defaults'
+    case 'SEO':           return 'unique 150-160 char meta description; og:image 1200×630; exactly one H1 per page'
+    default:              return 'specific symptom observed, most likely root cause, concrete ordered fix steps'
+  }
+}
+
 /**
  * Build a batch prompt covering up to BATCH_SIZE issues with anti-hallucination constraints.
  * Shared context is written once — major token saving vs N individual prompts.
@@ -168,28 +200,36 @@ function buildBatchPrompt(
 ): string {
   const stack = frameworkLabel(frameworks)
 
+  // Category hints — only for categories present in this batch
+  const seenCategories = [...new Set(issues.map(i => issueCategory(i.type)))]
+  const hintLines = seenCategories
+    .map(cat => `  ${cat}: ${issueCategoryHint(cat)}`)
+    .join('\n')
+
   const issueLines = issues.map((issue, i) => {
+    const cat = issueCategory(issue.type)
     return [
-      `[${i + 1}] ${issueCategory(issue.type)}/${issue.type}/${issue.severity}`,
+      `[${i + 1}] ${cat} | ${issue.type} | ${issue.severity}`,
       `    title: ${issue.title}`,
       `    desc:  ${issue.description ?? 'none'}`,
-      `    data:  ${extractDetails(issue, 180)}`,
+      `    data:  ${extractDetails(issue, 240)}`,
     ].join('\n')
   }).join('\n\n')
 
-  return `You are an expert web developer analyzing automated QA scan findings.
-
-App: ${appUrl}
+  return `App: ${appUrl}
 Stack: ${stack}
+
+Category hints (apply to matching issues):
+${hintLines}
 
 CONSTRAINTS:
 - Only state what the evidence in "data" supports. If uncertain, set confidence to "low".
-- root_cause must name a specific technical reason, not a generic statement.
+- root_cause must name a specific technical reason (API name, status code, property), not a generic statement.
 - Never invent error codes, file paths, or function names absent from the data.
+- confidence: "high" = data clearly identifies cause; "medium" = partial evidence; "low" = data is thin or ambiguous.
 - summary: 1 sentence — what broke from the user's perspective.
 - root_cause: 1-2 sentences — specific technical explanation tied to the stack.
 - fix: array of 2-4 concrete ordered steps the developer can act on immediately.
-- confidence: "low" | "medium" | "high" based on data richness.
 
 Issues:
 ${issueLines}
@@ -212,8 +252,9 @@ async function analyzeBatch(
 ): Promise<Map<string, AIAnalysis>> {
   const claudeResult = await callClaude({
     prompt:    buildBatchPrompt(appUrl, issues, frameworks),
+    system:    ANALYSIS_SYSTEM_PROMPT,
     model:     CLAUDE_HAIKU,
-    maxTokens: Math.max(170 * issues.length, 400),
+    maxTokens: Math.max(200 * issues.length, 600),
     timeoutMs: 60_000,
   })
   if (!claudeResult.ok) {
@@ -283,39 +324,27 @@ CONSTRAINTS:
 - confidence: "low" | "medium" | "high" based on how much the data confirms your analysis.
 
 Example:
-{"summary":"Login button throws an unhandled TypeError on mobile Safari","root_cause":"The click handler calls event.composedPath() which returns undefined in Safari <14. The polyfill is absent from the mobile bundle.","fix":["Add a composedPath polyfill to the app entry point","Or rewrite the handler to use event.target with a null guard","Verify fix on BrowserStack Safari 13 and 14"],"confidence":"high"}
+{"summary":"Users see a blank screen when navigating to the checkout page","root_cause":"The async fetchCartItems() call is not awaited — it resolves after the first render commits, throwing an unhandled rejection that crashes the component tree.","fix":["Add await to the fetchCartItems() call inside the data-loading hook","Wrap the call in try/catch and render an error boundary on rejection","Add a loading skeleton that prevents rendering until the Promise resolves"],"confidence":"high"}
 
 Respond with only the JSON object. No markdown, no extra text.`
 }
 
 function parseSoloResponse(text: string): AIAnalysis {
-  // Try JSON first (new format), fall back to line-prefix format
-  try {
-    const parsed = extractJSON(text) as {
-      summary?: string
-      root_cause?: string
-      fix?: string | string[]
-      confidence?: string
-    }
-    const fixRaw = parsed.fix
-    const fixSuggestion = Array.isArray(fixRaw)
-      ? fixRaw.map((s, idx) => `${idx + 1}. ${s}`).join('\n')
-      : (fixRaw?.trim() ?? '')
-    return {
-      summary:      parsed.summary?.trim()    ?? '',
-      rootCause:    parsed.root_cause?.trim() ?? '',
-      fixSuggestion,
-      confidence:   parsed.confidence         ?? 'low',
-    }
-  } catch {
-    const lines = text.trim().split('\n')
-    let summary = '', rootCause = '', fixSuggestion = ''
-    for (const line of lines) {
-      if (line.startsWith('SUMMARY:'))         summary       = line.slice('SUMMARY:'.length).trim()
-      else if (line.startsWith('ROOT_CAUSE:')) rootCause     = line.slice('ROOT_CAUSE:'.length).trim()
-      else if (line.startsWith('FIX:'))        fixSuggestion = line.slice('FIX:'.length).trim()
-    }
-    return { summary, rootCause, fixSuggestion, confidence: 'low' }
+  const parsed = extractJSON(text) as {
+    summary?: string
+    root_cause?: string
+    fix?: string | string[]
+    confidence?: string
+  }
+  const fixRaw = parsed.fix
+  const fixSuggestion = Array.isArray(fixRaw)
+    ? fixRaw.map((s, idx) => `${idx + 1}. ${s}`).join('\n')
+    : (fixRaw?.trim() ?? '')
+  return {
+    summary:      parsed.summary?.trim()    ?? '',
+    rootCause:    parsed.root_cause?.trim() ?? '',
+    fixSuggestion,
+    confidence:   parsed.confidence         ?? 'low',
   }
 }
 
@@ -325,6 +354,7 @@ function buildOverviewPrompt(
   totalIssues: number,
   criticalCount: number,
   mediumCount: number,
+  lowCount: number,
   frameworks: string[],
 ): string {
   const stackLine = frameworks.length > 0 ? `Stack: ${frameworkLabel(frameworks)}\n` : ''
@@ -334,7 +364,7 @@ function buildOverviewPrompt(
 
 App: ${appUrl}
 ${stackLine}Score: ${score}/100 (${health})
-Issues: ${totalIssues} total — ${criticalCount} critical, ${mediumCount} medium
+Issues: ${totalIssues} total — ${criticalCount} critical, ${mediumCount} medium, ${lowCount} low
 
 Write 2-3 sentences:
 1. Overall health with score context — state the number, don't just say "some issues".
@@ -401,7 +431,7 @@ export async function analyzeIssues(
         // Pattern already has a solution — write to issues_enriched only
         await db.from('issues_enriched').upsert({
           issue_id:         issue.id,
-          summary:          `${issue.title} — see root cause below.`,
+          summary:          issue.description?.slice(0, 200) ?? issue.title,
           root_cause:       match.rootCauseTemplate,
           fix_suggestion:   match.fixTemplate,
           analysis_data:    { tags: [issue.type, issue.severity], category: issueCategory(issue.type) },
@@ -472,8 +502,9 @@ export async function analyzeIssues(
           try {
             const soloResult = await callClaude({
               prompt:    buildSoloPrompt(appUrl, rep, frameworks),
+              system:    ANALYSIS_SYSTEM_PROMPT,
               model:     CLAUDE_HAIKU,
-              maxTokens: 300,
+              maxTokens: 350,
               timeoutMs: 30_000,
             })
             if (!soloResult.ok) {
@@ -558,7 +589,7 @@ export async function generateScanOverview(
     }
 
     const result = await callClaude({
-      prompt:    buildOverviewPrompt(appUrl, score, totalIssues, criticalCount, mediumCount, frameworks),
+      prompt:    buildOverviewPrompt(appUrl, score, totalIssues, criticalCount, mediumCount, lowCount, frameworks),
       model:     CLAUDE_HAIKU,
       maxTokens: 160,
     })
