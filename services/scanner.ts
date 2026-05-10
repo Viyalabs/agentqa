@@ -1,3 +1,4 @@
+import { waitUntil } from '@vercel/functions'
 import { getAdminClient, uploadScreenshot, uploadMobileScreenshot } from '@/lib/supabase'
 import { crawlWebsite } from '@/playwright/crawler'
 import { calculateScore } from './scorer'
@@ -200,16 +201,19 @@ export async function runScan(scanId: string, url: string): Promise<void> {
       console.error(`[scanner] Failed to enqueue AI jobs for ${scanId}:`, err)
     })
 
-    // Fire-and-forget worker trigger — worker drains the queue via waitUntil
+    // Trigger the AI worker — registered with waitUntil so Vercel keeps the
+    // lambda alive long enough for the request to leave before shutdown.
     const workerUrl    = `${process.env.NEXT_PUBLIC_APP_URL}/api/ai/worker`
     const workerSecret = process.env.WORKER_SECRET ?? ''
-    fetch(workerUrl, {
-      method:  'POST',
-      headers: { 'x-worker-secret': workerSecret, 'Content-Type': 'application/json' },
-      body:    '{}',
-    }).catch((err: unknown) => {
-      console.error(`[scanner] Failed to trigger AI worker for ${scanId}:`, err)
-    })
+    waitUntil(
+      fetch(workerUrl, {
+        method:  'POST',
+        headers: { 'x-worker-secret': workerSecret, 'Content-Type': 'application/json' },
+        body:    '{}',
+      }).catch((err: unknown) => {
+        console.error(`[scanner] Failed to trigger AI worker for ${scanId}:`, err)
+      })
+    )
 
     if (notifyEmail) {
       const { data: prevRows } = await db

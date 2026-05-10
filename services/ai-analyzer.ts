@@ -1,9 +1,8 @@
 import { getAdminClient } from '@/lib/supabase'
 import { updatePatternTemplates } from './pattern-matcher'
-import { callClaude, isClaudeConfigured, CLAUDE_HAIKU, logClaudeError } from '@/services/ai/claude'
+import { callClaude, isClaudeConfigured, CLAUDE_HAIKU, logClaudeError, extractJSON } from '@/services/ai/claude'
+import { AI_BATCH_SIZE } from '@/services/ai-config'
 import type { IssueType, IssueSeverity, PatternMatchResult } from '@/types'
-
-const BATCH_SIZE = 14 // issues per Claude call; ~170 output tokens each = ~2380 max_tokens
 
 interface IssueForAnalysis {
   id: string
@@ -201,16 +200,6 @@ Return a JSON array with exactly ${issues.length} objects in the same order:
 Valid JSON only. No markdown fences. Preserve issue order.`
 }
 
-/** Three-pass JSON extraction: direct → fenced → bare object/array */
-function extractJSON(text: string): unknown {
-  try { return JSON.parse(text) } catch { /* fall through */ }
-  const fenced = text.match(/```(?:json)?\s*([\s\S]*?)```/)
-  if (fenced?.[1]) { try { return JSON.parse(fenced[1].trim()) } catch { /* fall through */ } }
-  const bare = text.match(/(\[[\s\S]*\]|\{[\s\S]*\})/)
-  if (bare?.[1]) { try { return JSON.parse(bare[1]) } catch { /* fall through */ } }
-  throw new SyntaxError(`No JSON found in response (first 200 chars): ${text.slice(0, 200)}`)
-}
-
 /**
  * Analyze a batch of representative issues in a single Claude call.
  * Returns a map of cacheKey → AIAnalysis for each issue that was successfully analyzed.
@@ -355,6 +344,13 @@ Write 2-3 sentences:
 CONSTRAINTS: No filler ("it seems", "looks like", "please note"). No bullet points. Plain prose. Speak to the technical lead who will act on this today.`
 }
 
+/** Append a message to scan_logs so it surfaces in the user-facing report. */
+async function logToScan(db: ReturnType<typeof getAdminClient>, scanId: string, message: string): Promise<void> {
+  try {
+    await db.from('scan_logs').insert({ scan_id: scanId, message })
+  } catch { /* non-fatal */ }
+}
+
 /**
  * Analyze all issues for a completed scan.
  *
@@ -377,15 +373,17 @@ export async function analyzeIssues(
   frameworks: string[] = [],
   severities: string[] = ['critical', 'medium'],
 ): Promise<void> {
+  const db = getAdminClient()
+
   if (!isClaudeConfigured()) {
     console.warn('[ai-analyzer] ANTHROPIC_API_KEY not set — skipping issue analysis')
+    await logToScan(db, scanId, 'AI analysis skipped — ANTHROPIC_API_KEY not configured.')
     return
   }
 
-  const db = getAdminClient()
-
+  // Query via the view so ai_summary reflects issues_enriched (not the stale flat column)
   const { data: issues, error } = await db
-    .from('issues')
+    .from('issues_with_analysis')
     .select('id, type, severity, title, description, details, fingerprint')
     .eq('scan_id', scanId)
     .in('severity', severities)
@@ -400,14 +398,7 @@ export async function analyzeIssues(
     (issues as IssueForAnalysis[]).map(async (issue) => {
       const match = patternMatches.get(issue.id)
       if (match?.rootCauseTemplate && match?.fixTemplate && !match.needsRefresh) {
-        // Pattern already has a solution — reuse it without calling Claude
-        await db.from('issues').update({
-          ai_summary:    `${issue.title} — see root cause below.`,
-          root_cause:    match.rootCauseTemplate,
-          fix_suggestion: match.fixTemplate,
-        }).eq('id', issue.id)
-
-        // Write full record to issues_enriched for analytics + future queries
+        // Pattern already has a solution — write to issues_enriched only
         await db.from('issues_enriched').upsert({
           issue_id:         issue.id,
           summary:          `${issue.title} — see root cause below.`,
@@ -457,8 +448,8 @@ export async function analyzeIssues(
   // fingerprint (or type fallback) → analysis result
   const analysisCache = new Map<string, AIAnalysis>()
 
-  for (let i = 0; i < representatives.length; i += BATCH_SIZE) {
-    const batch = representatives.slice(i, i + BATCH_SIZE)
+  for (let i = 0; i < representatives.length; i += AI_BATCH_SIZE) {
+    const batch = representatives.slice(i, i + AI_BATCH_SIZE)
     try {
       const batchResults = await analyzeBatch(appUrl, batch, frameworks)
       for (const [cacheKey, analysis] of batchResults) {
@@ -473,6 +464,7 @@ export async function analyzeIssues(
         }
       }
     } catch (err) {
+      const batchMsg = err instanceof Error ? err.message : String(err)
       console.warn(`[ai-analyzer] Batch failed, falling back to individual calls:`, err)
       await Promise.allSettled(
         batch.map(async (rep) => {
@@ -486,6 +478,7 @@ export async function analyzeIssues(
             })
             if (!soloResult.ok) {
               logClaudeError('solo-analysis', soloResult.error)
+              await logToScan(db, scanId, `AI analysis failed for issue type "${rep.type}": ${soloResult.error.message}`)
               throw new Error(soloResult.error.message)
             }
             const analysis = parseSoloResponse(soloResult.data)
@@ -502,27 +495,21 @@ export async function analyzeIssues(
           }
         })
       )
+      // Only log the batch failure to scan_logs once (not per-issue)
+      await logToScan(db, scanId, `AI batch analysis failed, used per-issue fallback: ${batchMsg}`)
     }
   }
 
-  // --- Step 3: persist analysis to all issues that needed it -------------------
+  // --- Step 3: persist analysis to issues_enriched ----------------------------
   await Promise.allSettled(
     needsAnalysis.map(async (issue) => {
       const cacheKey = issue.fingerprint ?? issue.type
       const analysis = analysisCache.get(cacheKey)
       if (!analysis) return
 
-      // Keep flat columns on issues for backward compatibility with existing queries
-      await db.from('issues').update({
-        ai_summary:     analysis.summary,
-        root_cause:     analysis.rootCause,
-        fix_suggestion: analysis.fixSuggestion,
-      }).eq('id', issue.id)
-
-      // Write full enrichment record to issues_enriched
       const cat   = issueCategory(issue.type)
       const match = patternMatches.get(issue.id)
-      await db.from('issues_enriched').upsert({
+      const { error: upsertErr } = await db.from('issues_enriched').upsert({
         issue_id:        issue.id,
         summary:         analysis.summary,
         root_cause:      analysis.rootCause,
@@ -534,9 +521,7 @@ export async function analyzeIssues(
         pattern_id:      match?.patternId ?? null,
         analyzed_at:     new Date().toISOString(),
       }, { onConflict: 'issue_id' })
-        .then(({ error }) => {
-          if (error) console.error('[ai-analyzer] issues_enriched upsert failed:', error.message)
-        })
+      if (upsertErr) console.error('[ai-analyzer] issues_enriched upsert failed:', upsertErr.message)
     })
   )
 

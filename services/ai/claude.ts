@@ -362,7 +362,7 @@ export async function callClaudeJSON<T>(
 
 // ── JSON extraction helpers ───────────────────────────────────────────────────
 
-function extractJSON(text: string): unknown {
+export function extractJSON(text: string): unknown {
   // Strategy 1: the entire response is valid JSON
   try { return JSON.parse(text) } catch { /* fall through */ }
 

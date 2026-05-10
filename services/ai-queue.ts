@@ -1,4 +1,5 @@
 import { getAdminClient } from '@/lib/supabase'
+import { AI_MAX_ATTEMPTS, AI_RETRY_DELAY_MS } from '@/services/ai-config'
 
 export type JobType   = 'issue_batch' | 'scan_overview'
 export type JobStatus = 'pending' | 'running' | 'completed' | 'failed'
@@ -15,11 +16,6 @@ export interface AIJob {
   started_at:   string | null
   completed_at: string | null
 }
-
-const MAX_ATTEMPTS = 3
-
-// Retry back-off: attempt 1 → 0ms (immediate), 2 → 2min, 3 → 10min
-const RETRY_DELAY_MS = [0, 2 * 60_000, 10 * 60_000]
 
 /**
  * Enqueue both AI jobs for a completed scan.
@@ -65,15 +61,20 @@ export async function failJob(
   error: string,
 ): Promise<void> {
   const db = getAdminClient()
-  const exhausted = attempts >= MAX_ATTEMPTS
-  const delayMs   = RETRY_DELAY_MS[Math.min(attempts, RETRY_DELAY_MS.length - 1)] ?? 10 * 60_000
+  const exhausted = attempts >= AI_MAX_ATTEMPTS
+  const delayMs   = AI_RETRY_DELAY_MS[Math.min(attempts, AI_RETRY_DELAY_MS.length - 1)] ?? 10 * 60_000
 
   await db
     .from('ai_analysis_jobs')
     .update({
       status:     exhausted ? 'failed' : 'pending',
       last_error: error.slice(0, 500),
-      ...(exhausted ? {} : { scheduled_at: new Date(Date.now() + delayMs).toISOString() }),
+      // Clear started_at on retry so the reaper's timestamp check doesn't
+      // mistake a freshly-queued attempt for a stale one from a previous run.
+      ...(exhausted ? {} : {
+        scheduled_at: new Date(Date.now() + delayMs).toISOString(),
+        started_at:   null,
+      }),
     })
     .eq('id', jobId)
 }

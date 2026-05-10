@@ -30,12 +30,20 @@ export async function GET(
       .eq('scan_id', scanId)
       .order('created_at', { ascending: true }),
 
-    // issues_with_analysis view replaces the previous two-step approach:
-    //   1. fetch issues
-    //   2. loop fingerprints → query issue_patterns (N+1)
-    // Now a single query returns issues + enrichment + pattern data via LEFT JOINs.
+    // issues_with_analysis view — explicit column list excludes analysis_data
+    // (a large JSONB blob not needed in the polling path; saves bandwidth at scale).
     db.from('issues_with_analysis')
-      .select('*')
+      .select([
+        'id', 'scan_id', 'page_id', 'type', 'severity', 'title',
+        'description', 'details', 'fingerprint', 'framework',
+        'fix_helpful', 'created_at',
+        'ai_summary', 'root_cause', 'fix_suggestion',
+        'confidence', 'model_version', 'analysis_version',
+        'from_pattern', 'pattern_id', 'analyzed_at',
+        'pattern_count', 'pattern_frameworks', 'total_scans_affected',
+        'pattern_needs_refresh', 'pattern_feedback_positive',
+        'pattern_feedback_negative', 'cluster_key', 'cluster_id',
+      ].join(','))
       .eq('scan_id', scanId)
       .order('created_at', { ascending: true }),
 

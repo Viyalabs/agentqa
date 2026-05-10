@@ -4,17 +4,10 @@ import { getAdminClient } from '@/lib/supabase'
 import { claimNextJob, completeJob, failJob } from '@/services/ai-queue'
 import { analyzeIssues, generateScanOverview } from '@/services/ai-analyzer'
 import { getPatternMatchesForScan, refreshPatternVelocities } from '@/services/pattern-matcher'
+import { AI_MAX_JOBS_PER_INVOCATION, AI_STUCK_JOB_TIMEOUT_MINUTES } from '@/services/ai-config'
 
 export const runtime    = 'nodejs'
 export const maxDuration = 300   // Vercel max — gives ~5 min to drain the queue
-
-// Safety valve: never process more than this many jobs per HTTP invocation.
-// Each issue_batch job can take 5-30 s; 10 jobs fits comfortably within 300 s.
-const MAX_JOBS_PER_INVOCATION = 10
-
-// A job stuck in 'running' for longer than this is presumed dead (lambda crashed).
-// Must exceed the longest legitimate job runtime (~60 s per batch) with margin.
-const STUCK_JOB_TIMEOUT_MINUTES = 15
 
 // ── Job handlers ──────────────────────────────────────────────────────────────
 
@@ -122,10 +115,10 @@ async function processOne(): Promise<boolean> {
  */
 async function drainQueue(): Promise<void> {
   // Reset jobs stuck in 'running' after a crashed lambda so they re-enter the queue.
-  await getAdminClient().rpc('reap_stuck_ai_jobs', { p_timeout_minutes: STUCK_JOB_TIMEOUT_MINUTES })
+  await getAdminClient().rpc('reap_stuck_ai_jobs', { p_timeout_minutes: AI_STUCK_JOB_TIMEOUT_MINUTES })
 
   let processed = 0
-  while (processed < MAX_JOBS_PER_INVOCATION) {
+  while (processed < AI_MAX_JOBS_PER_INVOCATION) {
     const hadWork = await processOne()
     if (!hadWork) break
     processed++

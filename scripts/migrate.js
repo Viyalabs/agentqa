@@ -871,6 +871,39 @@ END;
 $$;
 GRANT EXECUTE ON FUNCTION increment_pattern_occurrence(UUID, TEXT[], TIMESTAMPTZ) TO service_role;`
   },
+
+  // ── Migration 009 ─────────────────────────────────────────────────────────────
+  {
+    label: 'Create reap_stuck_scans() function',
+    sql: `
+CREATE OR REPLACE FUNCTION reap_stuck_scans(p_timeout_minutes INT DEFAULT 10)
+RETURNS INT LANGUAGE plpgsql SECURITY DEFINER AS $$
+DECLARE
+  reaped INT;
+BEGIN
+  -- Mark scans stuck in 'running' past the timeout as 'failed'
+  UPDATE scans
+  SET status        = 'failed',
+      error_message = 'Scan timed out — reaped by cron after ' || p_timeout_minutes || ' minutes'
+  WHERE status     = 'running'
+    AND started_at < NOW() - (p_timeout_minutes || ' minutes')::INTERVAL;
+  GET DIAGNOSTICS reaped = ROW_COUNT;
+  RETURN reaped;
+END;
+$$;
+GRANT EXECUTE ON FUNCTION reap_stuck_scans(INT) TO service_role;`
+  },
+  {
+    label: 'Add UNIQUE partial index on ai_analysis_jobs(scan_id, job_type)',
+    sql: `
+CREATE UNIQUE INDEX IF NOT EXISTS idx_aaj_unique_active_job
+  ON ai_analysis_jobs (scan_id, job_type)
+  WHERE status IN ('pending', 'running');`
+  },
+  {
+    label: 'Drop unused GIN index on issue_patterns.metadata',
+    sql: `DROP INDEX IF EXISTS idx_ip_metadata_gin;`
+  },
 ]
 
 // ── Pooler auto-discovery ─────────────────────────────────────────────────────

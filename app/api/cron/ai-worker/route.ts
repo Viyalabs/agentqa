@@ -1,8 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { getAdminClient } from '@/lib/supabase'
 
 export const runtime = 'nodejs'
 
-// Vercel Cron: runs every 5 minutes — picks up missed or retry-scheduled jobs.
+// Vercel Cron: runs every 5 minutes — picks up missed or retry-scheduled jobs
+// and reaps ghost scans/jobs left by crashed lambdas.
 // Vercel sends Authorization: Bearer {CRON_SECRET} automatically.
 export async function GET(req: NextRequest) {
   const cronSecret = process.env.CRON_SECRET
@@ -10,7 +12,16 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
-  const workerUrl  = `${process.env.NEXT_PUBLIC_APP_URL}/api/ai/worker`
+  const db = getAdminClient()
+
+  // Reap scans stuck in 'running' (lambda crashed without cleanup).
+  // Timeout matches the scan maxDuration (300 s) with generous margin.
+  const { data: scansReaped } = await db.rpc('reap_stuck_scans', { p_timeout_minutes: 10 })
+  if (scansReaped) {
+    console.log(`[cron] reaped ${scansReaped} stuck scan(s)`)
+  }
+
+  const workerUrl    = `${process.env.NEXT_PUBLIC_APP_URL}/api/ai/worker`
   const workerSecret = process.env.WORKER_SECRET ?? ''
 
   try {
@@ -24,7 +35,7 @@ export async function GET(req: NextRequest) {
     })
 
     return NextResponse.json(
-      { ok: res.ok, status: res.status },
+      { ok: res.ok, status: res.status, scansReaped: scansReaped ?? 0 },
       { status: res.ok ? 200 : 502 },
     )
   } catch (err) {
