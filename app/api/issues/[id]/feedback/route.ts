@@ -1,26 +1,27 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getAdminClient } from '@/lib/supabase'
+import { FEEDBACK_RATE_LIMIT_WINDOW_MS, FEEDBACK_RATE_LIMIT_MAX } from '@/services/ai-config'
 
 export const runtime = 'nodejs'
 
-// In-memory rate limiter: IP → [timestamp, ...] sliding window
-// Resets per function instance (serverless cold start), but prevents per-instance bursting.
+// In-memory rate limiter — per Vercel instance only. Effective cap is
+// FEEDBACK_RATE_LIMIT_MAX × N warm instances. Acceptable for now because
+// abusing feedback requires knowing valid issue UUIDs and the worst outcome
+// (setting needs_refresh=true) has bounded cost. Replace with Upstash/Redis
+// if the pattern DB grows to a size where bulk poisoning is a real concern.
 const rateLimitMap = new Map<string, number[]>()
-const RATE_LIMIT_WINDOW_MS = 60_000
-const RATE_LIMIT_MAX       = 10
 
 function isRateLimited(ip: string): boolean {
   const now  = Date.now()
-  const hits = (rateLimitMap.get(ip) ?? []).filter((t) => now - t < RATE_LIMIT_WINDOW_MS)
+  const hits = (rateLimitMap.get(ip) ?? []).filter((t) => now - t < FEEDBACK_RATE_LIMIT_WINDOW_MS)
   hits.push(now)
   rateLimitMap.set(ip, hits)
-  // Prune map if it grows too large (cold-start safety)
   if (rateLimitMap.size > 10_000) {
     for (const [key, ts] of rateLimitMap) {
-      if (ts.every((t) => now - t > RATE_LIMIT_WINDOW_MS)) rateLimitMap.delete(key)
+      if (ts.every((t) => now - t > FEEDBACK_RATE_LIMIT_WINDOW_MS)) rateLimitMap.delete(key)
     }
   }
-  return hits.length > RATE_LIMIT_MAX
+  return hits.length > FEEDBACK_RATE_LIMIT_MAX
 }
 
 export async function POST(

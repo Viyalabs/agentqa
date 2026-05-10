@@ -44,12 +44,11 @@ import {
   truncateUrl,
   MAX_PAGES_PER_SCAN,
 } from '@/lib/utils'
+import { POLL_INTERVAL_MS } from '@/services/ai-config'
 
 interface ResultsDashboardProps {
   scanId: string
 }
-
-const POLL_INTERVAL_MS = 2500
 
 type SeverityFilter = 'all' | 'critical' | 'medium' | 'low'
 

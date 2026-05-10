@@ -904,6 +904,35 @@ CREATE UNIQUE INDEX IF NOT EXISTS idx_aaj_unique_active_job
     label: 'Drop unused GIN index on issue_patterns.metadata',
     sql: `DROP INDEX IF EXISTS idx_ip_metadata_gin;`
   },
+  // ── Migration 010 ─────────────────────────────────────────────────────────────
+  {
+    label: 'Create get_pattern_matches_for_scan() RPC',
+    sql: `
+CREATE OR REPLACE FUNCTION get_pattern_matches_for_scan(p_scan_id UUID)
+RETURNS TABLE (
+  issue_id            UUID,
+  pattern_id          UUID,
+  fingerprint         TEXT,
+  occurrence_count    INT,
+  root_cause_template TEXT,
+  fix_template        TEXT,
+  needs_refresh       BOOLEAN
+) LANGUAGE sql STABLE SECURITY DEFINER AS $$
+  SELECT
+    ipm.issue_id,
+    ip.id               AS pattern_id,
+    ip.fingerprint,
+    ip.occurrence_count,
+    ip.root_cause_template,
+    ip.fix_template,
+    ip.needs_refresh
+  FROM issues i
+  JOIN issue_pattern_matches ipm ON ipm.issue_id = i.id
+  JOIN issue_patterns        ip  ON ip.id        = ipm.pattern_id
+  WHERE i.scan_id = p_scan_id;
+$$;
+GRANT EXECUTE ON FUNCTION get_pattern_matches_for_scan(UUID) TO service_role;`
+  },
 ]
 
 // ── Pooler auto-discovery ─────────────────────────────────────────────────────

@@ -4,13 +4,10 @@ import { z } from 'zod'
 import { getAdminClient } from '@/lib/supabase'
 import { validateUrl, normalizeUrl } from '@/lib/utils'
 import { runScan } from '@/services/scanner'
+import { DEDUP_WINDOW_MINUTES, MAX_CONCURRENT_SCANS, MAX_SCANS_PER_IP_PER_HOUR } from '@/services/ai-config'
 
 export const runtime = 'nodejs'
 export const maxDuration = 300
-
-const DEDUP_WINDOW_MINUTES = 15
-const MAX_CONCURRENT_SCANS = 20
-const MAX_SCANS_PER_IP_PER_HOUR = 3
 
 const RequestSchema = z.object({
   url:   z.string().min(1, 'URL is required').max(2048, 'URL is too long'),

@@ -45,52 +45,6 @@ function toClassifiedLike(issue: StoredIssue, scanId: string): IssueClassified {
 }
 
 /**
- * Find or create a pattern cluster for a given cluster_key.
- * Handles concurrent inserts via unique-violation retry.
- */
-async function findOrCreateCluster(
-  ck: string,
-  type: string,
-  title: string,
-): Promise<string> {
-  const db = getAdminClient()
-  const now = new Date().toISOString()
-
-  const { data: existing } = await db
-    .from('pattern_clusters')
-    .select('id, pattern_count')
-    .eq('cluster_key', ck)
-    .maybeSingle()
-
-  if (existing) {
-    // pattern_count is a denormalized counter refreshed periodically —
-    // skip per-write increments to avoid lost-update races under concurrency.
-    return existing.id as string
-  }
-
-  const { data: created, error } = await db
-    .from('pattern_clusters')
-    .insert({ cluster_key: ck, type, canonical_title: title, pattern_count: 1, created_at: now, updated_at: now })
-    .select('id')
-    .single()
-
-  if (error) {
-    if (error.code === '23505') {
-      // Another concurrent worker won the insert race — fetch the winner
-      const { data: raceSurvivor } = await db
-        .from('pattern_clusters')
-        .select('id')
-        .eq('cluster_key', ck)
-        .maybeSingle()
-      if (raceSurvivor) return raceSurvivor.id as string
-    }
-    throw new Error(`[pattern-matcher] cluster insert failed: ${error.message}`)
-  }
-
-  return created!.id as string
-}
-
-/**
  * Find an existing issue pattern by fingerprint or create a new one.
  *
  * On match:   increments occurrence_count + total_scans_affected, extends
@@ -140,24 +94,21 @@ async function findOrCreatePattern(
     }
   }
 
-  // Compute cluster key and find/create a cluster for this new pattern family
   const ck = computeClusterKey(toClassifiedLike(issue, scanId))
-  const clusterId = await findOrCreateCluster(ck, issue.type, issue.title)
 
   const { data: created, error } = await db
     .from('issue_patterns')
     .insert({
-      fingerprint:         fp,
-      type:                issue.type,
-      severity:            issue.severity,
-      title:               issue.title,
-      occurrence_count:    1,
+      fingerprint:          fp,
+      type:                 issue.type,
+      severity:             issue.severity,
+      title:                issue.title,
+      occurrence_count:     1,
       total_scans_affected: 1,
-      affected_frameworks: frameworks,
-      cluster_key:         ck,
-      cluster_id:          clusterId,
-      first_seen_at:       now,
-      last_seen_at:        now,
+      affected_frameworks:  frameworks,
+      cluster_key:          ck,
+      first_seen_at:        now,
+      last_seen_at:         now,
     })
     .select('id')
     .single()
@@ -165,13 +116,6 @@ async function findOrCreatePattern(
   if (error || !created) {
     throw new Error(`[pattern-matcher] insert failed: ${error?.message}`)
   }
-
-  // Set this as the cluster representative if none is set yet
-  await db
-    .from('pattern_clusters')
-    .update({ representative_id: created.id, updated_at: now })
-    .eq('id', clusterId)
-    .is('representative_id', null)
 
   await db
     .from('pattern_occurrences')
@@ -216,51 +160,27 @@ export async function updatePatternTemplates(
 
 /**
  * Reconstruct the patternMatches Map from the DB for a scan that was already
- * processed during the scan phase. Used by the async AI worker so it can pass
- * cached pattern templates to analyzeIssues and skip redundant Claude calls.
+ * processed during the scan phase. Uses a single SQL join via RPC instead of
+ * three round-trips (issues → matches → patterns).
  */
 export async function getPatternMatchesForScan(
   scanId: string,
 ): Promise<Map<string, PatternMatchResult>> {
   const db = getAdminClient()
-
-  const { data: issueRows } = await db
-    .from('issues')
-    .select('id')
-    .eq('scan_id', scanId)
-
-  if (!issueRows?.length) return new Map()
-
-  const issueIds = issueRows.map((i) => i.id as string)
-
-  const { data: links } = await db
-    .from('issue_pattern_matches')
-    .select('issue_id, pattern_id')
-    .in('issue_id', issueIds)
-
-  if (!links?.length) return new Map()
-
-  const patternIds = [...new Set(links.map((l) => l.pattern_id as string))]
-
-  const { data: patterns } = await db
-    .from('issue_patterns')
-    .select('id, fingerprint, occurrence_count, root_cause_template, fix_template, needs_refresh')
-    .in('id', patternIds)
-
-  const patternMap = new Map((patterns ?? []).map((p) => [p.id as string, p]))
+  const { data, error } = await db.rpc('get_pattern_matches_for_scan', { p_scan_id: scanId })
+  if (error) throw new Error(`[pattern-matcher] getPatternMatchesForScan: ${error.message}`)
+  if (!data?.length) return new Map()
 
   const result = new Map<string, PatternMatchResult>()
-  for (const link of links) {
-    const p = patternMap.get(link.pattern_id as string)
-    if (!p) continue
-    result.set(link.issue_id as string, {
-      patternId:         p.id as string,
-      fingerprint:       p.fingerprint as string,
+  for (const row of data) {
+    result.set(row.issue_id as string, {
+      patternId:         row.pattern_id          as string,
+      fingerprint:       row.fingerprint          as string,
       isNew:             false,
-      occurrenceCount:   p.occurrence_count as number,
-      rootCauseTemplate: (p.root_cause_template as string | null) ?? null,
-      fixTemplate:       (p.fix_template as string | null) ?? null,
-      needsRefresh:      (p.needs_refresh as boolean) ?? false,
+      occurrenceCount:   row.occurrence_count     as number,
+      rootCauseTemplate: (row.root_cause_template as string | null) ?? null,
+      fixTemplate:       (row.fix_template        as string | null) ?? null,
+      needsRefresh:      (row.needs_refresh       as boolean) ?? false,
     })
   }
   return result
@@ -393,12 +313,8 @@ export async function updatePatternConfidence(patternId: string): Promise<void> 
  */
 export async function refreshPatternVelocities(): Promise<void> {
   const db = getAdminClient()
-  const [velResult, clusterResult] = await Promise.all([
-    db.rpc('refresh_pattern_velocities'),
-    db.rpc('refresh_cluster_counts'),
-  ])
-  if (velResult.error)     console.error('[pattern-matcher] refresh_pattern_velocities:', velResult.error.message)
-  if (clusterResult.error) console.error('[pattern-matcher] refresh_cluster_counts:', clusterResult.error.message)
+  const { error } = await db.rpc('refresh_pattern_velocities')
+  if (error) console.error('[pattern-matcher] refresh_pattern_velocities:', error.message)
 }
 
 /**

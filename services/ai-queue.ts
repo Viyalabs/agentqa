@@ -20,12 +20,24 @@ export interface AIJob {
 /**
  * Enqueue both AI jobs for a completed scan.
  * issue_batch runs first (priority 1), then scan_overview (priority 2).
+ * Idempotent: silently skips if active jobs already exist for this scan
+ * (the DB also enforces this via a UNIQUE partial index on pending/running rows).
  */
 export async function enqueueAIJobs(scanId: string): Promise<void> {
   const db = getAdminClient()
+
+  // Check before insert to avoid noisy unique-constraint violations on retries.
+  const { count } = await db
+    .from('ai_analysis_jobs')
+    .select('*', { count: 'exact', head: true })
+    .eq('scan_id', scanId)
+    .in('status', ['pending', 'running'])
+
+  if ((count ?? 0) > 0) return
+
   await db.from('ai_analysis_jobs').insert([
-    { scan_id: scanId, job_type: 'issue_batch',   priority: 1 },
-    { scan_id: scanId, job_type: 'scan_overview',  priority: 2 },
+    { scan_id: scanId, job_type: 'issue_batch',  priority: 1 },
+    { scan_id: scanId, job_type: 'scan_overview', priority: 2 },
   ])
 }
 

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getAdminClient } from '@/lib/supabase'
+import { refreshPatternVelocities } from '@/services/pattern-matcher'
 
 export const runtime = 'nodejs'
 
@@ -23,6 +24,10 @@ export async function GET(req: NextRequest) {
 
   const workerUrl    = `${process.env.NEXT_PUBLIC_APP_URL}/api/ai/worker`
   const workerSecret = process.env.WORKER_SECRET ?? ''
+
+  // Refresh pattern velocity scores on every cron tick — fixed schedule is
+  // better than per-drain because drain frequency varies with queue load.
+  await refreshPatternVelocities()
 
   try {
     const res = await fetch(workerUrl, {
