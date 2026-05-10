@@ -806,8 +806,9 @@ BEGIN
     AND attempts < 3;
   GET DIAGNOSTICS reaped = ROW_COUNT;
   UPDATE ai_analysis_jobs
-  SET status = 'failed',
-      last_error = 'Reaped: max attempts exceeded'
+  SET status       = 'failed',
+      last_error   = 'Reaped: max attempts exceeded',
+      completed_at = NOW()
   WHERE status = 'running'
     AND started_at < NOW() - (p_timeout_minutes || ' minutes')::INTERVAL
     AND attempts >= 3;
@@ -884,6 +885,7 @@ BEGIN
   -- Mark scans stuck in 'running' past the timeout as 'failed'
   UPDATE scans
   SET status        = 'failed',
+      completed_at  = NOW(),
       error_message = 'Scan timed out — reaped by cron after ' || p_timeout_minutes || ' minutes'
   WHERE status     = 'running'
     AND started_at < NOW() - (p_timeout_minutes || ' minutes')::INTERVAL;

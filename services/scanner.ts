@@ -189,14 +189,17 @@ export async function runScan(scanId: string, url: string): Promise<void> {
       return [] as string[]
     })
 
-    // 2. Fingerprint issues + match to cross-scan pattern DB (fast — DB-only)
-    //    Populates cached templates so the async worker can skip Claude calls for known patterns
-    await matchScanIssues(scanId, frameworks).catch((err: unknown) => {
-      console.error(`[scanner] Pattern matching failed for ${scanId}:`, err)
-    })
+    // 2. Fingerprint issues + match to cross-scan pattern DB (capped at 25 s)
+    //    If it times out, enqueueAIJobs still runs — pattern cache just won't be warm.
+    await Promise.race([
+      matchScanIssues(scanId, frameworks).catch((err: unknown) => {
+        console.error(`[scanner] Pattern matching failed for ${scanId}:`, err)
+      }),
+      new Promise<void>(resolve => setTimeout(resolve, 25_000)),
+    ])
 
-    // 3. Enqueue AI analysis jobs + trigger the worker asynchronously
-    //    Scan is already marked complete above — AI runs without blocking the user
+    // 3. Enqueue AI analysis jobs — always runs, even if pattern matching timed out.
+    //    Scan is already marked complete above — AI runs without blocking the user.
     await enqueueAIJobs(scanId).catch((err: unknown) => {
       console.error(`[scanner] Failed to enqueue AI jobs for ${scanId}:`, err)
     })
@@ -204,12 +207,16 @@ export async function runScan(scanId: string, url: string): Promise<void> {
     // Trigger the AI worker — registered with waitUntil so Vercel keeps the
     // lambda alive long enough for the request to leave before shutdown.
     const workerUrl    = `${process.env.NEXT_PUBLIC_APP_URL}/api/ai/worker`
-    const workerSecret = process.env.WORKER_SECRET ?? ''
+    const workerSecret = process.env.WORKER_SECRET
     waitUntil(
       fetch(workerUrl, {
         method:  'POST',
-        headers: { 'x-worker-secret': workerSecret, 'Content-Type': 'application/json' },
-        body:    '{}',
+        headers: {
+          ...(workerSecret ? { 'x-worker-secret': workerSecret } : {}),
+          'Content-Type': 'application/json',
+        },
+        body:   '{}',
+        signal: AbortSignal.timeout(10_000),
       }).catch((err: unknown) => {
         console.error(`[scanner] Failed to trigger AI worker for ${scanId}:`, err)
       })

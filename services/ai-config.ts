@@ -18,8 +18,9 @@ export const AI_RETRY_DELAY_MS: readonly number[] = [
   10 * 60_000,  // 10 min after attempt 2
 ]
 
-/** Jobs stuck in 'running' beyond this are presumed dead and reaped. */
-export const AI_STUCK_JOB_TIMEOUT_MINUTES = 15
+/** Jobs stuck in 'running' beyond this are presumed dead and reaped.
+ *  Worker maxDuration = 300 s (5 min); 8 min gives one full drain cycle of margin. */
+export const AI_STUCK_JOB_TIMEOUT_MINUTES = 8
 
 /** Max jobs processed per single HTTP invocation of the worker. */
 export const AI_MAX_JOBS_PER_INVOCATION = 10

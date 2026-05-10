@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { waitUntil } from '@vercel/functions'
 import { getAdminClient } from '@/lib/supabase'
 import { refreshPatternVelocities } from '@/services/pattern-matcher'
+import { AI_STUCK_JOB_TIMEOUT_MINUTES } from '@/services/ai-config'
 
 export const runtime = 'nodejs'
 
@@ -22,19 +24,22 @@ export async function GET(req: NextRequest) {
     console.log(`[cron] reaped ${scansReaped} stuck scan(s)`)
   }
 
-  const workerUrl    = `${process.env.NEXT_PUBLIC_APP_URL}/api/ai/worker`
-  const workerSecret = process.env.WORKER_SECRET ?? ''
+  // Reap AI jobs stuck in 'running' — catches worker lambdas that crashed mid-drain.
+  await db.rpc('reap_stuck_ai_jobs', { p_timeout_minutes: AI_STUCK_JOB_TIMEOUT_MINUTES })
 
-  // Refresh pattern velocity scores on every cron tick — fixed schedule is
-  // better than per-drain because drain frequency varies with queue load.
-  await refreshPatternVelocities()
+  // Refresh pattern velocity scores on a fixed schedule — offloaded to waitUntil so
+  // the cron handler responds quickly and the two full-table UPDATEs run async.
+  waitUntil(refreshPatternVelocities())
+
+  const workerUrl    = `${process.env.NEXT_PUBLIC_APP_URL}/api/ai/worker`
+  const workerSecret = process.env.WORKER_SECRET
 
   try {
     const res = await fetch(workerUrl, {
       method:  'POST',
       headers: {
-        'x-worker-secret': workerSecret,
-        'Content-Type':    'application/json',
+        ...(workerSecret ? { 'x-worker-secret': workerSecret } : {}),
+        'Content-Type': 'application/json',
       },
       body: '{}',
     })

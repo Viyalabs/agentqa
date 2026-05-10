@@ -101,8 +101,13 @@ async function processOne(): Promise<boolean> {
     const msg = err instanceof Error ? err.message : String(err)
     console.error(`[ai-worker] ${job.job_type} ${job.id} attempt ${job.attempts} — failed: ${msg}`)
     // failJob resets to 'pending' with back-off delay if attempts < MAX_ATTEMPTS,
-    // otherwise marks permanently 'failed'.
-    await failJob(job.id, job.attempts, msg)
+    // otherwise marks permanently 'failed'. Wrapped so a DB error here doesn't
+    // abort the drain loop — the reaper will recover the job on the next cron tick.
+    try {
+      await failJob(job.id, job.attempts, msg)
+    } catch (failErr) {
+      console.error(`[ai-worker] failJob for ${job.id} threw — job will be reaped:`, failErr)
+    }
     // Return true — there may be other jobs in the queue even though this one failed
   }
 
