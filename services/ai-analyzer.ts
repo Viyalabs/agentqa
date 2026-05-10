@@ -249,7 +249,7 @@ async function analyzeBatch(
   appUrl: string,
   issues: IssueForAnalysis[],
   frameworks: string[],
-): Promise<Map<string, AIAnalysis>> {
+): Promise<{ results: Map<string, AIAnalysis>; tokensIn: number; tokensOut: number }> {
   const claudeResult = await callClaude({
     prompt:    buildBatchPrompt(appUrl, issues, frameworks),
     system:    ANALYSIS_SYSTEM_PROMPT,
@@ -262,6 +262,8 @@ async function analyzeBatch(
     throw new Error(claudeResult.error.message)
   }
   const text = claudeResult.data
+  const tokensIn  = claudeResult.usage.inputTokens
+  const tokensOut = claudeResult.usage.outputTokens
   const parsed = extractJSON(text) as Array<{
     i: number
     summary?: string
@@ -291,7 +293,7 @@ async function analyzeBatch(
       })
     }
   }
-  return result
+  return { results: result, tokensIn, tokensOut }
 }
 
 /** Single-issue fallback prompt with JSON output and type-specific analysis guidance */
@@ -477,11 +479,14 @@ export async function analyzeIssues(
 
   // fingerprint (or type fallback) → analysis result
   const analysisCache = new Map<string, AIAnalysis>()
+  let totalIn = 0, totalOut = 0
 
   for (let i = 0; i < representatives.length; i += AI_BATCH_SIZE) {
     const batch = representatives.slice(i, i + AI_BATCH_SIZE)
     try {
-      const batchResults = await analyzeBatch(appUrl, batch, frameworks)
+      const { results: batchResults, tokensIn, tokensOut } = await analyzeBatch(appUrl, batch, frameworks)
+      totalIn  += tokensIn
+      totalOut += tokensOut
       for (const [cacheKey, analysis] of batchResults) {
         analysisCache.set(cacheKey, analysis)
         const rep = batch.find((r) => (r.fingerprint ?? r.type) === cacheKey)
@@ -512,6 +517,8 @@ export async function analyzeIssues(
               await logToScan(db, scanId, `AI analysis failed for issue type "${rep.type}": ${soloResult.error.message}`)
               throw new Error(soloResult.error.message)
             }
+            totalIn  += soloResult.usage.inputTokens
+            totalOut += soloResult.usage.outputTokens
             const analysis = parseSoloResponse(soloResult.data)
             if (analysis.summary) {
               analysisCache.set(cacheKey, analysis)
@@ -556,9 +563,15 @@ export async function analyzeIssues(
     })
   )
 
+  if (totalIn > 0 || totalOut > 0) {
+    await db.rpc('increment_scan_tokens', { p_scan_id: scanId, p_in: totalIn, p_out: totalOut })
+      .then(({ error }) => { if (error) console.error('[ai-analyzer] token increment failed:', error.message) })
+  }
+
   console.log(
     `[ai-analyzer] ${scanId}: ${representatives.length} Claude call(s) → ` +
-    `${needsAnalysis.length} issue(s) analyzed (${reused} reused from patterns)`
+    `${needsAnalysis.length} issue(s) analyzed (${reused} reused from patterns) ` +
+    `— tokens: ${totalIn} in / ${totalOut} out`
   )
 }
 
@@ -603,8 +616,16 @@ export async function generateScanOverview(
     if (!overview) return
 
     await db.from('scans').update({ ai_overview: overview }).eq('id', scanId)
+    await db.rpc('increment_scan_tokens', {
+      p_scan_id: scanId,
+      p_in:      result.usage.inputTokens,
+      p_out:     result.usage.outputTokens,
+    }).then(({ error }) => { if (error) console.error('[ai-analyzer] token increment failed:', error.message) })
 
-    console.log(`[ai-analyzer] ${scanId}: scan overview generated`)
+    console.log(
+      `[ai-analyzer] ${scanId}: scan overview generated ` +
+      `— tokens: ${result.usage.inputTokens} in / ${result.usage.outputTokens} out`
+    )
   } catch (err) {
     console.error(`[ai-analyzer] Failed to generate overview for ${scanId}:`, err)
   }

@@ -935,6 +935,26 @@ RETURNS TABLE (
 $$;
 GRANT EXECUTE ON FUNCTION get_pattern_matches_for_scan(UUID) TO service_role;`
   },
+
+  // ── Migration 011 ─────────────────────────────────────────────────────────────
+  {
+    label: 'Add AI token tracking columns to scans',
+    sql: `
+ALTER TABLE scans ADD COLUMN IF NOT EXISTS ai_tokens_in  INT NOT NULL DEFAULT 0;
+ALTER TABLE scans ADD COLUMN IF NOT EXISTS ai_tokens_out INT NOT NULL DEFAULT 0;`
+  },
+  {
+    label: 'Create increment_scan_tokens() RPC',
+    sql: `
+CREATE OR REPLACE FUNCTION increment_scan_tokens(p_scan_id UUID, p_in INT, p_out INT)
+RETURNS void LANGUAGE sql SECURITY DEFINER AS $$
+  UPDATE scans
+  SET ai_tokens_in  = COALESCE(ai_tokens_in,  0) + p_in,
+      ai_tokens_out = COALESCE(ai_tokens_out, 0) + p_out
+  WHERE id = p_scan_id;
+$$;
+GRANT EXECUTE ON FUNCTION increment_scan_tokens(UUID, INT, INT) TO service_role;`
+  },
 ]
 
 // ── Pooler auto-discovery ─────────────────────────────────────────────────────

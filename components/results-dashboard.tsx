@@ -932,6 +932,11 @@ export function ResultsDashboard({ scanId }: ResultsDashboardProps) {
             <span className="text-xs font-semibold text-blue-400 uppercase tracking-wider">AI Overview</span>
           </div>
           <p className="text-sm text-zinc-300 leading-relaxed">{scan.ai_overview}</p>
+          {(scan.ai_tokens_in > 0 || scan.ai_tokens_out > 0) && (
+            <p className="text-[10px] text-zinc-600 mt-2">
+              {(scan.ai_tokens_in + scan.ai_tokens_out).toLocaleString()} tokens used ({scan.ai_tokens_in.toLocaleString()} in · {scan.ai_tokens_out.toLocaleString()} out)
+            </p>
+          )}
         </div>
       )}
 

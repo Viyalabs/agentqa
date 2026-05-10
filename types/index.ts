@@ -39,6 +39,8 @@ export interface Scan {
   error_message: string | null
   notify_email: string | null
   ai_overview: string | null
+  ai_tokens_in: number
+  ai_tokens_out: number
   started_at: string | null
   completed_at: string | null
   created_at: string
