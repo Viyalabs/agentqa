@@ -509,7 +509,7 @@ export function ResultsDashboard({ scanId }: ResultsDashboardProps) {
               </button>
               <a
                 href={(() => {
-                  const reportUrl = `${typeof window !== 'undefined' ? window.location.origin : 'https://qa.viyalabs.com'}/report/${scanId}`
+                  const reportUrl = `${typeof window !== 'undefined' ? window.location.origin : 'https://agentqa.viyalabs.com'}/report/${scanId}`
                   const scoreText = scan.score !== null ? ` (score: ${scan.score}/100)` : ''
                   const issueText = issues.length > 0
                     ? `Found ${issues.length} issue${issues.length !== 1 ? 's' : ''}${scoreText} automatically.`

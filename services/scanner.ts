@@ -275,7 +275,7 @@ function categoriseError(raw: string): string {
   return raw
 }
 
-const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? 'https://qa.viyalabs.com'
+const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? 'https://agentqa.viyalabs.com'
 
 async function resendPost(payload: Record<string, unknown>): Promise<void> {
   const apiKey = process.env.RESEND_API_KEY

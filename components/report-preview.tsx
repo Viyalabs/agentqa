@@ -69,7 +69,7 @@ export function ReportPreview() {
                 <span className="h-3 w-3 rounded-full bg-yellow-500/60" />
                 <span className="h-3 w-3 rounded-full bg-green-500/60" />
               </div>
-              <span className="text-xs font-mono text-zinc-500 ml-2">qa.viyalabs.com/report/</span>
+              <span className="text-xs font-mono text-zinc-500 ml-2">agentqa.viyalabs.com/report/</span>
               <span className="text-xs font-mono text-blue-400">a1b2c3d4</span>
               <span className="text-xs text-zinc-700 hidden sm:inline">— permanent shareable link</span>
             </div>

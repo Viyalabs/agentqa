@@ -4,7 +4,7 @@ import { getAdminClient } from '@/lib/supabase'
 
 export const runtime = 'nodejs'
 
-const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? 'https://qa.viyalabs.com'
+const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? 'https://agentqa.viyalabs.com'
 
 const RequestSchema = z.object({
   email: z.string().email('Please enter a valid email address'),

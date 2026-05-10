@@ -8,7 +8,7 @@
  * Set WEBHOOK_API_KEY env var (comma-separated for multiple keys).
  *
  * Example (GitHub Actions):
- *   curl -X POST https://qa.viyalabs.com/api/webhook/scan \
+ *   curl -X POST https://agentqa.viyalabs.com/api/webhook/scan \
  *     -H "x-api-key: $AGENTQA_API_KEY" \
  *     -H "Content-Type: application/json" \
  *     -d '{"url":"https://my-preview.vercel.app","failThreshold":80}'
@@ -23,7 +23,7 @@ import { runScan } from '@/services/scanner'
 export const runtime = 'nodejs'
 export const maxDuration = 300
 
-const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? 'https://qa.viyalabs.com'
+const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? 'https://agentqa.viyalabs.com'
 
 const RequestSchema = z.object({
   url: z.string().min(1, 'URL is required').max(2048, 'URL is too long'),
