@@ -41,6 +41,8 @@ export interface Scan {
   ai_overview: string | null
   ai_tokens_in: number
   ai_tokens_out: number
+  regression_new: number
+  regression_resolved: number
   started_at: string | null
   completed_at: string | null
   created_at: string

@@ -350,30 +350,56 @@ function parseSoloResponse(text: string): AIAnalysis {
   }
 }
 
+interface IssueOverviewItem {
+  type: string
+  severity: string
+  title: string
+}
+
+interface RegressionData {
+  newCount: number
+  resolvedCount: number
+  previousScore: number | null
+}
+
 function buildOverviewPrompt(
   appUrl: string,
   score: number,
-  totalIssues: number,
-  criticalCount: number,
-  mediumCount: number,
-  lowCount: number,
+  issues: IssueOverviewItem[],
   frameworks: string[],
+  regression: RegressionData,
 ): string {
   const stackLine = frameworks.length > 0 ? `Stack: ${frameworkLabel(frameworks)}\n` : ''
   const health = score >= 80 ? 'good' : score >= 60 ? 'fair' : 'poor'
+  const criticals = issues.filter(i => i.severity === 'critical').length
+  const mediums   = issues.filter(i => i.severity === 'medium').length
+  const lows      = issues.filter(i => i.severity === 'low').length
 
-  return `You are a senior engineering lead reviewing a QA scan report.
+  const issueLines = issues.map((issue, idx) =>
+    `  ${idx + 1}. [${issue.severity.toUpperCase()}] ${issue.type} — "${issue.title}"`
+  ).join('\n')
+
+  const regressionLine = regression.newCount > 0 || regression.resolvedCount > 0
+    ? `Regression vs last scan: ${regression.newCount} new issue${regression.newCount !== 1 ? 's' : ''}, ${regression.resolvedCount} resolved`
+    : regression.previousScore !== null
+    ? `vs last scan: score was ${regression.previousScore}/100 (${score >= regression.previousScore ? '+' : ''}${score - regression.previousScore} pts)`
+    : 'First scan for this URL'
+
+  return `You are a senior QA engineer diagnosing a web application. Reason across ALL findings — identify what is related, what is a symptom vs root cause, and what to fix first.
 
 App: ${appUrl}
-${stackLine}Score: ${score}/100 (${health})
-Issues: ${totalIssues} total — ${criticalCount} critical, ${mediumCount} medium, ${lowCount} low
+${stackLine}Score: ${score}/100 (${health}) — ${criticals} critical, ${mediums} medium, ${lows} low
+${regressionLine}
 
-Write 2-3 sentences:
-1. Overall health with score context — state the number, don't just say "some issues".
-2. Most urgent concern — be specific (e.g. "3 JS errors crash checkout" not "there are critical issues").
-3. One concrete next step tied to the detected stack.
+All findings:
+${issueLines}
 
-CONSTRAINTS: No filler ("it seems", "looks like", "please note"). No bullet points. Plain prose. Speak to the technical lead who will act on this today.`
+Write 2-4 sentences of plain prose:
+1. If multiple issues share a root cause, state that connection explicitly ("Issues 2 and 5 are both caused by…"). If they are independent, say so.
+2. The single highest-leverage fix — what one change eliminates the most symptoms.
+3. If there are new or resolved issues vs the last scan, mention it concisely.
+
+CONSTRAINTS: No bullet points. No filler ("it seems", "looks like"). Name specific issue numbers and types. Speak directly to the developer acting on this today.`
 }
 
 /** Append a message to scan_logs so it surfaces in the user-facing report. */
@@ -576,8 +602,9 @@ export async function analyzeIssues(
 }
 
 /**
- * Generate a one-paragraph AI overview for the entire scan.
- * Stored in scans.ai_overview. Runs after analyzeIssues.
+ * Generate a holistic AI overview for the entire scan.
+ * Reasons across ALL issues together — identifies clusters, symptoms vs root causes,
+ * and regression vs the previous scan. Stored in scans.ai_overview.
  */
 export async function generateScanOverview(
   scanId: string,
@@ -589,9 +616,7 @@ export async function generateScanOverview(
   lowCount = 0,
 ): Promise<void> {
   if (!isClaudeConfigured()) return
-
-  const totalIssues = criticalCount + mediumCount + lowCount
-  if (totalIssues === 0) return
+  if (criticalCount + mediumCount + lowCount === 0) return
 
   try {
     const db = getAdminClient()
@@ -601,10 +626,61 @@ export async function generateScanOverview(
       return
     }
 
+    // Fetch all issues so the prompt can reason across the full picture
+    const { data: issueRows } = await db
+      .from('issues')
+      .select('type, severity, title, fingerprint')
+      .eq('scan_id', scanId)
+      .order('severity', { ascending: true })
+
+    const issues: IssueOverviewItem[] = (issueRows ?? []).map(r => ({
+      type:     r.type     as string,
+      severity: r.severity as string,
+      title:    r.title    as string,
+    }))
+
+    if (issues.length === 0) return
+
+    // Compute regression vs the previous completed scan for the same URL
+    const currentFps = new Set(
+      (issueRows ?? []).map(r => r.fingerprint as string | null).filter((f): f is string => Boolean(f))
+    )
+
+    const { data: prevScans } = await db
+      .from('scans')
+      .select('id, score')
+      .eq('url', appUrl)
+      .eq('status', 'completed')
+      .neq('id', scanId)
+      .order('completed_at', { ascending: false })
+      .limit(1)
+
+    let regressionNew = 0
+    let regressionResolved = 0
+    const previousScore: number | null = (prevScans?.[0]?.score as number | null) ?? null
+
+    if (prevScans?.[0]) {
+      const { data: prevIssues } = await db
+        .from('issues')
+        .select('fingerprint')
+        .eq('scan_id', prevScans[0].id as string)
+        .not('fingerprint', 'is', null)
+
+      const prevFps = new Set(
+        (prevIssues ?? []).map(r => r.fingerprint as string).filter(Boolean)
+      )
+      regressionNew      = [...currentFps].filter(fp => !prevFps.has(fp)).length
+      regressionResolved = [...prevFps].filter(fp => !currentFps.has(fp)).length
+    }
+
     const result = await callClaude({
-      prompt:    buildOverviewPrompt(appUrl, score, totalIssues, criticalCount, mediumCount, lowCount, frameworks),
+      prompt:    buildOverviewPrompt(appUrl, score, issues, frameworks, {
+        newCount:      regressionNew,
+        resolvedCount: regressionResolved,
+        previousScore,
+      }),
       model:     CLAUDE_HAIKU,
-      maxTokens: 160,
+      maxTokens: 300,
     })
 
     if (!result.ok) {
@@ -615,7 +691,12 @@ export async function generateScanOverview(
     const overview = result.data.trim()
     if (!overview) return
 
-    await db.from('scans').update({ ai_overview: overview }).eq('id', scanId)
+    await db.from('scans').update({
+      ai_overview:          overview,
+      regression_new:       regressionNew,
+      regression_resolved:  regressionResolved,
+    }).eq('id', scanId)
+
     await db.rpc('increment_scan_tokens', {
       p_scan_id: scanId,
       p_in:      result.usage.inputTokens,
@@ -623,8 +704,9 @@ export async function generateScanOverview(
     }).then(({ error }) => { if (error) console.error('[ai-analyzer] token increment failed:', error.message) })
 
     console.log(
-      `[ai-analyzer] ${scanId}: scan overview generated ` +
-      `— tokens: ${result.usage.inputTokens} in / ${result.usage.outputTokens} out`
+      `[ai-analyzer] ${scanId}: overview generated — ` +
+      `${regressionNew} new / ${regressionResolved} resolved vs prev scan — ` +
+      `tokens: ${result.usage.inputTokens} in / ${result.usage.outputTokens} out`
     )
   } catch (err) {
     console.error(`[ai-analyzer] Failed to generate overview for ${scanId}:`, err)

@@ -940,8 +940,10 @@ GRANT EXECUTE ON FUNCTION get_pattern_matches_for_scan(UUID) TO service_role;`
   {
     label: 'Add AI token tracking columns to scans',
     sql: `
-ALTER TABLE scans ADD COLUMN IF NOT EXISTS ai_tokens_in  INT NOT NULL DEFAULT 0;
-ALTER TABLE scans ADD COLUMN IF NOT EXISTS ai_tokens_out INT NOT NULL DEFAULT 0;`
+ALTER TABLE scans ADD COLUMN IF NOT EXISTS ai_tokens_in      INT NOT NULL DEFAULT 0;
+ALTER TABLE scans ADD COLUMN IF NOT EXISTS ai_tokens_out     INT NOT NULL DEFAULT 0;
+ALTER TABLE scans ADD COLUMN IF NOT EXISTS regression_new      INT NOT NULL DEFAULT 0;
+ALTER TABLE scans ADD COLUMN IF NOT EXISTS regression_resolved INT NOT NULL DEFAULT 0;`
   },
   {
     label: 'Create increment_scan_tokens() RPC',

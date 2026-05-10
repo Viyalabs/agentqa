@@ -25,6 +25,8 @@ import {
   WifiOff,
   Layers,
   Sparkles,
+  TrendingUp,
+  TrendingDown,
 } from 'lucide-react'
 import { Card, CardContent } from './ui/card'
 import { Badge } from './ui/badge'
@@ -748,6 +750,23 @@ export function ResultsDashboard({ scanId }: ResultsDashboardProps) {
                       </div>
                     ) : null
                   })()}
+                  {(scan.regression_new > 0 || scan.regression_resolved > 0) && (
+                    <div className="mt-2 pt-2 border-t border-zinc-800/60 flex items-center gap-2 flex-wrap">
+                      {scan.regression_new > 0 && (
+                        <span className="flex items-center gap-0.5 text-[11px] text-red-400">
+                          <TrendingUp className="h-3 w-3" />
+                          {scan.regression_new} new
+                        </span>
+                      )}
+                      {scan.regression_resolved > 0 && (
+                        <span className="flex items-center gap-0.5 text-[11px] text-green-400">
+                          <TrendingDown className="h-3 w-3" />
+                          {scan.regression_resolved} fixed
+                        </span>
+                      )}
+                      <span className="text-[11px] text-zinc-600">vs last scan</span>
+                    </div>
+                  )}
                 </>
               ) : (
                 <div className="text-3xl font-bold text-zinc-600">–</div>
