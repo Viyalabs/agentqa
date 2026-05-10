@@ -31,7 +31,7 @@ export async function GET(req: NextRequest) {
   // the cron handler responds quickly and the two full-table UPDATEs run async.
   waitUntil(refreshPatternVelocities())
 
-  const workerUrl    = `${process.env.NEXT_PUBLIC_APP_URL}/api/ai/worker`
+  const workerUrl    = `${process.env.NEXT_PUBLIC_APP_URL ?? 'https://agentqa.viyalabs.com'}/api/ai/worker`
   const workerSecret = process.env.WORKER_SECRET
 
   try {
