@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { Chrome, Zap, Smartphone, AlertCircle, WifiOff, ShieldCheck } from 'lucide-react'
+import { Smartphone, WifiOff } from 'lucide-react'
 import { ScanForm } from './scan-form'
 import { RecentScansStrip } from './recent-scans-strip'
 import { LastScanRecall } from './last-scan-recall'
@@ -26,7 +26,6 @@ const ISSUE_CARDS = [
     color: 'text-red-400',
     bg: 'bg-red-950/90 border-red-500/40',
     label: 'Failed API Request',
-    detail: '/api/user → 401',
     severity: 'Critical',
     severityColor: 'text-red-400',
   },
@@ -35,18 +34,8 @@ const ISSUE_CARDS = [
     color: 'text-yellow-400',
     bg: 'bg-yellow-950/90 border-yellow-500/40',
     label: 'Mobile Overflow',
-    detail: '375px viewport',
     severity: 'Medium',
     severityColor: 'text-yellow-400',
-  },
-  {
-    Icon: AlertCircle,
-    color: 'text-orange-400',
-    bg: 'bg-orange-950/90 border-orange-500/40',
-    label: 'JS Exception',
-    detail: 'TypeError: null ref',
-    severity: 'Critical',
-    severityColor: 'text-red-400',
   },
 ]
 
@@ -149,11 +138,10 @@ function FloatingCard({
   index: number
 }) {
   const positions = [
-    '-right-3 top-8 lg:-right-16',
-    '-left-3 top-1/2 -translate-y-1/2 lg:-left-14',
-    '-right-3 bottom-14 lg:-right-16',
+    '-right-3 top-8 lg:-right-20',
+    '-right-3 bottom-14 lg:-right-20',
   ]
-  const delays = ['0s', '0.9s', '1.8s']
+  const delays = ['0s', '1.4s']
 
   return (
     <div
@@ -185,7 +173,7 @@ export function Hero({ stats: _stats }: { stats?: HomeStats }) {
         }
       `}</style>
 
-      <section className="relative overflow-hidden pt-24 pb-16">
+      <section className="relative overflow-hidden pt-24 pb-20">
         <div className="absolute inset-0 -z-10 pointer-events-none">
           <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[900px] h-[500px] bg-blue-600/10 blur-[140px] rounded-full" />
           <div className="absolute top-1/3 right-0 w-[500px] h-[400px] bg-blue-600/6 blur-[120px] rounded-full" />
@@ -197,12 +185,12 @@ export function Hero({ stats: _stats }: { stats?: HomeStats }) {
 
             <div className="text-center lg:text-left">
               {/* Badge */}
-              <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full border border-blue-500/30 bg-blue-500/10 text-blue-400 text-xs font-medium mb-8">
+              <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full border border-blue-500/30 bg-blue-500/10 text-blue-400 text-xs font-medium mb-6">
                 <span className="relative flex h-2 w-2">
                   <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75" />
                   <span className="relative inline-flex rounded-full h-2 w-2 bg-blue-500" />
                 </span>
-                AI QA engineer — a new category
+                AI QA Agent
               </div>
 
               {/* Headline */}
@@ -213,8 +201,8 @@ export function Hero({ stats: _stats }: { stats?: HomeStats }) {
                 </span>
               </h1>
 
-              <p className="text-base text-zinc-400 mb-10 leading-relaxed max-w-xl mx-auto lg:mx-0">
-                Manual QA is being replaced. AgentQA is the replacement — paste a URL, and your AI QA engineer delivers a complete report with root-cause analysis in under 2&nbsp;minutes.
+              <p className="text-base text-zinc-400 mb-8 leading-relaxed max-w-xl mx-auto lg:mx-0">
+                Paste a URL. A real Chrome browser crawls every page, catches JS errors, API failures, and mobile layout breaks — and delivers a scored report in under 2&nbsp;minutes.
               </p>
 
               <div className="max-w-xl mx-auto lg:mx-0">
@@ -224,33 +212,17 @@ export function Hero({ stats: _stats }: { stats?: HomeStats }) {
               </div>
 
               {/* Trust signals */}
-              <div className="flex flex-wrap items-center justify-center lg:justify-start gap-6 mt-8 text-sm text-zinc-500">
-                <div className="flex items-center gap-2">
-                  <Chrome className="h-4 w-4 text-green-500" />
-                  Real Chrome browser
-                </div>
-                <div className="flex items-center gap-2">
-                  <Zap className="h-4 w-4 text-yellow-500" />
-                  Results in &lt;2 min
-                </div>
-                <div className="flex items-center gap-2">
-                  <ShieldCheck className="h-4 w-4 text-blue-500" />
-                  No QA experience required
-                </div>
-              </div>
+              <p className="text-sm text-zinc-500 mt-6 text-center lg:text-left">
+                Real browser · Under 2 min · No setup required
+              </p>
 
-              {/* Trust positioning */}
-              <div className="mt-8 pt-8 border-t border-zinc-800/60">
-                <p className="text-sm text-zinc-400 text-center lg:text-left leading-relaxed mb-3">
-                  Used by AI builders, agencies, and fast-moving startups shipping daily.
-                </p>
-                <a
-                  href="/scans"
-                  className="text-xs text-blue-400/80 hover:text-blue-400 border border-blue-500/20 bg-blue-500/5 px-2.5 py-1 rounded-full transition-colors inline-flex items-center gap-1"
-                >
+              {/* Social proof */}
+              <p className="text-xs text-zinc-500 mt-4 text-center lg:text-left">
+                Used by AI builders, agencies, and startups.{' '}
+                <a href="/scans" className="text-blue-400/80 hover:text-blue-400 transition-colors">
                   See recent reports →
                 </a>
-              </div>
+              </p>
             </div>
 
             {/* Right: terminal visual */}
