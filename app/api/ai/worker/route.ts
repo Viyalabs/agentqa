@@ -81,11 +81,13 @@ async function processOne(): Promise<boolean> {
   const db = getAdminClient()
 
   try {
-    const { data: scan } = await db
-      .from('scans')
-      .select('url, score')
-      .eq('id', job.scan_id)
-      .single()
+    const [{ data: scan }, { data: fwRows }] = await Promise.all([
+      db.from('scans').select('url, score').eq('id', job.scan_id).single(),
+      db.from('scan_frameworks')
+        .select('framework')
+        .eq('scan_id', job.scan_id)
+        .order('confidence', { ascending: false }),
+    ])
 
     // If the scan was deleted while the job was queued, silently complete
     if (!scan) {
@@ -93,11 +95,6 @@ async function processOne(): Promise<boolean> {
       return true
     }
 
-    const { data: fwRows } = await db
-      .from('scan_frameworks')
-      .select('framework')
-      .eq('scan_id', job.scan_id)
-      .order('confidence', { ascending: false })
     const frameworks = (fwRows ?? []).map((r: { framework: string }) => r.framework)
 
     if (job.job_type === 'issue_batch') {

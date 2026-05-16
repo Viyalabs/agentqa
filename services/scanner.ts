@@ -18,10 +18,14 @@ interface UploadJob {
 export async function runScan(scanId: string, url: string): Promise<void> {
   const db = getAdminClient()
 
-  await db
+  // Capture notify_email now so we avoid a second round-trip at the end of the scan.
+  const { data: initialMeta } = await db
     .from('scans')
     .update({ status: 'running', started_at: new Date().toISOString() })
     .eq('id', scanId)
+    .select('notify_email')
+    .single()
+  const notifyEmail = (initialMeta as { notify_email?: string | null } | null)?.notify_email ?? null
 
   const log = async (message: string): Promise<void> => {
     console.log(`[scanner:${scanId}] ${message}`)
@@ -144,13 +148,6 @@ export async function runScan(scanId: string, url: string): Promise<void> {
         console.error(`[scanner:${scanId}] ${failed.length} screenshot upload(s) failed`)
       }
     }
-
-    const { data: scanMeta } = await db
-      .from('scans')
-      .select('notify_email')
-      .eq('id', scanId)
-      .single()
-    const notifyEmail = (scanMeta as { notify_email?: string | null } | null)?.notify_email ?? null
 
     const { score } = calculateScore(allIssues)
     const criticalCount = allIssues.filter((i) => i.severity === 'critical').length

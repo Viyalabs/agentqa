@@ -15,15 +15,31 @@ export async function GET(
 
   const db = getAdminClient()
 
-  // All three queries run in parallel — scan meta, pages, and enriched issues
+  // Start the scan fetch first; immediately chain the history query off it so both
+  // run concurrently with pages / issues / logs / frameworks instead of sequentially.
+  const scanFetch = db.from('scans').select('*').eq('id', scanId).single()
+  const historyFetch = scanFetch.then(async ({ data: s }) => {
+    if (!s) return { data: [] as Array<{ id: string; score: number | null; completed_at: string }> }
+    const { data } = await db
+      .from('scans')
+      .select('id, score, completed_at')
+      .eq('url', s.url as string)
+      .eq('status', 'completed')
+      .neq('id', scanId)
+      .order('completed_at', { ascending: false })
+      .limit(5)
+    return { data: data ?? [] }
+  })
+
   const [
     { data: scan, error: scanError },
     { data: pages },
     { data: issues },
     { data: logsData },
     { data: fws },
+    { data: historyRows },
   ] = await Promise.all([
-    db.from('scans').select('*').eq('id', scanId).single(),
+    scanFetch,
 
     db.from('scanned_pages')
       .select('*')
@@ -59,6 +75,8 @@ export async function GET(
       .eq('scan_id', scanId)
       .order('confidence', { ascending: false })
       .then(({ data }) => ({ data: data ?? [] })),
+
+    historyFetch,
   ])
 
   if (scanError || !scan) {
@@ -78,16 +96,6 @@ export async function GET(
     const bOrd = severityOrder[b.severity as string] ?? 3
     return aOrd !== bOrd ? aOrd - bOrd : 0
   })
-
-  // Fetch prior completed scans for same URL (after we have scan.url)
-  const { data: historyRows } = await db
-    .from('scans')
-    .select('id, score, completed_at')
-    .eq('url', scan.url as string)
-    .eq('status', 'completed')
-    .neq('id', scanId)
-    .order('completed_at', { ascending: false })
-    .limit(5)
 
   return NextResponse.json({
     scan,
