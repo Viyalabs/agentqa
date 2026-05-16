@@ -76,7 +76,7 @@ export function HowItWorks() {
                   )}
                 </div>
 
-                <div className={`text-xs font-mono font-semibold ${step.color} mb-2 tracking-widest`}>
+                <div className="text-xs uppercase tracking-[0.2em] text-zinc-500 mb-2">
                   STEP {step.number}
                 </div>
                 <h3 className={`text-xl font-semibold mb-2 ${'highlight' in step && step.highlight ? 'text-cyan-100' : 'text-white'}`}>

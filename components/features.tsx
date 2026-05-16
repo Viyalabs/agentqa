@@ -121,7 +121,7 @@ export function Features() {
   return (
     <section className="py-20 bg-zinc-950/50 border-y border-zinc-800/50">
       <div className="max-w-6xl mx-auto px-6">
-        <div className="text-center mb-12">
+        <div className="text-center mb-10">
           <p className="text-xs uppercase tracking-[0.2em] text-zinc-500 mb-3">What your AI QA engineer covers</p>
           <h2 className="text-4xl md:text-5xl font-semibold tracking-tight text-white mb-4">
             Full-stack coverage, zero configuration
@@ -135,13 +135,13 @@ export function Features() {
           {GROUPS.map((group) => (
             <div key={group.category}>
               <div className="flex items-center gap-3 mb-5">
-                <span className={`text-xs font-mono font-bold uppercase tracking-widest ${group.color}`}>
+                <span className="text-xs uppercase tracking-[0.2em] text-zinc-500 font-medium">
                   {group.category}
                 </span>
                 <div className="flex-1 h-px bg-zinc-800" />
-                <span className="text-xs text-zinc-600">{group.eyebrow}</span>
+                <span className="text-xs text-zinc-500">{group.eyebrow}</span>
               </div>
-              <div className={`grid sm:grid-cols-2 gap-4 ${group.items.length >= 4 ? 'lg:grid-cols-4' : 'lg:grid-cols-2'}`}>
+              <div className={`grid sm:grid-cols-2 gap-6 ${group.items.length >= 4 ? 'lg:grid-cols-4' : 'lg:grid-cols-2'}`}>
                 {group.items.map((feature) => (
                   <div
                     key={feature.title}

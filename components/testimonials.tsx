@@ -40,7 +40,7 @@ export function Testimonials() {
         </div>
 
         {/* Featured testimonial */}
-        <div className="mb-4 p-6 sm:p-8 rounded-2xl border border-zinc-700/60 bg-zinc-900/60">
+        <div className="mb-6 p-6 sm:p-8 rounded-2xl border border-zinc-700/60 bg-zinc-900/60">
           <div className="flex gap-1 mb-4">
             {[...Array(5)].map((_, i) => (
               <svg key={i} className="h-4 w-4 text-yellow-400 fill-yellow-400" viewBox="0 0 20 20">
@@ -68,7 +68,7 @@ export function Testimonials() {
         </div>
 
         {/* Secondary testimonials */}
-        <div className="grid md:grid-cols-2 gap-4">
+        <div className="grid md:grid-cols-2 gap-6">
           {rest.map((t) => (
             <div
               key={t.initials}
@@ -94,13 +94,13 @@ export function Testimonials() {
                     <div className="text-zinc-500 text-xs">{t.role}</div>
                   </div>
                 </div>
-                <p className="text-xs text-zinc-600 font-mono">{t.detail}</p>
+                <p className="text-xs text-zinc-500 font-mono">{t.detail}</p>
               </div>
             </div>
           ))}
         </div>
 
-        <p className="text-center text-zinc-700 text-xs mt-6">
+        <p className="text-center text-zinc-500 text-xs mt-6">
           Real results from AgentQA early access builders — unedited.
         </p>
       </div>

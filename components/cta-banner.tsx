@@ -14,8 +14,8 @@ export function CtaBanner() {
     <section className="py-20 border-t border-blue-500/15 bg-blue-950/10">
       <div className="max-w-6xl mx-auto px-6">
         <div className="max-w-3xl mx-auto text-center">
-          <p className="text-xs uppercase tracking-[0.2em] text-zinc-500 mb-4">Free forever · No credit card</p>
-          <h2 className="text-4xl md:text-5xl font-semibold tracking-tight text-white mb-5">
+          <p className="text-xs uppercase tracking-[0.2em] text-zinc-500 mb-3">Free forever · No credit card</p>
+          <h2 className="text-4xl md:text-5xl font-semibold tracking-tight text-white mb-6">
             You have bugs you don&apos;t know about.
             <br />
             <span className="text-zinc-500">Run your first scan now — takes under 2 minutes.</span>
@@ -31,7 +31,7 @@ export function CtaBanner() {
             Run your first scan now
             <ArrowRight className="h-4 w-4" />
           </Button>
-          <p className="text-zinc-700 text-xs mt-6">
+          <p className="text-zinc-500 text-xs mt-6">
             Takes under 2 minutes. No signup. No credit card.
           </p>
         </div>

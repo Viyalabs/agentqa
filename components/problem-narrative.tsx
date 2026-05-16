@@ -37,7 +37,7 @@ export function ProblemNarrative() {
             <br />
             <span className="text-blue-400">AgentQA is the replacement.</span>
           </h2>
-          <p className="text-xl font-semibold text-blue-300 mt-4">
+          <p className="text-base font-medium text-blue-300 mt-4">
             Every app will have an AI QA agent.
           </p>
         </div>
@@ -61,7 +61,7 @@ export function ProblemNarrative() {
 
           {/* Right: bug examples */}
           <div className="space-y-3">
-            <p className="text-xs text-zinc-600 uppercase tracking-wider font-mono mb-4">Real bugs AgentQA catches</p>
+            <p className="text-xs uppercase tracking-[0.2em] text-zinc-500 mb-3">Real bugs AgentQA catches</p>
             {BUG_EXAMPLES.map((bug) => (
               <div key={bug.error} className={`p-4 rounded-xl border ${bug.bg}`}>
                 <div className="flex items-center justify-between mb-2">
@@ -69,10 +69,10 @@ export function ProblemNarrative() {
                     <bug.icon className={`h-3.5 w-3.5 ${bug.severityColor}`} />
                     <span className={`text-xs font-semibold ${bug.severityColor}`}>{bug.severity}</span>
                   </div>
-                  <span className="text-xs text-zinc-600">{bug.tool}</span>
+                  <span className="text-xs text-zinc-500">{bug.tool}</span>
                 </div>
                 <p className="text-xs font-mono text-zinc-300 mb-1.5">{bug.error}</p>
-                <p className="text-xs text-zinc-600">{bug.caught}</p>
+                <p className="text-xs text-zinc-500">{bug.caught}</p>
               </div>
             ))}
           </div>

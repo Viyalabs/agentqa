@@ -128,7 +128,7 @@ export function Pricing() {
                   <p className="text-zinc-400 text-sm mb-1 text-center font-medium">
                     Founding partner pricing — limited slots
                   </p>
-                  <p className="text-zinc-600 text-xs mb-4 text-center">
+                  <p className="text-zinc-400 text-xs mb-4 text-center">
                     Lock in <span className="text-green-400 font-medium">$49/mo</span> before we raise prices at public launch
                   </p>
                   <Button

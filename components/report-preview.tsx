@@ -71,7 +71,7 @@ export function ReportPreview() {
               </div>
               <span className="text-xs font-mono text-zinc-500 ml-2">agentqa.viyalabs.com/report/</span>
               <span className="text-xs font-mono text-blue-400">a1b2c3d4</span>
-              <span className="text-xs text-zinc-700 hidden sm:inline">— permanent shareable link</span>
+              <span className="text-xs text-zinc-500 hidden sm:inline">— permanent shareable link</span>
             </div>
             <div className="flex items-center gap-2 px-2.5 py-1 rounded-md bg-green-500/10 border border-green-500/20 text-green-400 text-xs">
               <CheckCircle2 className="h-3 w-3" />
@@ -199,7 +199,7 @@ export function ReportPreview() {
         </div>
 
         {/* Inline CTA */}
-        <div className="mt-8 flex flex-col sm:flex-row items-center justify-center gap-4">
+        <div className="mt-10 flex flex-col sm:flex-row items-center justify-center gap-4">
           <p className="text-base text-zinc-400 leading-relaxed">Ready to see your app&apos;s real report?</p>
           <a
             href="#scan-form"

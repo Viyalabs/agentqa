@@ -28,7 +28,7 @@ export function AiMoat() {
 
       <div className="max-w-6xl mx-auto px-6 relative">
 
-        <div className="text-center mb-14">
+        <div className="text-center mb-12">
           <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full border border-blue-500/30 bg-blue-500/10 text-blue-400 text-xs font-mono mb-5">
             <Sparkles className="h-3 w-3" />
             Powered by Claude AI
@@ -41,7 +41,7 @@ export function AiMoat() {
           <p className="text-base text-zinc-400 max-w-xl mx-auto leading-relaxed mb-3">
             Every issue is analyzed by Claude AI. You get the exact technical reason it broke and a specific fix — ready to paste into your editor.
           </p>
-          <p className="text-base text-blue-300 leading-relaxed">
+          <p className="text-base text-zinc-300 leading-relaxed">
             AgentQA learns from every scan. Recurring patterns across the platform mean each new diagnosis is informed by thousands of bugs that came before it — a compounding advantage no manually-maintained test suite can replicate.
           </p>
         </div>
@@ -107,7 +107,7 @@ export function AiMoat() {
         </div>
 
         {/* Three pillars */}
-        <div className="grid sm:grid-cols-3 gap-4 mt-8 max-w-3xl mx-auto">
+        <div className="grid sm:grid-cols-3 gap-6 mt-10 max-w-3xl mx-auto">
           {PILLARS.map((item) => (
             <div key={item.title} className="p-5 rounded-xl border border-zinc-800 bg-zinc-900/30 text-center h-full flex flex-col">
               <item.icon className="h-5 w-5 text-blue-400 mx-auto mb-2" />
