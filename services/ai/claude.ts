@@ -242,6 +242,15 @@ async function executeWithRetry(
     const timer = setTimeout(() => controller.abort(), timeoutMs)
 
     try {
+      const promptLen = params.messages.reduce(
+        (n, m) => n + (typeof m.content === 'string' ? m.content.length : 0), 0
+      )
+      console.log(
+        `${tag} SEND attempt ${attempt + 1}/${maxRetries + 1} — ` +
+        `model:${params.model} maxTokens:${params.max_tokens} ` +
+        `promptLen:${promptLen} timeout:${timeoutMs}ms`
+      )
+
       // Disable the SDK's own retry so our loop is the single source of truth
       // for retry behaviour and structured logging.
       const message = await client.messages.create(params, {

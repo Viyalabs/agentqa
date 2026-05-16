@@ -143,11 +143,21 @@ async function drainQueue(): Promise<void> {
 
   // Reset jobs stuck in 'running' after a crashed lambda so they re-enter the queue.
   // Non-fatal — a DB error here must not abort the drain loop.
+  const db = getAdminClient()
   try {
-    await getAdminClient().rpc('reap_stuck_ai_jobs', { p_timeout_minutes: AI_STUCK_JOB_TIMEOUT_MINUTES })
+    await db.rpc('reap_stuck_ai_jobs', { p_timeout_minutes: AI_STUCK_JOB_TIMEOUT_MINUTES })
   } catch (reapErr) {
     console.error('[ai-worker] reap_stuck_ai_jobs failed (non-fatal):', reapErr)
   }
+
+  // Log queue depth so slow-drain incidents are immediately visible in logs.
+  try {
+    const { count: pending } = await db
+      .from('ai_analysis_jobs')
+      .select('*', { count: 'exact', head: true })
+      .eq('status', 'pending')
+    console.log(`[ai-worker] queue depth: ${pending ?? '?'} pending job(s)`)
+  } catch { /* non-fatal */ }
 
   let processed = 0
   while (processed < AI_MAX_JOBS_PER_INVOCATION) {

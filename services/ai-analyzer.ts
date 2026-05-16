@@ -459,13 +459,22 @@ export async function analyzeIssues(
     return
   }
 
-  // Query via the view so ai_summary reflects issues_enriched (not the stale flat column)
-  const { data: issues, error } = await db
-    .from('issues_with_analysis')
-    .select('id, type, severity, title, description, details, fingerprint')
-    .eq('scan_id', scanId)
-    .in('severity', severities)
-    .is('ai_summary', null)
+  // Two parallel queries: issues needing analysis + total eligible count.
+  // The count lets us log how many were skipped (ai_summary already set).
+  const [
+    { data: issues, error },
+    { count: eligibleTotal },
+  ] = await Promise.all([
+    db.from('issues_with_analysis')
+      .select('id, type, severity, title, description, details, fingerprint')
+      .eq('scan_id', scanId)
+      .in('severity', severities)
+      .is('ai_summary', null),
+    db.from('issues_with_analysis')
+      .select('*', { count: 'exact', head: true })
+      .eq('scan_id', scanId)
+      .in('severity', severities),
+  ])
 
   if (error) {
     // Log the real error — this is the most likely cause of "AI sometimes skipped"
@@ -474,12 +483,22 @@ export async function analyzeIssues(
     return
   }
 
+  const alreadyAnalyzed = (eligibleTotal ?? 0) - (issues?.length ?? 0)
+
   if (!issues || issues.length === 0) {
-    pipelineLog(scanId, 'analyzeIssues', 'SKIP — no issues need analysis (all already analyzed or no matching severity)')
+    pipelineLog(
+      scanId, 'analyzeIssues',
+      `SKIP — all ${eligibleTotal ?? 0} eligible issue(s) already analyzed (ai_summary set, no work needed)`
+    )
     return
   }
 
-  pipelineLog(scanId, 'analyzeIssues', `${issues.length} issue(s) queued for analysis — starting pipeline`)
+  pipelineLog(
+    scanId, 'analyzeIssues',
+    `${issues.length} of ${eligibleTotal ?? '?'} issue(s) need analysis` +
+    (alreadyAnalyzed > 0 ? ` — ${alreadyAnalyzed} already analyzed (skipped)` : '') +
+    ' — starting pipeline'
+  )
   await logToScan(db, scanId, `AI analysis starting for ${issues.length} issue(s)…`)
 
   // --- Step 1: apply cached templates from pattern DB (free, instant) ----------
