@@ -23,7 +23,7 @@ const BUG_EXAMPLES = [
 
 export function ProblemNarrative() {
   return (
-    <section className="py-16 border-t border-zinc-800/40">
+    <section className="py-20 border-t border-zinc-800/40">
       <div className="max-w-6xl mx-auto px-6">
 
         {/* Macro problem — centered */}
@@ -32,7 +32,7 @@ export function ProblemNarrative() {
             <AlertTriangle className="h-3 w-3 shrink-0" />
             The QA engineer is the next job automated away
           </div>
-          <h2 className="text-3xl md:text-4xl font-semibold tracking-tight text-white leading-tight">
+          <h2 className="text-4xl md:text-5xl font-semibold tracking-tight text-white leading-tight">
             Manual QA is being replaced.
             <br />
             <span className="text-blue-400">AgentQA is the replacement.</span>
@@ -47,7 +47,7 @@ export function ProblemNarrative() {
 
           {/* Left: copy */}
           <div>
-            <p className="text-xs font-mono text-blue-400 tracking-widest uppercase mb-3">The core problem</p>
+            <p className="text-xs uppercase tracking-[0.2em] text-zinc-500 mb-3">The core problem</p>
             <h3 className="text-xl font-semibold text-white mb-4 leading-snug">
               Apps built with AI break differently
             </h3>

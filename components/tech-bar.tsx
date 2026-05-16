@@ -14,7 +14,7 @@ export function TechBar() {
   return (
     <section className="py-10 border-t border-zinc-800/40 bg-zinc-950/40">
       <div className="max-w-6xl mx-auto px-6">
-        <p className="text-center text-xs text-zinc-600 uppercase tracking-widest font-mono mb-5">
+        <p className="text-center text-xs uppercase tracking-[0.2em] text-zinc-500 mb-5">
           Your AI QA engineer works with every stack
         </p>
         <div className="flex flex-wrap items-center justify-center gap-2">

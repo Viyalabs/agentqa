@@ -11,11 +11,11 @@ function focusScanInput() {
 
 export function CtaBanner() {
   return (
-    <section className="py-16 border-t border-blue-500/15 bg-blue-950/10">
+    <section className="py-20 border-t border-blue-500/15 bg-blue-950/10">
       <div className="max-w-6xl mx-auto px-6">
         <div className="max-w-3xl mx-auto text-center">
-          <p className="text-xs font-mono text-blue-400 tracking-widest uppercase mb-4">Free forever · No credit card</p>
-          <h2 className="text-3xl md:text-4xl font-semibold tracking-tight text-white mb-5">
+          <p className="text-xs uppercase tracking-[0.2em] text-zinc-500 mb-4">Free forever · No credit card</p>
+          <h2 className="text-4xl md:text-5xl font-semibold tracking-tight text-white mb-5">
             You have bugs you don&apos;t know about.
             <br />
             <span className="text-zinc-500">Run your first scan now — takes under 2 minutes.</span>
