@@ -7,30 +7,6 @@ import { RecentScansStrip } from './recent-scans-strip'
 import { LastScanRecall } from './last-scan-recall'
 import type { HomeStats } from '@/lib/stats'
 
-const FLOOR = { appsScanned: 1200, bugsCaught: 8400, pagesScanned: 6000, patternsLearned: 240 }
-
-function useCountUp(target: number, duration = 1600): number {
-  const [val, setVal] = useState(0)
-  useEffect(() => {
-    if (!target) return
-    const t0 = performance.now()
-    const tick = (now: number) => {
-      const p = Math.min((now - t0) / duration, 1)
-      const eased = 1 - Math.pow(1 - p, 3)
-      setVal(Math.round(eased * target))
-      if (p < 1) requestAnimationFrame(tick)
-    }
-    requestAnimationFrame(tick)
-  }, [target, duration])
-  return val
-}
-
-function fmtCount(n: number): string {
-  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`
-  if (n >= 1_000) return `${(n / 1_000).toFixed(1)}k`
-  return n.toLocaleString()
-}
-
 const LOGS: Array<{ text: string; color: string; bg?: string; bold?: boolean }> = [
   { text: 'Launching Chrome browser...', color: 'text-zinc-500' },
   { text: 'Crawling /homepage...', color: 'text-blue-400' },
@@ -101,11 +77,12 @@ function ScanTerminal() {
 
   return (
     <div className="relative w-full">
-      {/* Ambient glow behind terminal */}
-      <div className="absolute -inset-6 bg-blue-600/8 blur-3xl rounded-3xl pointer-events-none" />
-      <div className="absolute -inset-2 bg-cyan-600/4 blur-xl rounded-2xl pointer-events-none" />
+      {/* Layered ambient glow — depth without noise */}
+      <div className="absolute -inset-8 bg-blue-600/12 blur-3xl rounded-3xl pointer-events-none" />
+      <div className="absolute -inset-3 bg-cyan-500/6 blur-2xl rounded-2xl pointer-events-none" />
+      <div className="absolute -bottom-6 left-8 right-8 h-10 bg-blue-500/15 blur-2xl rounded-full pointer-events-none" />
 
-      <div className="relative rounded-2xl border border-zinc-700/70 bg-zinc-900/95 backdrop-blur-sm shadow-2xl shadow-black/60 ring-1 ring-white/5 overflow-hidden">
+      <div className="relative rounded-2xl border border-zinc-700/60 bg-zinc-900/95 backdrop-blur-sm shadow-[0_25px_60px_rgba(0,0,0,0.7),0_0_30px_rgba(59,130,246,0.05)] ring-1 ring-white/5 overflow-hidden">
 
         {/* Title bar */}
         <div className="flex items-center gap-2 px-5 py-3.5 border-b border-zinc-800 bg-zinc-950/60">
@@ -197,17 +174,8 @@ function FloatingCard({
   )
 }
 
-export function Hero({ stats }: { stats?: HomeStats }) {
-  const appsTarget     = stats?.appsScanned    || FLOOR.appsScanned
-  const bugsTarget     = stats?.bugsCaught     || FLOOR.bugsCaught
-  const pagesTarget    = stats?.pagesScanned   || FLOOR.pagesScanned
-  const patternsTarget = stats?.patternsLearned || FLOOR.patternsLearned
-
-  const appsCount     = useCountUp(appsTarget)
-  const bugsCount     = useCountUp(bugsTarget)
-  const pagesCount    = useCountUp(pagesTarget)
-  const patternsCount = useCountUp(patternsTarget)
-
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+export function Hero({ stats: _stats }: { stats?: HomeStats }) {
   return (
     <>
       <style>{`
@@ -238,7 +206,7 @@ export function Hero({ stats }: { stats?: HomeStats }) {
               </div>
 
               {/* Headline */}
-              <h1 className="text-5xl md:text-6xl font-semibold tracking-tight text-white mb-6 leading-[1.1]">
+              <h1 className="text-5xl md:text-6xl font-semibold tracking-tight text-white mb-6 leading-[0.95]">
                 Catch bugs before{' '}
                 <span className="bg-gradient-to-r from-blue-400 via-cyan-400 to-blue-500 bg-clip-text text-transparent">
                   your users do
@@ -271,52 +239,21 @@ export function Hero({ stats }: { stats?: HomeStats }) {
                 </div>
               </div>
 
-              {/* Social proof */}
+              {/* Trust positioning */}
               <div className="mt-8 pt-8 border-t border-zinc-800/60">
-                <div className="flex items-center justify-center lg:justify-start gap-8">
-                  <div>
-                    <div className="text-2xl font-semibold text-white tabular-nums">
-                      {fmtCount(appsCount)}<span className="text-blue-400">+</span>
-                    </div>
-                    <div className="text-xs text-zinc-500 mt-0.5">apps scanned</div>
-                  </div>
-                  <div className="w-px h-8 bg-zinc-800" />
-                  <div>
-                    <div className="text-2xl font-semibold text-white tabular-nums">
-                      {fmtCount(bugsCount)}<span className="text-blue-400">+</span>
-                    </div>
-                    <div className="text-xs text-zinc-500 mt-0.5">bugs caught</div>
-                  </div>
-                  <div className="w-px h-8 bg-zinc-800" />
-                  <div>
-                    <div className="text-2xl font-semibold text-white tabular-nums">
-                      {fmtCount(pagesCount)}<span className="text-blue-400">+</span>
-                    </div>
-                    <div className="text-xs text-zinc-500 mt-0.5">pages tested</div>
-                  </div>
-                  <div className="w-px h-8 bg-zinc-800" />
-                  <div>
-                    <div className="text-2xl font-semibold text-white tabular-nums">
-                      {fmtCount(patternsCount)}<span className="text-blue-400">+</span>
-                    </div>
-                    <div className="text-xs text-zinc-500 mt-0.5">patterns learned</div>
-                  </div>
-                </div>
-                <div className="flex flex-wrap items-center justify-center lg:justify-start gap-3 mt-3">
-                  <p className="text-xs text-zinc-500">
-                    Trusted by indie builders, agencies, and AI-first startups shipping daily
-                  </p>
-                  <a
-                    href="/scans"
-                    className="text-xs text-blue-400/80 hover:text-blue-400 border border-blue-500/20 bg-blue-500/5 px-2.5 py-0.5 rounded-full transition-colors shrink-0"
-                  >
-                    See recent reports →
-                  </a>
-                </div>
+                <p className="text-sm text-zinc-400 text-center lg:text-left leading-relaxed mb-3">
+                  Used by AI builders, agencies, and fast-moving startups shipping daily.
+                </p>
+                <a
+                  href="/scans"
+                  className="text-xs text-blue-400/80 hover:text-blue-400 border border-blue-500/20 bg-blue-500/5 px-2.5 py-1 rounded-full transition-colors inline-flex items-center gap-1"
+                >
+                  See recent reports →
+                </a>
               </div>
             </div>
 
-            {/* Right: terminal visual — 56% column, full width, floats */}
+            {/* Right: terminal visual */}
             <div className="flex justify-center lg:justify-start pl-0 lg:pl-4">
               <div className="w-full max-w-lg lg:max-w-none">
                 <ScanTerminal />
@@ -358,11 +295,11 @@ const FOR_WHO = [
 
 function ForWhoSection() {
   return (
-    <section className="py-16 border-t border-zinc-800/40">
+    <section className="py-20 border-t border-zinc-800/40">
       <div className="max-w-6xl mx-auto px-6">
         <div className="text-center mb-10">
-          <p className="text-xs font-mono text-blue-400 tracking-widest uppercase mb-3">Who it&apos;s for</p>
-          <h2 className="text-3xl md:text-4xl font-semibold tracking-tight text-white mb-3">
+          <p className="text-xs uppercase tracking-[0.2em] text-zinc-500 mb-3">Who it&apos;s for</p>
+          <h2 className="text-4xl md:text-5xl font-semibold tracking-tight text-white mb-3">
             The QA layer for teams that ship fast
           </h2>
           <p className="text-base text-zinc-400 leading-relaxed max-w-lg mx-auto">
@@ -387,15 +324,15 @@ function ForWhoSection() {
         </div>
 
         {/* Other ICPs */}
-        <div className="grid sm:grid-cols-3 gap-4">
+        <div className="grid sm:grid-cols-3 gap-6">
           {FOR_WHO.slice(1).map((item) => (
             <div
               key={item.title}
-              className="p-5 rounded-xl border border-zinc-800 bg-zinc-900/40 hover:border-zinc-700 hover:bg-zinc-900/70 transition-all duration-200"
+              className="p-6 rounded-xl border border-zinc-800 bg-zinc-900/40 hover:border-zinc-700 hover:bg-zinc-900/70 transition-all duration-200 h-full flex flex-col"
             >
               <div className="text-2xl mb-3">{item.emoji}</div>
-              <h3 className="text-xl font-semibold text-white mb-1.5">{item.title}</h3>
-              <p className="text-base text-zinc-400 leading-relaxed">{item.description}</p>
+              <h3 className="text-xl font-semibold text-white mb-2">{item.title}</h3>
+              <p className="text-base text-zinc-400 leading-relaxed flex-1">{item.description}</p>
             </div>
           ))}
         </div>

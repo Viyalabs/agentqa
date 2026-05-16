@@ -56,11 +56,11 @@ export async function RecentReports() {
   if (scans.length < 3) return null
 
   return (
-    <section className="py-16 border-y border-zinc-800/50">
+    <section className="py-20 border-y border-zinc-800/50">
       <div className="max-w-6xl mx-auto px-6">
         <div className="text-center mb-10">
-          <p className="text-xs font-mono text-blue-400 tracking-widest uppercase mb-3">Live results</p>
-          <h2 className="text-3xl md:text-4xl font-semibold tracking-tight text-white mb-4">
+          <p className="text-xs uppercase tracking-[0.2em] text-zinc-500 mb-3">Live results</p>
+          <h2 className="text-4xl md:text-5xl font-semibold tracking-tight text-white mb-4">
             Real reports, scanned right now
           </h2>
           <p className="text-base text-zinc-400 leading-relaxed max-w-xl mx-auto">
@@ -76,7 +76,7 @@ export async function RecentReports() {
               <Link
                 key={scan.id}
                 href={`/report/${scan.id}`}
-                className="group p-5 rounded-xl border border-zinc-800 bg-zinc-900/40 hover:border-zinc-700 hover:bg-zinc-900/60 transition-all flex flex-col gap-4"
+                className="group p-5 rounded-xl border border-zinc-800 bg-zinc-900/40 hover:border-zinc-700 hover:bg-zinc-900/60 transition-all flex flex-col gap-4 h-full"
               >
                 {/* Header row */}
                 <div className="flex items-start justify-between gap-3">

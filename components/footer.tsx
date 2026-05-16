@@ -13,7 +13,7 @@ export function Footer() {
               <Activity className="h-5 w-5 text-blue-400" />
               <span className="font-semibold text-lg text-white">AgentQA</span>
             </div>
-            <p className="text-xs text-zinc-600 pl-0.5">The AI QA engineer for your app</p>
+            <p className="text-xs text-zinc-600 pl-0.5">The AI QA layer for modern software</p>
           </div>
 
           {/* Links */}

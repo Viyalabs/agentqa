@@ -33,7 +33,7 @@ export function AiMoat() {
             <Sparkles className="h-3 w-3" />
             Powered by Claude AI
           </div>
-          <h2 className="text-3xl md:text-4xl font-semibold tracking-tight text-white mb-4">
+          <h2 className="text-4xl md:text-5xl font-semibold tracking-tight text-white mb-4">
             Not just detection.
             <br />
             <span className="text-blue-400">Root cause. Fix. Instantly.</span>
@@ -109,7 +109,7 @@ export function AiMoat() {
         {/* Three pillars */}
         <div className="grid sm:grid-cols-3 gap-4 mt-8 max-w-3xl mx-auto">
           {PILLARS.map((item) => (
-            <div key={item.title} className="p-5 rounded-xl border border-zinc-800 bg-zinc-900/30 text-center">
+            <div key={item.title} className="p-5 rounded-xl border border-zinc-800 bg-zinc-900/30 text-center h-full flex flex-col">
               <item.icon className="h-5 w-5 text-blue-400 mx-auto mb-2" />
               <p className="text-white text-xl font-semibold mb-2">{item.title}</p>
               <p className="text-base text-zinc-400 leading-relaxed">{item.body}</p>

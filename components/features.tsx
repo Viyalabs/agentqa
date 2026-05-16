@@ -119,11 +119,11 @@ const GROUPS = [
 
 export function Features() {
   return (
-    <section className="py-16 bg-zinc-950/50 border-y border-zinc-800/50">
+    <section className="py-20 bg-zinc-950/50 border-y border-zinc-800/50">
       <div className="max-w-6xl mx-auto px-6">
         <div className="text-center mb-12">
-          <p className="text-xs font-mono text-blue-400 tracking-widest uppercase mb-3">What your AI QA engineer covers</p>
-          <h2 className="text-3xl md:text-4xl font-semibold tracking-tight text-white mb-4">
+          <p className="text-xs uppercase tracking-[0.2em] text-zinc-500 mb-3">What your AI QA engineer covers</p>
+          <h2 className="text-4xl md:text-5xl font-semibold tracking-tight text-white mb-4">
             Full-stack coverage, zero configuration
           </h2>
           <p className="text-base text-zinc-400 leading-relaxed max-w-xl mx-auto">
@@ -145,7 +145,7 @@ export function Features() {
                 {group.items.map((feature) => (
                   <div
                     key={feature.title}
-                    className="p-5 rounded-xl border border-zinc-800 bg-zinc-900/40 hover:border-zinc-700 transition-colors"
+                    className="p-5 rounded-xl border border-zinc-800 bg-zinc-900/40 hover:border-zinc-700 transition-colors h-full flex flex-col"
                   >
                     <div className={`w-9 h-9 rounded-lg ${feature.bg} flex items-center justify-center mb-3`}>
                       <feature.icon className={`h-4 w-4 ${feature.color}`} />

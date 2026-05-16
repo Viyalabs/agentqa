@@ -43,11 +43,11 @@ const steps = [
 
 export function HowItWorks() {
   return (
-    <section className="py-16 border-t border-zinc-800/40" id="how-it-works">
+    <section className="py-20 border-t border-zinc-800/40" id="how-it-works">
       <div className="max-w-6xl mx-auto px-6">
         <div className="text-center mb-10">
-          <p className="text-xs font-mono text-blue-400 tracking-widest uppercase mb-3">How it works</p>
-          <h2 className="text-3xl md:text-4xl font-semibold tracking-tight text-white mb-4">
+          <p className="text-xs uppercase tracking-[0.2em] text-zinc-500 mb-3">How it works</p>
+          <h2 className="text-4xl md:text-5xl font-semibold tracking-tight text-white mb-4">
             From URL to full QA report in 4 steps
           </h2>
           <p className="text-base text-zinc-400 leading-relaxed max-w-xl mx-auto">
