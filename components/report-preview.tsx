@@ -198,15 +198,13 @@ export function ReportPreview() {
           </div>
         </div>
 
-        {/* Inline CTA */}
-        <div className="mt-10 flex flex-col sm:flex-row items-center justify-center gap-4">
-          <p className="text-base text-zinc-400 leading-relaxed">Ready to see your app&apos;s real report?</p>
+        {/* Inline link — low-prominence, doesn't compete with hero form */}
+        <div className="mt-10 text-center">
           <a
             href="#scan-form"
-            className="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg bg-blue-600 hover:bg-blue-500 text-white font-medium text-sm transition-colors"
+            className="inline-flex items-center gap-1.5 text-sm text-zinc-500 hover:text-zinc-300 transition-colors"
           >
-            Scan My App Free
-            <ArrowRight className="h-4 w-4" />
+            Run this on your own app <ArrowRight className="h-3.5 w-3.5" />
           </a>
         </div>
       </div>

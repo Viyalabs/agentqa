@@ -78,7 +78,7 @@ export function Navbar() {
             input?.focus()
           }}
         >
-          Scan Free
+          Scan My App Free
         </Button>
       </div>
     </nav>
