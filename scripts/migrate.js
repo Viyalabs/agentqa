@@ -957,6 +957,192 @@ RETURNS void LANGUAGE sql SECURITY DEFINER AS $$
 $$;
 GRANT EXECUTE ON FUNCTION increment_scan_tokens(UUID, INT, INT) TO service_role;`
   },
+
+  // ── Migration 012: RLS hardening (F-S1) ──────────────────────────────────────
+  // Replace permissive FOR ALL USING (true) with read-only for anon on every
+  // public-facing table. The service_role key bypasses RLS entirely, so all
+  // backend writes (via getAdminClient) continue to work unchanged.
+  // ai_analysis_jobs is internal — block anon entirely.
+  {
+    label: 'Harden RLS: public tables read-only for anon, ai_analysis_jobs blocked',
+    sql: `
+DO $$ BEGIN
+  -- ── Public read-only tables ─────────────────────────────────────────────────
+  -- scans
+  DROP POLICY IF EXISTS "Public access to scans" ON scans;
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename='scans' AND policyname='Anon read scans') THEN
+    CREATE POLICY "Anon read scans" ON scans FOR SELECT USING (true);
+  END IF;
+
+  -- scanned_pages
+  DROP POLICY IF EXISTS "Public access to scanned_pages" ON scanned_pages;
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename='scanned_pages' AND policyname='Anon read scanned_pages') THEN
+    CREATE POLICY "Anon read scanned_pages" ON scanned_pages FOR SELECT USING (true);
+  END IF;
+
+  -- issues
+  DROP POLICY IF EXISTS "Public access to issues" ON issues;
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename='issues' AND policyname='Anon read issues') THEN
+    CREATE POLICY "Anon read issues" ON issues FOR SELECT USING (true);
+  END IF;
+
+  -- page_logs
+  DROP POLICY IF EXISTS "Public access to page_logs" ON page_logs;
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename='page_logs' AND policyname='Anon read page_logs') THEN
+    CREATE POLICY "Anon read page_logs" ON page_logs FOR SELECT USING (true);
+  END IF;
+
+  -- scan_logs
+  DROP POLICY IF EXISTS "Public access to scan_logs" ON scan_logs;
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename='scan_logs' AND policyname='Anon read scan_logs') THEN
+    CREATE POLICY "Anon read scan_logs" ON scan_logs FOR SELECT USING (true);
+  END IF;
+
+  -- scan_frameworks
+  DROP POLICY IF EXISTS "Public access to scan_frameworks" ON scan_frameworks;
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename='scan_frameworks' AND policyname='Anon read scan_frameworks') THEN
+    CREATE POLICY "Anon read scan_frameworks" ON scan_frameworks FOR SELECT USING (true);
+  END IF;
+
+  -- issue_patterns
+  DROP POLICY IF EXISTS "Public access to issue_patterns" ON issue_patterns;
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename='issue_patterns' AND policyname='Anon read issue_patterns') THEN
+    CREATE POLICY "Anon read issue_patterns" ON issue_patterns FOR SELECT USING (true);
+  END IF;
+
+  -- issue_pattern_matches
+  DROP POLICY IF EXISTS "Public access to issue_pattern_matches" ON issue_pattern_matches;
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename='issue_pattern_matches' AND policyname='Anon read issue_pattern_matches') THEN
+    CREATE POLICY "Anon read issue_pattern_matches" ON issue_pattern_matches FOR SELECT USING (true);
+  END IF;
+
+  -- issues_enriched
+  DROP POLICY IF EXISTS "Public access to issues_enriched" ON issues_enriched;
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename='issues_enriched' AND policyname='Anon read issues_enriched') THEN
+    CREATE POLICY "Anon read issues_enriched" ON issues_enriched FOR SELECT USING (true);
+  END IF;
+
+  -- pattern_occurrences
+  DROP POLICY IF EXISTS "Public access to pattern_occurrences" ON pattern_occurrences;
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename='pattern_occurrences' AND policyname='Anon read pattern_occurrences') THEN
+    CREATE POLICY "Anon read pattern_occurrences" ON pattern_occurrences FOR SELECT USING (true);
+  END IF;
+
+  -- pattern_clusters
+  DROP POLICY IF EXISTS "Public access to pattern_clusters" ON pattern_clusters;
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename='pattern_clusters' AND policyname='Anon read pattern_clusters') THEN
+    CREATE POLICY "Anon read pattern_clusters" ON pattern_clusters FOR SELECT USING (true);
+  END IF;
+
+  -- ── Internal-only tables: block anon entirely ───────────────────────────────
+  -- ai_analysis_jobs — job queue, no public reads needed
+  DROP POLICY IF EXISTS "Service role access to ai_analysis_jobs" ON ai_analysis_jobs;
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename='ai_analysis_jobs' AND policyname='Service role only ai_analysis_jobs') THEN
+    CREATE POLICY "Service role only ai_analysis_jobs" ON ai_analysis_jobs FOR ALL USING (false);
+  END IF;
+END $$;`
+  },
+
+  // ── Migration 013: Atomic pattern write RPC (F-S4) ───────────────────────────
+  // Replaces 4-5 sequential round-trips (select pattern, increment occurrence,
+  // upsert occurrence row, upsert match link, update issue fingerprint) with a
+  // single SECURITY DEFINER function that executes in one transaction.
+  // Eliminates the partial-write window where a crashed lambda left issues
+  // without fingerprints or dangling pattern_occurrences without match links.
+  //
+  // Dedup invariant: occurrence_count is incremented at most ONCE per
+  // (fingerprint, scan_id) pair. When the same fingerprint appears on multiple
+  // pages of one scan, later calls create the match link for each issue but
+  // skip the occurrence_count increment (pattern_occurrences UNIQUE constraint
+  // + FOUND check gates it).
+  {
+    label: 'Create upsert_issue_to_pattern() atomic RPC',
+    sql: `
+CREATE OR REPLACE FUNCTION upsert_issue_to_pattern(
+  p_issue_id    UUID,
+  p_fingerprint TEXT,
+  p_type        TEXT,
+  p_severity    TEXT,
+  p_title       TEXT,
+  p_scan_id     UUID,
+  p_frameworks  TEXT[],
+  p_framework   TEXT,
+  p_cluster_key TEXT,
+  p_now         TIMESTAMPTZ DEFAULT NOW()
+) RETURNS TABLE (
+  pattern_id          UUID,
+  is_new              BOOLEAN,
+  occurrence_count    INTEGER,
+  root_cause_template TEXT,
+  fix_template        TEXT,
+  needs_refresh       BOOLEAN
+) LANGUAGE plpgsql SECURITY DEFINER AS $$
+DECLARE
+  v_pattern_id     UUID;
+  v_is_new         BOOLEAN;
+  v_first_for_scan BOOLEAN;
+BEGIN
+  -- 1. Find or create the pattern row without touching occurrence_count yet.
+  --    We use a separate UPDATE step below so the count is only bumped once
+  --    per (pattern, scan), regardless of how many issues share this fingerprint.
+  INSERT INTO issue_patterns (
+    fingerprint, type, severity, title,
+    occurrence_count, total_scans_affected,
+    affected_frameworks, cluster_key,
+    first_seen_at, last_seen_at
+  )
+  VALUES (
+    p_fingerprint, p_type, p_severity, p_title,
+    0, 0,
+    COALESCE(p_frameworks, ARRAY[]::TEXT[]),
+    COALESCE(p_cluster_key, p_type),
+    p_now, p_now
+  )
+  ON CONFLICT (fingerprint) DO UPDATE
+    SET last_seen_at        = GREATEST(issue_patterns.last_seen_at, p_now),
+        affected_frameworks = CASE
+          WHEN p_frameworks IS NOT NULL AND array_length(p_frameworks, 1) > 0
+          THEN ARRAY(SELECT DISTINCT unnest(issue_patterns.affected_frameworks || p_frameworks))
+          ELSE issue_patterns.affected_frameworks
+        END
+  RETURNING id, (xmax = 0) INTO v_pattern_id, v_is_new;
+
+  -- 2. Record one time-series row per (pattern, scan).
+  --    FOUND = true only when the row was newly inserted (first fp in this scan).
+  INSERT INTO pattern_occurrences (pattern_id, scan_id, framework, occurred_at)
+  VALUES (v_pattern_id, p_scan_id, p_framework, p_now)
+  ON CONFLICT (pattern_id, scan_id) DO NOTHING;
+  v_first_for_scan := FOUND;
+
+  -- 3. Increment occurrence counts exactly once per (pattern, scan).
+  IF v_is_new OR v_first_for_scan THEN
+    UPDATE issue_patterns
+    SET occurrence_count     = occurrence_count + 1,
+        total_scans_affected = total_scans_affected + 1
+    WHERE id = v_pattern_id;
+  END IF;
+
+  -- 4. Write fingerprint + primary framework back to the issue (idempotent).
+  UPDATE issues
+  SET fingerprint = p_fingerprint,
+      framework   = p_framework
+  WHERE id = p_issue_id;
+
+  -- 5. Create issue→pattern match link (idempotent).
+  INSERT INTO issue_pattern_matches (issue_id, pattern_id)
+  VALUES (p_issue_id, v_pattern_id)
+  ON CONFLICT (issue_id, pattern_id) DO NOTHING;
+
+  -- Return the pattern data the caller needs to decide whether to call Claude.
+  RETURN QUERY
+  SELECT ip.id, v_is_new, ip.occurrence_count,
+         ip.root_cause_template, ip.fix_template, ip.needs_refresh
+  FROM   issue_patterns ip
+  WHERE  ip.id = v_pattern_id;
+END;
+$$;
+GRANT EXECUTE ON FUNCTION upsert_issue_to_pattern(UUID,TEXT,TEXT,TEXT,TEXT,UUID,TEXT[],TEXT,TEXT,TIMESTAMPTZ) TO service_role;`
+  },
 ]
 
 // ── Pooler auto-discovery ─────────────────────────────────────────────────────

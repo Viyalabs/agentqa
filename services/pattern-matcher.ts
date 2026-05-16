@@ -45,93 +45,57 @@ function toClassifiedLike(issue: StoredIssue, scanId: string): IssueClassified {
 }
 
 /**
- * Find an existing issue pattern by fingerprint or create a new one.
+ * Atomically find-or-create a pattern and wire up all related rows in a single
+ * DB round-trip via the upsert_issue_to_pattern() SECURITY DEFINER function.
  *
- * On match:   increments occurrence_count + total_scans_affected, extends
- *             affected_frameworks, tracks in pattern_occurrences, returns cached templates.
- * On miss:    inserts a new pattern row, returns empty templates (Claude will fill them later).
+ * Replaces the previous 4-step approach (select → increment → upsert occurrence
+ * → upsert match → update issue fingerprint) that had a crash-window between
+ * steps where a lambda kill could leave dangling state.
  */
-async function findOrCreatePattern(
+async function upsertIssueToPattern(
   fp: string,
   issue: StoredIssue,
   scanId: string,
   frameworks: string[],
 ): Promise<PatternMatchResult> {
-  const db = getAdminClient()
-  const now = new Date().toISOString()
+  const db               = getAdminClient()
   const primaryFramework = frameworks[0] ?? null
+  const clusterKey       = computeClusterKey(toClassifiedLike(issue, scanId))
 
-  const { data: existing } = await db
-    .from('issue_patterns')
-    .select('id, occurrence_count, total_scans_affected, root_cause_template, fix_template, affected_frameworks, cluster_id, needs_refresh')
-    .eq('fingerprint', fp)
-    .maybeSingle()
+  const { data, error } = await db.rpc('upsert_issue_to_pattern', {
+    p_issue_id:    issue.id,
+    p_fingerprint: fp,
+    p_type:        issue.type,
+    p_severity:    issue.severity,
+    p_title:       issue.title,
+    p_scan_id:     scanId,
+    p_frameworks:  frameworks.length > 0 ? frameworks : [],
+    p_framework:   primaryFramework,
+    p_cluster_key: clusterKey,
+    p_now:         new Date().toISOString(),
+  })
 
-  if (existing) {
-    // Atomic increment via SQL RPC — avoids lost-update race when concurrent workers process the same fingerprint
-    await db.rpc('increment_pattern_occurrence', {
-      p_pattern_id: existing.id,
-      p_frameworks: frameworks.length > 0 ? frameworks : null,
-      p_now: now,
-    })
+  if (error) throw new Error(`[pattern-matcher] upsert_issue_to_pattern failed: ${error.message}`)
 
-    // Time-series record — one row per (pattern, scan); UNIQUE constraint deduplicates
-    await db
-      .from('pattern_occurrences')
-      .upsert(
-        { pattern_id: existing.id, scan_id: scanId, framework: primaryFramework, occurred_at: now },
-        { onConflict: 'pattern_id,scan_id' },
-      )
+  const row = (data as Array<{
+    pattern_id:          string
+    is_new:              boolean
+    occurrence_count:    number
+    root_cause_template: string | null
+    fix_template:        string | null
+    needs_refresh:       boolean
+  }>)[0]
 
-    return {
-      patternId:         existing.id,
-      fingerprint:       fp,
-      isNew:             false,
-      occurrenceCount:   existing.occurrence_count + 1,
-      rootCauseTemplate: existing.root_cause_template ?? null,
-      fixTemplate:       existing.fix_template ?? null,
-      needsRefresh:      (existing.needs_refresh as boolean) ?? false,
-    }
-  }
-
-  const ck = computeClusterKey(toClassifiedLike(issue, scanId))
-
-  const { data: created, error } = await db
-    .from('issue_patterns')
-    .insert({
-      fingerprint:          fp,
-      type:                 issue.type,
-      severity:             issue.severity,
-      title:                issue.title,
-      occurrence_count:     1,
-      total_scans_affected: 1,
-      affected_frameworks:  frameworks,
-      cluster_key:          ck,
-      first_seen_at:        now,
-      last_seen_at:         now,
-    })
-    .select('id')
-    .single()
-
-  if (error || !created) {
-    throw new Error(`[pattern-matcher] insert failed: ${error?.message}`)
-  }
-
-  await db
-    .from('pattern_occurrences')
-    .upsert(
-      { pattern_id: created.id, scan_id: scanId, framework: primaryFramework, occurred_at: now },
-      { onConflict: 'pattern_id,scan_id' },
-    )
+  if (!row) throw new Error(`[pattern-matcher] upsert_issue_to_pattern returned no rows for fp:${fp}`)
 
   return {
-    patternId:         created.id,
+    patternId:         row.pattern_id,
     fingerprint:       fp,
-    isNew:             true,
-    occurrenceCount:   1,
-    rootCauseTemplate: null,
-    fixTemplate:       null,
-    needsRefresh:      false,
+    isNew:             row.is_new,
+    occurrenceCount:   row.occurrence_count,
+    rootCauseTemplate: row.root_cause_template,
+    fixTemplate:       row.fix_template,
+    needsRefresh:      row.needs_refresh,
   }
 }
 
@@ -229,28 +193,24 @@ export async function matchScanIssues(
           details: issue.details,
         })
 
-        // Reuse result if we already processed this fingerprint in this scan
+        // If the same fingerprint appears multiple times in one scan, reuse the
+        // result from the first call — the RPC already handled the issue→pattern
+        // link for each individual issue_id, so we only skip the extra RPC calls
+        // for duplicate fingerprints (same pattern, different issues or pages).
         let match = fpCache.get(fp)
         if (!match) {
-          match = await findOrCreatePattern(fp, issue, scanId, frameworks)
+          // Single atomic RPC: find-or-create pattern + write fingerprint on issue
+          // + record occurrence + create match link — no partial-write window.
+          match = await upsertIssueToPattern(fp, issue, scanId, frameworks)
           fpCache.set(fp, match)
+        } else {
+          // Duplicate fingerprint in same scan: the pattern is already updated,
+          // but this specific issue still needs its fingerprint written and its
+          // match link created (the RPC does those per issue_id, not per fp).
+          await upsertIssueToPattern(fp, issue, scanId, frameworks)
         }
 
         results.set(issue.id, match)
-
-        // Write fingerprint + primary framework back to the issue row
-        await db
-          .from('issues')
-          .update({ fingerprint: fp, framework: primaryFramework })
-          .eq('id', issue.id)
-
-        // Link issue → pattern
-        await db
-          .from('issue_pattern_matches')
-          .upsert(
-            { issue_id: issue.id, pattern_id: match.patternId },
-            { onConflict: 'issue_id,pattern_id' }
-          )
       } catch (err) {
         console.error(`[pattern-matcher] issue ${issue.id} failed:`, err)
       }

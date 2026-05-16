@@ -13,7 +13,6 @@ const nextConfig: NextConfig = {
     '/api/scan/worker': ['./node_modules/@sparticuz/chromium/**/*'],
   },
 
-  typescript: { ignoreBuildErrors: true },
   images: {
     remotePatterns: [
       {

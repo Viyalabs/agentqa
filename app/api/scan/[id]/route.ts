@@ -91,9 +91,9 @@ export async function GET(
 
   // Sort issues: critical → medium → low (alphabetical DB sort gives wrong order)
   const severityOrder: Record<string, number> = { critical: 0, medium: 1, low: 2 }
-  const sortedIssues = (issues ?? []).sort((a, b) => {
-    const aOrd = severityOrder[a.severity as string] ?? 3
-    const bOrd = severityOrder[b.severity as string] ?? 3
+  const sortedIssues = ((issues ?? []) as Array<{ severity?: string }>).sort((a, b) => {
+    const aOrd = severityOrder[a.severity ?? ''] ?? 3
+    const bOrd = severityOrder[b.severity ?? ''] ?? 3
     return aOrd !== bOrd ? aOrd - bOrd : 0
   })
 
