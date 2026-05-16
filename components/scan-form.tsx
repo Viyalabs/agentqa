@@ -1,11 +1,27 @@
-﻿'use client'
+'use client'
 
-import { useState, useTransition } from 'react'
+import { useState, useTransition, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
-import { ArrowRight, Loader2, AlertCircle, Mail, Zap } from 'lucide-react'
+import { ArrowRight, Loader2, AlertCircle, Mail, Zap, RefreshCw, ExternalLink } from 'lucide-react'
 import { Button } from './ui/button'
 import { Input } from './ui/input'
 import { validateUrl } from '@/lib/utils'
+
+function timeAgo(iso: string): string {
+  const diffMs = Date.now() - new Date(iso).getTime()
+  const mins = Math.floor(diffMs / 60_000)
+  if (mins < 1) return 'just now'
+  if (mins === 1) return '1 minute ago'
+  if (mins < 60) return `${mins} minutes ago`
+  const hrs = Math.floor(mins / 60)
+  return hrs === 1 ? '1 hour ago' : `${hrs} hours ago`
+}
+
+interface CachedScan {
+  scanId: string
+  completedAt: string
+  url: string
+}
 
 export function ScanForm() {
   const router = useRouter()
@@ -14,16 +30,62 @@ export function ScanForm() {
   const [showEmail, setShowEmail] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [isRateLimited, setIsRateLimited] = useState(false)
+  const [cachedScan, setCachedScan] = useState<CachedScan | null>(null)
   const [isPending, startTransition] = useTransition()
+
+  const doScan = useCallback((urlStr: string, forceRescan: boolean) => {
+    startTransition(async () => {
+      try {
+        const body: Record<string, unknown> = { url: urlStr, email: email.trim() || undefined }
+        if (forceRescan) body.forceRescan = true
+
+        const res = await fetch('/api/scan', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(body),
+        })
+
+        const data = await res.json()
+
+        if (!res.ok) {
+          const msg: string = data.error ?? 'Failed to start scan. Please try again.'
+          if (res.status === 429 && msg.toLowerCase().includes('too many')) {
+            setIsRateLimited(true)
+          } else {
+            setError(msg)
+          }
+          return
+        }
+
+        if (data.cached) {
+          if (data.running) {
+            // In-progress scan — join the existing progress page
+            router.push(`/scan/${data.scanId}`)
+            return
+          }
+          // Completed scan — surface the choice to the user
+          setCachedScan({ scanId: data.scanId, completedAt: data.completedAt, url: urlStr })
+          return
+        }
+
+        try {
+          localStorage.setItem('aqLastScan', JSON.stringify({ url: urlStr, scanId: data.scanId, ts: Date.now() }))
+        } catch { /* ok */ }
+
+        router.push(`/scan/${data.scanId}`)
+      } catch {
+        setError('Network error. Please check your connection and try again.')
+      }
+    })
+  }, [email, router])
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     setError(null)
-
     setIsRateLimited(false)
-    const normalized = url.trim()
+    setCachedScan(null)
 
-    // Add https:// if protocol is missing
+    const normalized = url.trim()
     const toValidate =
       normalized.startsWith('http://') || normalized.startsWith('https://')
         ? normalized
@@ -35,44 +97,7 @@ export function ScanForm() {
       return
     }
 
-    startTransition(async () => {
-      try {
-        const res = await fetch('/api/scan', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ url: toValidate, email: email.trim() || undefined }),
-        })
-
-        const data = await res.json()
-
-        if (!res.ok) {
-          const msg: string = data.error ?? 'Failed to start scan. Please try again.'
-          // IP rate-limit → upgrade prompt; queue-busy → plain error
-          if (res.status === 429 && msg.toLowerCase().includes('too many')) {
-            setIsRateLimited(true)
-          } else {
-            setError(msg)
-          }
-          return
-        }
-
-        // cached: true means this URL was scanned recently — route to report directly
-        const dest = data.cached ? `/report/${data.scanId}` : `/scan/${data.scanId}`
-
-        // Remember last scan for returning visitor prompt on homepage
-        try {
-          localStorage.setItem('aqLastScan', JSON.stringify({
-            url: toValidate,
-            scanId: data.scanId,
-            ts: Date.now(),
-          }))
-        } catch { /* ok */ }
-
-        router.push(dest)
-      } catch {
-        setError('Network error. Please check your connection and try again.')
-      }
-    })
+    doScan(toValidate, false)
   }
 
   return (
@@ -87,6 +112,7 @@ export function ScanForm() {
               setUrl(e.target.value)
               if (error) setError(null)
               if (isRateLimited) setIsRateLimited(false)
+              if (cachedScan) setCachedScan(null)
             }}
             disabled={isPending}
             className="h-12 text-base pr-4 bg-zinc-900/80 border-zinc-700 focus:border-blue-500"
@@ -138,6 +164,40 @@ export function ScanForm() {
         </button>
       )}
 
+      {/* Recent scan found — let user choose between report and fresh scan */}
+      {cachedScan && (
+        <div className="mt-3 rounded-xl border border-zinc-700/70 bg-zinc-900/50 p-4">
+          <p className="text-sm font-medium text-zinc-200 mb-0.5">Recent scan found</p>
+          <p className="text-xs text-zinc-500 mb-3 leading-relaxed">
+            This URL was scanned {timeAgo(cachedScan.completedAt)}. Results may not reflect recent changes.
+          </p>
+          <div className="flex flex-col sm:flex-row gap-2">
+            <button
+              type="button"
+              onClick={() => router.push(`/report/${cachedScan.scanId}`)}
+              className="flex-1 inline-flex items-center justify-center gap-1.5 text-sm px-3 py-2 rounded-lg border border-zinc-600 text-zinc-300 hover:border-zinc-500 hover:text-zinc-100 transition-colors"
+            >
+              <ExternalLink className="h-3.5 w-3.5" />
+              View latest report
+            </button>
+            <button
+              type="button"
+              disabled={isPending}
+              onClick={() => {
+                setCachedScan(null)
+                doScan(cachedScan.url, true)
+              }}
+              className="flex-1 inline-flex items-center justify-center gap-1.5 text-sm px-3 py-2 rounded-lg bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white font-medium transition-colors"
+            >
+              {isPending
+                ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                : <RefreshCw className="h-3.5 w-3.5" />}
+              Run fresh scan
+            </button>
+          </div>
+        </div>
+      )}
+
       {isRateLimited && (
         <div className="mt-3 rounded-xl border border-amber-500/25 bg-amber-500/8 p-4">
           <div className="flex items-start gap-3">
@@ -183,7 +243,7 @@ export function ScanForm() {
             <button
               type="button"
               className="text-zinc-500 hover:text-zinc-300 underline underline-offset-2 transition-colors"
-              onClick={() => { setUrl(demo.url); if (error) setError(null) }}
+              onClick={() => { setUrl(demo.url); if (error) setError(null); if (cachedScan) setCachedScan(null) }}
             >
               {demo.label}
             </button>

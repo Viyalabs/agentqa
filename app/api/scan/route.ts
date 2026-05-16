@@ -10,8 +10,9 @@ export const runtime = 'nodejs'
 export const maxDuration = 300
 
 const RequestSchema = z.object({
-  url:   z.string().min(1, 'URL is required').max(2048, 'URL is too long'),
-  email: z.string().email().optional().or(z.literal('')),
+  url:          z.string().min(1, 'URL is required').max(2048, 'URL is too long'),
+  email:        z.string().email().optional().or(z.literal('')),
+  forceRescan:  z.boolean().optional(),
 })
 
 export async function POST(req: NextRequest) {
@@ -30,7 +31,7 @@ export async function POST(req: NextRequest) {
     )
   }
 
-  const { url: rawUrl, email } = parsed.data
+  const { url: rawUrl, email, forceRescan } = parsed.data
   const url = normalizeUrl(rawUrl)
 
   const { valid, error: urlError } = validateUrl(url)
@@ -43,31 +44,44 @@ export async function POST(req: NextRequest) {
 
   const db = getAdminClient()
 
-  // ── Deduplication: return an existing recent scan for the same URL ───────────
+  // ── Deduplication: reuse a recent scan for the same URL ─────────────────────
   const dedupCutoff = new Date(Date.now() - DEDUP_WINDOW_MINUTES * 60 * 1000).toISOString()
   const { data: recentRows } = await db
     .from('scans')
-    .select('id, status')
+    .select('id, status, completed_at')
     .eq('url', url)
     .in('status', ['pending', 'running', 'completed'])
     .gte('created_at', dedupCutoff)
     .order('created_at', { ascending: false })
     .limit(1)
 
-  const recent = recentRows?.[0]
+  const recent = recentRows?.[0] as { id: string; status: string; completed_at: string | null } | undefined
   if (recent) {
-    // If the new request included an email, store it so the user gets notified
-    if (email) {
-      await db
-        .from('scans')
-        .update({ notify_email: email })
-        .eq('id', recent.id)
-        .is('notify_email', null)   // don't overwrite an existing email
+    const isInProgress = recent.status === 'pending' || recent.status === 'running'
+
+    // Always deduplicate in-progress scans — no value in running two concurrent
+    // scans for the same URL. forceRescan cannot override this.
+    if (isInProgress) {
+      console.log(`[POST /api/scan] dedup:in-progress url=${url} scanId=${recent.id}`)
+      if (email) {
+        await db.from('scans').update({ notify_email: email }).eq('id', recent.id).is('notify_email', null)
+      }
+      return NextResponse.json({ scanId: recent.id, cached: true, running: true }, { status: 200 })
     }
-    return NextResponse.json(
-      { scanId: recent.id, cached: true },
-      { status: 200 }
-    )
+
+    // Completed scan: skip dedup when the user explicitly asks for a fresh scan
+    if (!forceRescan) {
+      console.log(`[POST /api/scan] dedup:completed url=${url} scanId=${recent.id} completedAt=${recent.completed_at}`)
+      if (email) {
+        await db.from('scans').update({ notify_email: email }).eq('id', recent.id).is('notify_email', null)
+      }
+      return NextResponse.json(
+        { scanId: recent.id, cached: true, completedAt: recent.completed_at },
+        { status: 200 },
+      )
+    }
+
+    console.log(`[POST /api/scan] force-rescan url=${url} bypassing completed scan ${recent.id}`)
   }
 
   // ── Per-IP rate limit ────────────────────────────────────────────────────────
@@ -118,6 +132,7 @@ export async function POST(req: NextRequest) {
   }
 
   const scanId: string = scan.id
+  console.log(`[POST /api/scan] new-scan url=${url} scanId=${scanId}${forceRescan ? ' (forced)' : ''}`)
 
   waitUntil(
     runScan(scanId, url).catch((err: unknown) => {
