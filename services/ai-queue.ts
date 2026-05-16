@@ -27,11 +27,17 @@ export async function enqueueAIJobs(scanId: string): Promise<void> {
   const db = getAdminClient()
   // Insert each job type individually. The UNIQUE partial index on (scan_id, job_type)
   // WHERE status IN ('pending','running') guarantees at-most-one active job per type.
-  // Promise.allSettled silently absorbs unique-constraint violations on retries.
-  await Promise.allSettled([
+  // 23505 = unique_violation (expected on retries); any other code is a real failure.
+  const results = await Promise.allSettled([
     db.from('ai_analysis_jobs').insert({ scan_id: scanId, job_type: 'issue_batch',  priority: 1 }),
     db.from('ai_analysis_jobs').insert({ scan_id: scanId, job_type: 'scan_overview', priority: 2 }),
   ])
+  for (const r of results) {
+    if (r.status === 'rejected') {
+      const code = (r.reason as { code?: string } | undefined)?.code
+      if (code !== '23505') console.error('[ai-queue] enqueueAIJobs unexpected error:', r.reason)
+    }
+  }
 }
 
 /**

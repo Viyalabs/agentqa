@@ -82,7 +82,7 @@ async function processOne(): Promise<boolean> {
 
   try {
     const [{ data: scan }, { data: fwRows }] = await Promise.all([
-      db.from('scans').select('url, score').eq('id', job.scan_id).single(),
+      db.from('scans').select('url, score').eq('id', job.scan_id).maybeSingle(),
       db.from('scan_frameworks')
         .select('framework')
         .eq('scan_id', job.scan_id)
@@ -158,7 +158,11 @@ async function drainQueue(): Promise<void> {
 
 export async function POST(req: NextRequest) {
   const workerSecret = process.env.WORKER_SECRET
-  if (workerSecret && req.headers.get('x-worker-secret') !== workerSecret) {
+  if (!workerSecret) {
+    console.error('[ai/worker] WORKER_SECRET not set — refusing all requests')
+    return NextResponse.json({ error: 'Server misconfigured' }, { status: 500 })
+  }
+  if (req.headers.get('x-worker-secret') !== workerSecret) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 

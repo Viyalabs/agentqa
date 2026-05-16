@@ -22,8 +22,11 @@ export const AI_RETRY_DELAY_MS: readonly number[] = [
  *  Worker maxDuration = 300 s (5 min); 8 min gives one full drain cycle of margin. */
 export const AI_STUCK_JOB_TIMEOUT_MINUTES = 8
 
-/** Max jobs processed per single HTTP invocation of the worker. */
-export const AI_MAX_JOBS_PER_INVOCATION = 10
+/** Max jobs processed per single HTTP invocation of the worker.
+ *  With AI_JOB_TIMEOUT_MS = 240 s and Vercel maxDuration = 300 s,
+ *  only ~1 job fits when timeouts are hit. 3 is a safe cap that prevents
+ *  the drain loop from stalling the cron on normal (fast) jobs. */
+export const AI_MAX_JOBS_PER_INVOCATION = 3
 
 /** Max concurrent batch API calls in a single analyzeIssues run.
  *  3 parallel batches is safe under Haiku's rate limits and avoids starvation. */

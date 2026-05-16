@@ -17,15 +17,8 @@ interface UploadJob {
 
 export async function runScan(scanId: string, url: string): Promise<void> {
   const db = getAdminClient()
-
-  // Capture notify_email now so we avoid a second round-trip at the end of the scan.
-  const { data: initialMeta } = await db
-    .from('scans')
-    .update({ status: 'running', started_at: new Date().toISOString() })
-    .eq('id', scanId)
-    .select('notify_email')
-    .single()
-  const notifyEmail = (initialMeta as { notify_email?: string | null } | null)?.notify_email ?? null
+  // Declared outside try so the catch block and the post-crawl notify path can both access it.
+  let notifyEmail: string | null = null
 
   const log = async (message: string): Promise<void> => {
     console.log(`[scanner:${scanId}] ${message}`)
@@ -47,6 +40,16 @@ export async function runScan(scanId: string, url: string): Promise<void> {
   let totalPages = 0
 
   try {
+    // Inside try so any DB failure here falls into the catch → marks scan 'failed'
+    // rather than leaving it stuck in 'pending' forever.
+    const { data: initialMeta } = await db
+      .from('scans')
+      .update({ status: 'running', started_at: new Date().toISOString() })
+      .eq('id', scanId)
+      .select('notify_email')
+      .single()
+    notifyEmail = (initialMeta as { notify_email?: string | null } | null)?.notify_email ?? null
+
     await crawlWebsite(
       url,
       async ({ result }) => {
@@ -203,7 +206,7 @@ export async function runScan(scanId: string, url: string): Promise<void> {
 
     // Trigger the AI worker — registered with waitUntil so Vercel keeps the
     // lambda alive long enough for the request to leave before shutdown.
-    const workerUrl    = `${process.env.NEXT_PUBLIC_APP_URL}/api/ai/worker`
+    const workerUrl    = `${APP_URL}/api/ai/worker`
     const workerSecret = process.env.WORKER_SECRET
     waitUntil(
       fetch(workerUrl, {

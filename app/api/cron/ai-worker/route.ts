@@ -11,7 +11,11 @@ export const runtime = 'nodejs'
 // Vercel sends Authorization: Bearer {CRON_SECRET} automatically.
 export async function GET(req: NextRequest) {
   const cronSecret = process.env.CRON_SECRET
-  if (cronSecret && req.headers.get('authorization') !== `Bearer ${cronSecret}`) {
+  if (!cronSecret) {
+    console.error('[cron/ai-worker] CRON_SECRET not set — refusing all requests')
+    return NextResponse.json({ error: 'Server misconfigured' }, { status: 500 })
+  }
+  if (req.headers.get('authorization') !== `Bearer ${cronSecret}`) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 

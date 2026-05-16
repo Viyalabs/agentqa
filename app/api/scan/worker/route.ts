@@ -11,7 +11,11 @@ export const maxDuration = 300
 // The primary scan execution path now uses waitUntil in /api/scan directly.
 export async function POST(req: NextRequest) {
   const workerSecret = process.env.WORKER_SECRET
-  if (workerSecret && req.headers.get('x-worker-secret') !== workerSecret) {
+  if (!workerSecret) {
+    console.error('[scan/worker] WORKER_SECRET not set — refusing all requests')
+    return NextResponse.json({ error: 'Server misconfigured' }, { status: 500 })
+  }
+  if (req.headers.get('x-worker-secret') !== workerSecret) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
@@ -51,7 +55,11 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ ok: true, message: 'scan already claimed or not found' })
   }
 
-  waitUntil(runScan(scanId, claimed.url))
+  waitUntil(
+    runScan(scanId, claimed.url).catch((err: unknown) => {
+      console.error(`[scan/worker] unhandled error for ${scanId}:`, err)
+    })
+  )
 
   return NextResponse.json({ ok: true }, { status: 202 })
 }

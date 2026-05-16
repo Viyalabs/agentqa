@@ -97,41 +97,44 @@ export async function crawlWebsite(
 
   log('Launching browser...')
 
-  const browser = await chromium.launch(await getBrowserLaunchOptions())
-
-  const context = await browser.newContext({
-    viewport: { width: 1280, height: 800 },
-    userAgent: 'Mozilla/5.0 (compatible; AgentQA/1.0; +https://agentqa.dev/bot) Chrome/120',
-    ignoreHTTPSErrors: true,
-    javaScriptEnabled: true,
-  })
-
-  // Block fonts, media (video/audio), and known tracker domains.
-  // Same-origin scripts and stylesheets are always allowed through.
-  await context.route('**/*', (route) => {
-    const req = route.request()
-    const resourceType = req.resourceType()
-
-    if (resourceType === 'font' || resourceType === 'media') {
-      return route.abort()
-    }
-
-    try {
-      const hostname = new URL(req.url()).hostname
-      if (BLOCKED_DOMAINS.has(hostname)) return route.abort()
-    } catch {
-      // ignore malformed URLs
-    }
-
-    return route.continue()
-  })
-
-  const visited = new Set<string>()
-  const queued = new Set<string>([normalizedStart])
-  const queue: Array<{ url: string; depth: number }> = [{ url: normalizedStart, depth: 0 }]
+  // Declare outside try so the finally block can always close it.
+  let browser: Awaited<ReturnType<typeof chromium.launch>> | null = null
   const results: PageTestResult[] = []
 
   try {
+    browser = await chromium.launch(await getBrowserLaunchOptions())
+
+    const context = await browser.newContext({
+      viewport: { width: 1280, height: 800 },
+      userAgent: 'Mozilla/5.0 (compatible; AgentQA/1.0; +https://agentqa.dev/bot) Chrome/120',
+      ignoreHTTPSErrors: true,
+      javaScriptEnabled: true,
+    })
+
+    // Block fonts, media (video/audio), and known tracker domains.
+    // Same-origin scripts and stylesheets are always allowed through.
+    await context.route('**/*', (route) => {
+      const req = route.request()
+      const resourceType = req.resourceType()
+
+      if (resourceType === 'font' || resourceType === 'media') {
+        return route.abort()
+      }
+
+      try {
+        const hostname = new URL(req.url()).hostname
+        if (BLOCKED_DOMAINS.has(hostname)) return route.abort()
+      } catch {
+        // ignore malformed URLs
+      }
+
+      return route.continue()
+    })
+
+    const visited = new Set<string>()
+    const queued = new Set<string>([normalizedStart])
+    const queue: Array<{ url: string; depth: number }> = [{ url: normalizedStart, depth: 0 }]
+
     while (queue.length > 0 && visited.size < MAX_PAGES) {
       // Honour global abort signal — stop between pages, not mid-page
       if (options?.signal?.aborted) {
@@ -176,7 +179,7 @@ export async function crawlWebsite(
     }
   } finally {
     log('Closing browser...')
-    await browser.close().catch(() => {})
+    if (browser) await browser.close().catch(() => {})
   }
 
   return results
