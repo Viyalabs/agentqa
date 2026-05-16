@@ -26,6 +26,21 @@ interface AIAnalysis {
   confidence: string   // "low" | "medium" | "high" — from Claude's self-assessment
 }
 
+// ── Logging helpers ────────────────────────────────────────────────────────────
+
+/** Returns a function that, when called, gives elapsed milliseconds since perf() was called. */
+function perf(): () => number {
+  const t0 = Date.now()
+  return () => Date.now() - t0
+}
+
+/** Write a structured trace line for the AI pipeline. Prefix is grep-friendly. */
+function pipelineLog(scanId: string, phase: string, msg: string): void {
+  console.log(`[ai-pipeline:${scanId}] [${phase}] ${msg}`)
+}
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
+
 function confidenceToFloat(c: string): number | null {
   switch (c) {
     case 'high':   return 0.9
@@ -249,6 +264,7 @@ async function analyzeBatch(
   appUrl: string,
   issues: IssueForAnalysis[],
   frameworks: string[],
+  batchLabel: string,
 ): Promise<{ results: Map<string, AIAnalysis>; tokensIn: number; tokensOut: number }> {
   const claudeResult = await callClaude({
     prompt:    buildBatchPrompt(appUrl, issues, frameworks),
@@ -256,9 +272,10 @@ async function analyzeBatch(
     model:     CLAUDE_HAIKU,
     maxTokens: Math.max(200 * issues.length, 600),
     timeoutMs: 60_000,
+    label:     batchLabel,
   })
   if (!claudeResult.ok) {
-    logClaudeError('batch-analysis', claudeResult.error)
+    logClaudeError(batchLabel, claudeResult.error)
     throw new Error(claudeResult.error.message)
   }
   const text = claudeResult.data
@@ -431,7 +448,10 @@ export async function analyzeIssues(
   frameworks: string[] = [],
   severities: string[] = ['critical', 'medium'],
 ): Promise<void> {
-  const db = getAdminClient()
+  const db    = getAdminClient()
+  const total = perf()
+
+  pipelineLog(scanId, 'analyzeIssues', `START — severities:[${severities.join(',')}] patternMatches:${patternMatches.size}`)
 
   if (!isClaudeConfigured()) {
     console.warn('[ai-analyzer] ANTHROPIC_API_KEY not set — skipping issue analysis')
@@ -447,15 +467,31 @@ export async function analyzeIssues(
     .in('severity', severities)
     .is('ai_summary', null)
 
-  if (error || !issues || issues.length === 0) return
+  if (error) {
+    // Log the real error — this is the most likely cause of "AI sometimes skipped"
+    console.error(`[ai-analyzer] ${scanId}: issues_with_analysis query failed — ${error.message}`)
+    await logToScan(db, scanId, `AI analysis skipped — DB query error: ${error.message}`)
+    return
+  }
+
+  if (!issues || issues.length === 0) {
+    pipelineLog(scanId, 'analyzeIssues', 'SKIP — no issues need analysis (all already analyzed or no matching severity)')
+    return
+  }
+
+  pipelineLog(scanId, 'analyzeIssues', `${issues.length} issue(s) queued for analysis — starting pipeline`)
+  await logToScan(db, scanId, `AI analysis starting for ${issues.length} issue(s)…`)
 
   // --- Step 1: apply cached templates from pattern DB (free, instant) ----------
   const needsAnalysis: IssueForAnalysis[] = []
+  let cacheHits = 0
 
   await Promise.allSettled(
     (issues as IssueForAnalysis[]).map(async (issue) => {
       const match = patternMatches.get(issue.id)
       if (match?.rootCauseTemplate && match?.fixTemplate && !match.needsRefresh) {
+        cacheHits++
+        pipelineLog(scanId, 'pattern-cache', `HIT  issue:${issue.id} type:${issue.type} fp:${issue.fingerprint ?? 'none'}`)
         // Pattern already has a solution — write to issues_enriched only
         await db.from('issues_enriched').upsert({
           issue_id:         issue.id,
@@ -469,17 +505,20 @@ export async function analyzeIssues(
           analyzed_at:      new Date().toISOString(),
         }, { onConflict: 'issue_id' })
       } else {
+        const reason = !match ? 'no-pattern' : match.needsRefresh ? 'needs-refresh' : 'no-template'
+        pipelineLog(scanId, 'pattern-cache', `MISS issue:${issue.id} type:${issue.type} reason:${reason}`)
         needsAnalysis.push(issue)
       }
     })
   )
 
-  const reused = issues.length - needsAnalysis.length
-  if (reused > 0) {
-    console.log(`[ai-analyzer] ${scanId}: reused pattern templates for ${reused} issue(s)`)
-  }
+  pipelineLog(scanId, 'pattern-cache', `DONE — ${cacheHits} hits / ${needsAnalysis.length} misses`)
 
-  if (needsAnalysis.length === 0) return
+  if (needsAnalysis.length === 0) {
+    pipelineLog(scanId, 'analyzeIssues', `DONE (all from cache) — ${total()}ms`)
+    await logToScan(db, scanId, `AI analysis complete — ${cacheHits} issue(s) answered from pattern cache.`)
+    return
+  }
 
   // --- Step 2: deduplicate by fingerprint, then call Claude --------------------
   // Issues with the same fingerprint get the same analysis — one API call covers all.
@@ -503,7 +542,19 @@ export async function analyzeIssues(
       .map(([, issue]) => issue),
   ]
 
-  // --- Step 2: call Claude in parallel batches, persist immediately per batch --
+  // Build batch list before entering the loop so we know total batch count for logging
+  const batches: IssueForAnalysis[][] = []
+  for (let i = 0; i < representatives.length; i += AI_BATCH_SIZE) {
+    batches.push(representatives.slice(i, i + AI_BATCH_SIZE))
+  }
+
+  pipelineLog(
+    scanId, 'dedup',
+    `${needsAnalysis.length} issues → ${representatives.length} unique representatives → ${batches.length} batch(es) ` +
+    `(concurrency:${AI_BATCH_CONCURRENCY} batchSize:${AI_BATCH_SIZE})`
+  )
+
+  // --- Step 3: call Claude in parallel batches, persist immediately per batch --
   let totalIn = 0, totalOut = 0
 
   // Persist analysis to issues_enriched right after each batch resolves.
@@ -536,12 +587,31 @@ export async function analyzeIssues(
 
   // Run one batch: Claude call with solo fallback, fire-and-forget pattern updates,
   // immediate DB writes. Returns token counts for this batch only.
-  async function runOneBatch(batch: IssueForAnalysis[]): Promise<{ tokensIn: number; tokensOut: number }> {
+  async function runOneBatch(
+    batch: IssueForAnalysis[],
+    batchIdx: number,
+    totalBatches: number,
+  ): Promise<{ tokensIn: number; tokensOut: number }> {
+    const batchLabel = `batch-${batchIdx + 1}of${totalBatches}`
+    const elapsed    = perf()
     let bIn = 0, bOut = 0
+
+    pipelineLog(scanId, batchLabel, `START — ${batch.length} representative(s): [${batch.map(r => r.type).join(', ')}]`)
+
     try {
-      const { results: batchResults, tokensIn, tokensOut } = await analyzeBatch(appUrl, batch, frameworks)
+      const { results: batchResults, tokensIn, tokensOut } = await analyzeBatch(
+        appUrl, batch, frameworks, `${scanId.slice(0, 8)}/${batchLabel}`
+      )
       bIn = tokensIn
       bOut = tokensOut
+
+      const analyzed = batchResults.size
+      const skipped  = batch.length - analyzed
+      pipelineLog(
+        scanId, batchLabel,
+        `SUCCESS — ${elapsed()}ms — ${analyzed} analyzed${skipped > 0 ? ` / ${skipped} no-output` : ''} — ${tokensIn} in / ${tokensOut} out tokens`
+      )
+
       for (const [cacheKey, analysis] of batchResults) {
         const rep = batch.find(r => (r.fingerprint ?? r.type) === cacheKey)
         if (rep) {
@@ -555,11 +625,17 @@ export async function analyzeIssues(
       await persistResults(batch, batchResults)
     } catch (err) {
       const batchMsg = err instanceof Error ? err.message : String(err)
-      console.warn('[ai-analyzer] Batch failed, falling back to individual calls:', err)
+      pipelineLog(scanId, batchLabel, `FAILED — ${elapsed()}ms — falling back to solo calls: ${batchMsg}`)
+
       const soloResults = new Map<string, AIAnalysis>()
       await Promise.allSettled(
         batch.map(async (rep) => {
-          const cacheKey = rep.fingerprint ?? rep.type
+          const cacheKey  = rep.fingerprint ?? rep.type
+          const soloLabel = `${scanId.slice(0, 8)}/solo-${rep.type}`
+          const soloTimer = perf()
+
+          pipelineLog(scanId, `solo`, `START — type:${rep.type} key:${cacheKey}`)
+
           try {
             const soloResult = await callClaude({
               prompt:    buildSoloPrompt(appUrl, rep, frameworks),
@@ -567,9 +643,11 @@ export async function analyzeIssues(
               model:     CLAUDE_HAIKU,
               maxTokens: 350,
               timeoutMs: 30_000,
+              label:     soloLabel,
             })
             if (!soloResult.ok) {
-              logClaudeError('solo-analysis', soloResult.error)
+              logClaudeError(soloLabel, soloResult.error)
+              pipelineLog(scanId, 'solo', `FAIL — type:${rep.type} — ${soloResult.error.message}`)
               await logToScan(db, scanId, `AI analysis failed for issue type "${rep.type}": ${soloResult.error.message}`)
               return
             }
@@ -578,13 +656,18 @@ export async function analyzeIssues(
             const analysis = parseSoloResponse(soloResult.data)
             if (analysis.summary) {
               soloResults.set(cacheKey, analysis)
+              pipelineLog(scanId, 'solo', `OK — type:${rep.type} — ${soloTimer()}ms — ${soloResult.usage.inputTokens} in / ${soloResult.usage.outputTokens} out`)
               const match = patternMatches.get(rep.id)
               if (match?.patternId && analysis.rootCause && analysis.fixSuggestion) {
                 updatePatternTemplates(match.patternId, analysis.rootCause, analysis.fixSuggestion, CLAUDE_HAIKU)
                   .catch(e => console.error('[ai-analyzer] pattern template update failed:', e))
               }
+            } else {
+              pipelineLog(scanId, 'solo', `EMPTY — type:${rep.type} — Claude returned no summary`)
             }
           } catch (e) {
+            const msg = e instanceof Error ? e.message : String(e)
+            pipelineLog(scanId, 'solo', `FAIL — type:${rep.type} — ${soloTimer()}ms — ${msg}`)
             console.error(`[ai-analyzer] Solo call failed for ${cacheKey}:`, e)
           }
         })
@@ -595,16 +678,27 @@ export async function analyzeIssues(
     return { tokensIn: bIn, tokensOut: bOut }
   }
 
-  // Build batch list and run AI_BATCH_CONCURRENCY batches in parallel.
-  const batches: IssueForAnalysis[][] = []
-  for (let i = 0; i < representatives.length; i += AI_BATCH_SIZE) {
-    batches.push(representatives.slice(i, i + AI_BATCH_SIZE))
-  }
+  // Run AI_BATCH_CONCURRENCY batches in parallel, then the next group, and so on.
   for (let i = 0; i < batches.length; i += AI_BATCH_CONCURRENCY) {
-    const groupResults = await Promise.allSettled(batches.slice(i, i + AI_BATCH_CONCURRENCY).map(runOneBatch))
+    const groupBatches = batches.slice(i, i + AI_BATCH_CONCURRENCY)
+    const groupLabel   = `group-${Math.floor(i / AI_BATCH_CONCURRENCY) + 1}`
+
+    pipelineLog(scanId, groupLabel, `START — ${groupBatches.length} batch(es) in parallel`)
+
+    const groupResults = await Promise.allSettled(
+      groupBatches.map((batch, j) => runOneBatch(batch, i + j, batches.length))
+    )
+
+    let groupIn = 0, groupOut = 0
     for (const r of groupResults) {
-      if (r.status === 'fulfilled') { totalIn += r.value.tokensIn; totalOut += r.value.tokensOut }
+      if (r.status === 'fulfilled') {
+        totalIn  += r.value.tokensIn
+        totalOut += r.value.tokensOut
+        groupIn  += r.value.tokensIn
+        groupOut += r.value.tokensOut
+      }
     }
+    pipelineLog(scanId, groupLabel, `DONE — ${groupIn} in / ${groupOut} out tokens`)
   }
 
   if (totalIn > 0 || totalOut > 0) {
@@ -612,10 +706,17 @@ export async function analyzeIssues(
       .then(({ error }) => { if (error) console.error('[ai-analyzer] token increment failed:', error.message) })
   }
 
-  console.log(
-    `[ai-analyzer] ${scanId}: ${representatives.length} Claude call(s) → ` +
-    `${needsAnalysis.length} issue(s) analyzed (${reused} reused from patterns) ` +
-    `— tokens: ${totalIn} in / ${totalOut} out`
+  const elapsed = total()
+  pipelineLog(
+    scanId, 'analyzeIssues',
+    `DONE — ${elapsed}ms — ${representatives.length} Claude call(s) — ` +
+    `${needsAnalysis.length} analyzed + ${cacheHits} from cache — ` +
+    `tokens: ${totalIn} in / ${totalOut} out`
+  )
+
+  await logToScan(
+    db, scanId,
+    `AI analysis complete — ${needsAnalysis.length} issue(s) analyzed, ${cacheHits} from pattern cache — ${Math.round(elapsed / 1000)}s`
   )
 }
 
@@ -633,14 +734,27 @@ export async function generateScanOverview(
   frameworks: string[] = [],
   lowCount = 0,
 ): Promise<void> {
-  if (!isClaudeConfigured()) return
-  if (criticalCount + mediumCount + lowCount === 0) return
+  const elapsed = perf()
+
+  pipelineLog(
+    scanId, 'scanOverview',
+    `START — score:${score} issues:(crit:${criticalCount} med:${mediumCount} low:${lowCount})`
+  )
+
+  if (!isClaudeConfigured()) {
+    pipelineLog(scanId, 'scanOverview', 'SKIP — ANTHROPIC_API_KEY not set')
+    return
+  }
+  if (criticalCount + mediumCount + lowCount === 0) {
+    pipelineLog(scanId, 'scanOverview', 'SKIP — no issues')
+    return
+  }
 
   try {
     const db = getAdminClient()
     const { data: scanRow } = await db.from('scans').select('ai_overview').eq('id', scanId).maybeSingle()
     if (scanRow?.ai_overview) {
-      console.log(`[ai-analyzer] ${scanId}: overview already exists — skipping`)
+      pipelineLog(scanId, 'scanOverview', 'SKIP — overview already exists')
       return
     }
 
@@ -665,7 +779,12 @@ export async function generateScanOverview(
       title:    r.title    as string,
     }))
 
-    if (issues.length === 0) return
+    if (issues.length === 0) {
+      pipelineLog(scanId, 'scanOverview', 'SKIP — issues query returned 0 rows')
+      return
+    }
+
+    pipelineLog(scanId, 'scanOverview', `${issues.length} issues fetched — computing regression`)
 
     // Compute regression vs the previous completed scan for the same URL
     const currentFps = new Set(
@@ -688,7 +807,12 @@ export async function generateScanOverview(
       )
       regressionNew      = [...currentFps].filter(fp => !prevFps.has(fp)).length
       regressionResolved = [...prevFps].filter(fp => !currentFps.has(fp)).length
+      pipelineLog(scanId, 'scanOverview', `regression: +${regressionNew} new / -${regressionResolved} resolved vs prev score:${previousScore}`)
+    } else {
+      pipelineLog(scanId, 'scanOverview', 'regression: first scan for this URL')
     }
+
+    pipelineLog(scanId, 'scanOverview', 'calling Claude for overview prose')
 
     const result = await callClaude({
       prompt:    buildOverviewPrompt(appUrl, score, issues, frameworks, {
@@ -698,15 +822,20 @@ export async function generateScanOverview(
       }),
       model:     CLAUDE_HAIKU,
       maxTokens: 300,
+      label:     `${scanId.slice(0, 8)}/overview`,
     })
 
     if (!result.ok) {
       logClaudeError('scan-overview', result.error)
+      pipelineLog(scanId, 'scanOverview', `FAIL — Claude error: ${result.error.message}`)
       return
     }
 
     const overview = result.data.trim()
-    if (!overview) return
+    if (!overview) {
+      pipelineLog(scanId, 'scanOverview', 'FAIL — Claude returned empty overview')
+      return
+    }
 
     await db.from('scans').update({
       ai_overview:          overview,
@@ -720,12 +849,14 @@ export async function generateScanOverview(
       p_out:     result.usage.outputTokens,
     }).then(({ error }) => { if (error) console.error('[ai-analyzer] token increment failed:', error.message) })
 
-    console.log(
-      `[ai-analyzer] ${scanId}: overview generated — ` +
-      `${regressionNew} new / ${regressionResolved} resolved vs prev scan — ` +
+    pipelineLog(
+      scanId, 'scanOverview',
+      `DONE — ${elapsed()}ms — regression:+${regressionNew}/-${regressionResolved} — ` +
       `tokens: ${result.usage.inputTokens} in / ${result.usage.outputTokens} out`
     )
   } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err)
+    pipelineLog(scanId, 'scanOverview', `FAIL — ${elapsed()}ms — ${msg}`)
     console.error(`[ai-analyzer] Failed to generate overview for ${scanId}:`, err)
   }
 }

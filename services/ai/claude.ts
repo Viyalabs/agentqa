@@ -79,6 +79,12 @@ export interface ClaudeCallParams {
    * network). Does not count the original attempt. Defaults to 3.
    */
   maxRetries?: number
+  /**
+   * Short label for log lines, e.g. "batch-1", "solo-js_error", "scan-overview".
+   * Appears as [claude:<label>] so logs from different analysis phases are
+   * easy to grep.
+   */
+  label?: string
 }
 
 export interface ClaudeJSONParams<T> extends ClaudeCallParams {
@@ -225,8 +231,11 @@ async function executeWithRetry(
   params: MessageCreateParamsNonStreaming,
   timeoutMs: number,
   maxRetries: number,
+  label?: string,
 ): Promise<Message> {
-  const client = getClaudeClient()
+  const client  = getClaudeClient()
+  const tag     = label ? `[claude:${label}]` : '[claude]'
+  const t0      = Date.now()
 
   for (let attempt = 0; attempt <= maxRetries; attempt++) {
     const controller = new AbortController()
@@ -240,6 +249,13 @@ async function executeWithRetry(
         maxRetries: 0,
       })
       clearTimeout(timer)
+      const elapsed = Date.now() - t0
+      const usage   = message.usage
+      console.log(
+        `${tag} ${params.model} — ${elapsed}ms` +
+        (attempt > 0 ? ` (attempt ${attempt + 1})` : '') +
+        ` — ${usage.input_tokens} in / ${usage.output_tokens} out`
+      )
       return message as Message
     } catch (err) {
       clearTimeout(timer)
@@ -247,10 +263,10 @@ async function executeWithRetry(
       const isLast = attempt === maxRetries
       if (isLast || !isRetryable(err)) throw err
 
-      const delay = backoffMs(attempt, err)
-      const label = err instanceof APIError ? `HTTP ${(err as APIError).status}` : 'network'
+      const delay    = backoffMs(attempt, err)
+      const errLabel = err instanceof APIError ? `HTTP ${(err as APIError).status}` : 'network'
       console.warn(
-        `[claude] Attempt ${attempt + 1}/${maxRetries + 1} failed (${label}). ` +
+        `${tag} attempt ${attempt + 1}/${maxRetries + 1} failed (${errLabel}). ` +
         `Retrying in ${Math.round(delay)}ms…`
       )
       await sleep(delay)
@@ -279,6 +295,7 @@ export async function callClaude(
     maxTokens  = DEFAULT_MAX_TOKENS,
     timeoutMs  = DEFAULT_TIMEOUT_MS,
     maxRetries = DEFAULT_MAX_RETRIES,
+    label,
   } = params
 
   const sdkParams: MessageCreateParamsNonStreaming = {
@@ -289,7 +306,7 @@ export async function callClaude(
   }
 
   try {
-    const message = await executeWithRetry(sdkParams, timeoutMs, maxRetries)
+    const message = await executeWithRetry(sdkParams, timeoutMs, maxRetries, label)
     const text = message.content[0]?.type === 'text' ? message.content[0].text : ''
     return {
       ok:    true,

@@ -77,7 +77,8 @@ async function processOne(): Promise<boolean> {
   }
   if (!job) return false
 
-  console.log(`[ai-worker] claimed ${job.job_type} job ${job.id} (attempt ${job.attempts})`)
+  const t0 = Date.now()
+  console.log(`[ai-worker] claimed ${job.job_type} job ${job.id} scan:${job.scan_id} (attempt ${job.attempts})`)
   const db = getAdminClient()
 
   try {
@@ -91,11 +92,13 @@ async function processOne(): Promise<boolean> {
 
     // If the scan was deleted while the job was queued, silently complete
     if (!scan) {
+      console.log(`[ai-worker] ${job.job_type} ${job.id} — scan deleted, completing silently`)
       await completeJob(job.id)
       return true
     }
 
     const frameworks = (fwRows ?? []).map((r: { framework: string }) => r.framework)
+    console.log(`[ai-worker] ${job.job_type} ${job.id} — scan:${job.scan_id} url:${scan.url} frameworks:[${frameworks.join(',')}]`)
 
     if (job.job_type === 'issue_batch') {
       await withTimeout(
@@ -112,10 +115,10 @@ async function processOne(): Promise<boolean> {
     }
 
     await completeJob(job.id)
-    console.log(`[ai-worker] ${job.job_type} ${job.id} — completed`)
+    console.log(`[ai-worker] ${job.job_type} ${job.id} — completed in ${Date.now() - t0}ms`)
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err)
-    console.error(`[ai-worker] ${job.job_type} ${job.id} attempt ${job.attempts} — failed: ${msg}`)
+    console.error(`[ai-worker] ${job.job_type} ${job.id} attempt ${job.attempts} — failed after ${Date.now() - t0}ms: ${msg}`)
     // failJob resets to 'pending' with back-off delay if attempts < MAX_ATTEMPTS,
     // otherwise marks permanently 'failed'. Wrapped so a DB error here doesn't
     // abort the drain loop — the reaper will recover the job on the next cron tick.
@@ -135,6 +138,9 @@ async function processOne(): Promise<boolean> {
  * Uses an iterative loop — not recursion — to avoid stack growth.
  */
 async function drainQueue(): Promise<void> {
+  const t0 = Date.now()
+  console.log(`[ai-worker] drainQueue START — max:${AI_MAX_JOBS_PER_INVOCATION} jobs/invocation timeout:${AI_JOB_TIMEOUT_MS}ms`)
+
   // Reset jobs stuck in 'running' after a crashed lambda so they re-enter the queue.
   // Non-fatal — a DB error here must not abort the drain loop.
   try {
@@ -146,11 +152,15 @@ async function drainQueue(): Promise<void> {
   let processed = 0
   while (processed < AI_MAX_JOBS_PER_INVOCATION) {
     const hadWork = await processOne()
-    if (!hadWork) break
+    if (!hadWork) {
+      if (processed === 0) console.log('[ai-worker] drainQueue — queue empty, nothing to process')
+      break
+    }
     processed++
   }
+
   if (processed > 0) {
-    console.log(`[ai-worker] drained ${processed} job(s) this invocation`)
+    console.log(`[ai-worker] drainQueue DONE — ${processed} job(s) in ${Date.now() - t0}ms`)
   }
 }
 
