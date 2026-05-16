@@ -33,7 +33,7 @@ const steps = [
     icon: Sparkles,
     title: 'AI explains the why',
     description:
-      'Claude AI analyzes every issue — root cause, technical reason, and a specific fix suggestion. Not just what broke, but exactly how to resolve it.',
+      'Claude AI cross-references each issue against a shared pattern library from real bugs across all AgentQA scans. Root cause, targeted fix, and a confidence rating — not just a stack trace to decode.',
     color: 'text-cyan-300',
     bg: 'bg-blue-500/20 border-blue-400/50',
     badge: 'Live',

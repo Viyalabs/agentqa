@@ -3,18 +3,18 @@ import { Sparkles, Brain, TrendingUp, Zap } from 'lucide-react'
 const PILLARS = [
   {
     icon: Brain,
-    title: 'Understands context',
-    body: 'Knows the framework, the auth pattern, and the specific failure mode — not just the error message.',
+    title: 'Root cause, not surface message',
+    body: 'A 401 on an internal API route is diagnosed differently from a 401 on a third-party service — because the fix is different. Error classification runs on cause, not text.',
   },
   {
     icon: Zap,
     title: 'Fix-ready output',
-    body: 'Specific to your codebase. Not a generic StackOverflow answer.',
+    body: 'Returns the exact guard, wrapper, or check to add — scoped to the error type and location. Not a documentation page. Not a StackOverflow link.',
   },
   {
     icon: TrendingUp,
-    title: 'Gets smarter every scan',
-    body: 'AgentQA learns from every scan. Patterns across thousands of real bugs sharpen each diagnosis.',
+    title: 'Pattern library, not a cold start',
+    body: 'Each scan contributes to a shared failure pattern library. High-frequency signatures are matched faster and with tighter confidence — a compounding advantage static test suites cannot build.',
   },
 ]
 
@@ -36,13 +36,13 @@ export function AiMoat() {
           <h2 className="text-4xl md:text-5xl font-semibold tracking-tight text-white mb-4">
             Not just detection.
             <br />
-            <span className="text-blue-400">Root cause. Fix. Instantly.</span>
+            <span className="text-blue-400">Root cause. Fix. Pattern-matched.</span>
           </h2>
           <p className="text-base text-zinc-400 max-w-xl mx-auto leading-relaxed mb-3">
-            Every issue is analyzed by Claude AI. You get the exact technical reason it broke and a specific fix — ready to paste into your editor.
+            Every issue is analyzed by Claude AI. You get the exact technical reason it broke and a targeted fix — ready to paste into your editor.
           </p>
-          <p className="text-base text-zinc-300 leading-relaxed">
-            AgentQA learns from every scan. Recurring patterns across the platform mean each new diagnosis is informed by thousands of bugs that came before it — a compounding advantage no manually-maintained test suite can replicate.
+          <p className="text-base text-zinc-300 max-w-xl mx-auto leading-relaxed">
+            Every diagnosis cross-references a shared pattern library built from real failures across all AgentQA scans. Repeated signatures are identified with higher confidence and matched against known fixes — instead of being analyzed cold.
           </p>
         </div>
 
@@ -100,7 +100,7 @@ export function AiMoat() {
           {/* Learning footer bar */}
           <div className="flex items-center gap-2.5 px-6 py-3 bg-blue-950/20 border-t border-blue-500/10">
             <span className="h-1.5 w-1.5 rounded-full bg-blue-400 animate-pulse shrink-0" />
-            <p className="text-xs text-blue-400/70 font-mono">
+            <p className="text-xs text-blue-400 font-mono">
               Pattern matched from 847 similar auth errors · confidence: high
             </p>
           </div>
