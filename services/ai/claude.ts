@@ -135,15 +135,20 @@ export function getClaudeClient(): Anthropic {
   const apiKey = process.env.ANTHROPIC_API_KEY
   if (!apiKey) throw new ConfigError(
     'ANTHROPIC_API_KEY is not set. ' +
-    'Add it to .env.local or your deployment environment.'
+    'Add it to .env.local or your Vercel environment variables.'
+  )
+  if (!apiKey.startsWith('sk-ant-')) throw new ConfigError(
+    `ANTHROPIC_API_KEY is invalid — expected a key starting with "sk-ant-", ` +
+    `got "${apiKey.slice(0, 10)}…". Check your Vercel environment variables.`
   )
   _client = new Anthropic({ apiKey })
   return _client
 }
 
-/** Returns true when ANTHROPIC_API_KEY is present in the environment. */
+/** Returns true when ANTHROPIC_API_KEY is present and looks like a valid Anthropic key. */
 export function isClaudeConfigured(): boolean {
-  return Boolean(process.env.ANTHROPIC_API_KEY)
+  const key = process.env.ANTHROPIC_API_KEY
+  return Boolean(key) && key!.startsWith('sk-ant-')
 }
 
 // Internal sentinel so getClaudeClient() can throw a recognisable type

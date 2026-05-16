@@ -65,4 +65,21 @@ export async function register() {
     // which breaks hot-reload in dev and causes Vercel deployments to fail at startup
     // rather than serving a useful error page. The individual handlers already fail-close.
   }
+
+  // AI service status — always emit so Vercel deployment logs confirm whether
+  // AI analysis is active. Masks all but the first 10 and last 4 chars of the key.
+  const aiKey = process.env.ANTHROPIC_API_KEY
+  if (aiKey) {
+    const isValidFormat = aiKey.startsWith('sk-ant-')
+    const masked        = `${aiKey.slice(0, 10)}…${aiKey.slice(-4)}`
+    if (isValidFormat) {
+      console.log(`[startup] AI analysis: ENABLED — key:${masked}`)
+    } else {
+      console.error(
+        `[startup] AI analysis: MISCONFIGURED — key does not start with "sk-ant-" (got ${masked}). ` +
+        'Check ANTHROPIC_API_KEY in Vercel environment variables.'
+      )
+    }
+  }
+  // If aiKey is absent the warning above already surfaced it.
 }
