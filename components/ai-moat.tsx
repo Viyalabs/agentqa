@@ -3,18 +3,18 @@ import { Sparkles, Brain, TrendingUp, Zap } from 'lucide-react'
 const PILLARS = [
   {
     icon: Brain,
-    title: 'Root cause, not surface message',
-    body: 'A 401 on an internal API route is diagnosed differently from a 401 on a third-party service — because the fix is different. Error classification runs on cause, not text.',
+    title: 'Cause-level classification',
+    body: 'A 401 on an internal API route is diagnosed differently from a 401 on a third-party service — because the fix is different. Classification runs on cause, not error text.',
   },
   {
     icon: Zap,
-    title: 'Fix-ready output',
-    body: 'Returns the exact guard, wrapper, or check to add — scoped to the error type and location. Not a documentation page. Not a StackOverflow link.',
+    title: 'Fix-ready, not reference-ready',
+    body: 'Returns the exact guard, wrapper, or null-check to add — scoped to the error type and its location in your code. Not a docs link. Not a StackOverflow thread.',
   },
   {
     icon: TrendingUp,
-    title: 'Pattern library, not a cold start',
-    body: 'Each scan contributes to a shared failure pattern library. High-frequency signatures are matched faster and with tighter confidence — a compounding advantage static test suites cannot build.',
+    title: 'Issue intelligence that compounds',
+    body: 'Every scan adds real failure signatures to a shared dataset. Auth races, mobile overflow patterns, silent API failures — each recurrence is matched faster, with higher confidence. A growing QA dataset no static test suite can replicate.',
   },
 ]
 

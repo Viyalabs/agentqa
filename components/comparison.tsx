@@ -158,11 +158,8 @@ export function Comparison() {
         {/* Bottom callout */}
         <div className="mt-6 p-6 rounded-xl border border-zinc-800 bg-zinc-900/30 text-center">
           <p className="text-base text-zinc-400 leading-relaxed">
-            A QA engineer costs{' '}
-            <span className="text-red-400 font-semibold">$80k–$150k per year</span>{' '}
-            and still misses bugs. AgentQA starts at{' '}
-            <span className="text-green-400 font-semibold">$0</span>
-            {' '}and catches what they miss — broken auth flows, mobile overflows, silent API failures. No hire. No wait.
+            Static test suites require an engineer to write them. Flaky browser scripts require an engineer to maintain them.{' '}
+            <span className="text-white font-medium">AgentQA requires a URL.</span>
           </p>
         </div>
       </div>

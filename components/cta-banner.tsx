@@ -32,7 +32,7 @@ export function CtaBanner() {
             <ArrowRight className="h-4 w-4" />
           </Button>
           <p className="text-zinc-500 text-xs mt-6">
-            No signup. No credit card.
+            Free to start. No test suite to write.
           </p>
         </div>
       </div>

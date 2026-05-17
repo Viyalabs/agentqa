@@ -69,32 +69,32 @@ export default async function HomePage() {
         {/* 2. Tool compatibility bar */}
         <TechBar />
 
-        {/* 3. Problem narrative + AI builders wedge */}
+        {/* 3. Live scan gallery — proof before explanation */}
+        <RecentReports />
+
+        {/* 4. Problem narrative + AI builders wedge */}
         <ProblemNarrative />
 
-        {/* 4. How it works */}
+        {/* 5. How it works */}
         <HowItWorks />
 
-        {/* 5. Traditional QA vs AgentQA */}
+        {/* 6. Traditional QA vs AgentQA */}
         <Comparison />
 
-        {/* 6. Real report output */}
+        {/* 7. Real report output */}
         <ReportPreview />
 
-        {/* 7. Live demo scan */}
+        {/* 8. Live demo scan */}
         <DemoScan />
 
-        {/* 8. AI moat — root cause + fix centerpiece */}
+        {/* 9. AI moat — root cause + fix centerpiece */}
         <AiMoat />
 
-        {/* 9. Full feature set */}
+        {/* 10. Full feature set */}
         <Features />
 
-        {/* 10. Social proof */}
+        {/* 11. Social proof */}
         <Testimonials />
-
-        {/* 11. Live scan gallery */}
-        <RecentReports />
 
         {/* 12. CTA before pricing */}
         <CtaBanner />

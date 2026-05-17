@@ -74,7 +74,7 @@ export function DemoScan() {
             Pick a site — it runs the exact same scan your users would trigger. Watch it happen live.
           </p>
           <p className="text-xs text-zinc-500">
-            Takes ~90 seconds · No signup · No credit card
+            Takes ~90 seconds · Real browser · Same scan your users would trigger
           </p>
         </div>
 

@@ -1,26 +1,26 @@
 const TESTIMONIALS = [
   {
     quote:
-      "Delivered a client handoff with a full AgentQA report instead of a Loom walkthrough. Client asked if we had a dedicated QA team. We don't. AgentQA is our QA team.",
+      "Handed off a project with an AgentQA report attached. Client asked if we had a dedicated QA team. We don't.",
     author: 'Sophie M.',
-    role: 'Founder · Dev agency, client delivery',
+    role: 'Founder, dev studio',
     initials: 'SM',
-    detail: 'Now runs on every client delivery',
+    detail: 'Runs on every client delivery',
     featured: true,
   },
   {
     quote:
-      "I was 30 minutes from sending a launch email to 500 subscribers. Ran AgentQA on a whim. It found a broken auth redirect — new users would hit a blank screen instead of onboarding. Also caught a 404 on /pricing that I'd broken the day before. Fixed both in 20 minutes.",
+      "30 minutes before my launch email. AgentQA found a broken auth redirect — new users would have hit a blank screen. Caught it. Fixed it. Sent the email.",
     author: 'Marcus Chen',
-    role: 'Solo founder · B2B SaaS built with Cursor',
+    role: 'Solo founder, B2B SaaS · built with Cursor',
     initials: 'MC',
-    detail: '3 pages scanned · 2 critical bugs caught · launch saved',
+    detail: '2 critical bugs caught pre-launch',
   },
   {
     quote:
-      "We were manually clicking through the whole app before every deploy. 45 minutes, every time, every sprint. AgentQA does it in 90 seconds and catches things we routinely missed — mobile layout breaks, failed API calls that only show up in a real browser.",
+      "We used to click through the whole app before every deploy. 45 minutes, every sprint. AgentQA does it in 90 seconds — and catches mobile layout breaks we kept missing.",
     author: 'Rafal K.',
-    role: 'CTO · Early-stage startup, 8-person team',
+    role: 'CTO, early-stage startup · 8-person team',
     initials: 'RK',
     detail: 'QA score: 62 → 91 after first scan',
   },
@@ -101,7 +101,7 @@ export function Testimonials() {
         </div>
 
         <p className="text-center text-zinc-500 text-xs mt-6">
-          Real results from AgentQA early access builders — unedited.
+          Early access users — more stories coming as we grow.
         </p>
       </div>
     </section>

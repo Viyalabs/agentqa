@@ -6,6 +6,7 @@ import { ScanForm } from './scan-form'
 import { RecentScansStrip } from './recent-scans-strip'
 import { LastScanRecall } from './last-scan-recall'
 import type { HomeStats } from '@/lib/stats'
+import { formatStat } from '@/lib/stats'
 
 const LOGS: Array<{ text: string; color: string; bg?: string; bold?: boolean }> = [
   { text: 'Launching Chrome browser...', color: 'text-zinc-500' },
@@ -162,8 +163,7 @@ function FloatingCard({
   )
 }
 
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-export function Hero({ stats: _stats }: { stats?: HomeStats }) {
+export function Hero({ stats }: { stats?: HomeStats }) {
   return (
     <>
       <style>{`
@@ -218,11 +218,35 @@ export function Hero({ stats: _stats }: { stats?: HomeStats }) {
 
               {/* Social proof */}
               <p className="text-xs text-zinc-500 mt-4 text-center lg:text-left">
-                Used by AI builders, agencies, and startups.{' '}
+                Used by AI builders, founders, and dev teams.{' '}
                 <a href="/scans" className="text-blue-400/80 hover:text-blue-400 transition-colors">
                   See recent reports →
                 </a>
               </p>
+
+              {/* Live aggregate stats — shown only when real data exists */}
+              {stats && stats.appsScanned > 0 && (
+                <div className="mt-6 flex flex-wrap items-center gap-x-6 gap-y-3 text-center lg:text-left">
+                  <div>
+                    <div className="text-lg font-semibold text-white tabular-nums">{formatStat(stats.appsScanned, '')}</div>
+                    <div className="text-xs text-zinc-500">apps scanned</div>
+                  </div>
+                  <div className="h-7 w-px bg-zinc-800 hidden sm:block" />
+                  <div>
+                    <div className="text-lg font-semibold text-white tabular-nums">{formatStat(stats.bugsCaught, '')}</div>
+                    <div className="text-xs text-zinc-500">bugs caught</div>
+                  </div>
+                  {stats.patternsLearned > 0 && (
+                    <>
+                      <div className="h-7 w-px bg-zinc-800 hidden sm:block" />
+                      <div>
+                        <div className="text-lg font-semibold text-white tabular-nums">{formatStat(stats.patternsLearned, '')}</div>
+                        <div className="text-xs text-zinc-500">AI patterns learned</div>
+                      </div>
+                    </>
+                  )}
+                </div>
+              )}
             </div>
 
             {/* Right: terminal visual */}
@@ -250,18 +274,13 @@ const FOR_WHO = [
   },
   {
     emoji: '🚀',
-    title: 'Indie Hackers',
-    description: 'Ship without a QA bottleneck. Run a scan on every deploy — catch the bug that would have killed your launch tweet before users do.',
+    title: 'Solo Founders',
+    description: 'One bug on launch day can kill your momentum. Run a scan before every deploy — catch the issue that would have tanked your Product Hunt post.',
   },
   {
     emoji: '⚙️',
-    title: 'Startups',
-    description: "Move at startup speed without a $100k QA hire. Get a scored health report before every release — no test suite to maintain.",
-  },
-  {
-    emoji: '🏢',
-    title: 'Agencies',
-    description: 'Hand off client projects with a QA report instead of a Loom walkthrough. Clients will think you have a dedicated QA team.',
+    title: 'Small Teams',
+    description: 'Ship at startup speed without a QA bottleneck. Get a scored health report before every release — no test suite to write or maintain.',
   },
 ]
 
@@ -296,7 +315,7 @@ function ForWhoSection() {
         </div>
 
         {/* Other ICPs */}
-        <div className="grid sm:grid-cols-3 gap-6">
+        <div className="grid sm:grid-cols-2 gap-6">
           {FOR_WHO.slice(1).map((item) => (
             <div
               key={item.title}
