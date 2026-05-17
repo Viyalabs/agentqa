@@ -7,14 +7,35 @@ import { runScan } from '@/services/scanner'
 import { resolveAccess, rateLimitDescription } from '@/lib/access-control'
 import { extractDomain, findPrevScanId } from '@/services/regression-worker'
 import { DEDUP_WINDOW_MINUTES, MAX_CONCURRENT_SCANS } from '@/services/ai-config'
+import { createSession, getSessionMetadata } from '@/services/auth-session'
+import type { AuthConfig } from '@/types'
 
 export const runtime = 'nodejs'
 export const maxDuration = 300
+
+const InlineAuthSchema = z.object({
+  kind:         z.enum(['cookies', 'storage_state', 'headers', 'combined']),
+  cookies:      z.array(z.object({
+    name:     z.string(),
+    value:    z.string(),
+    domain:   z.string().optional(),
+    path:     z.string().optional(),
+    secure:   z.boolean().optional(),
+    httpOnly: z.boolean().optional(),
+    sameSite: z.enum(['Strict', 'Lax', 'None']).optional(),
+    expires:  z.number().optional(),
+  })).optional(),
+  storageState: z.string().optional(),
+  headers:      z.record(z.string()).optional(),
+  loginUrl:     z.string().optional(),
+}).optional()
 
 const RequestSchema = z.object({
   url:         z.string().min(1, 'URL is required').max(2048, 'URL is too long'),
   email:       z.string().email().optional().or(z.literal('')),
   forceRescan: z.boolean().optional(),
+  sessionId:   z.string().uuid().optional(),   // reference to stored scan_sessions row
+  auth:        InlineAuthSchema,               // one-shot inline auth (stored as ephemeral session)
 })
 
 export async function POST(req: NextRequest) {
@@ -33,7 +54,7 @@ export async function POST(req: NextRequest) {
     )
   }
 
-  const { url: rawUrl, email, forceRescan } = parsed.data
+  const { url: rawUrl, email, forceRescan, sessionId, auth } = parsed.data
   const url = normalizeUrl(rawUrl)
 
   const { valid, error: urlError } = validateUrl(url)
@@ -141,13 +162,45 @@ export async function POST(req: NextRequest) {
     }
   }
 
+  // ── Resolve session ID ───────────────────────────────────────────────────────
+  let resolvedSessionId: string | null = null
+
+  if (auth && access.bypassRateLimit) {
+    // Inline auth: create a short-lived ephemeral session (1 hour TTL)
+    const authPayload: AuthConfig = {
+      kind: auth.kind,
+      ...(auth.cookies        ? { cookies: auth.cookies }           : {}),
+      ...(auth.storageState   ? { storageState: auth.storageState } : {}),
+      ...(auth.headers        ? { headers: auth.headers }           : {}),
+      ...(auth.loginUrl       ? { loginUrl: auth.loginUrl }         : {}),
+    }
+    try {
+      const session = await createSession(
+        email || 'ephemeral',
+        authPayload,
+        'ephemeral',
+        new Date(Date.now() + 3600_000),
+      )
+      resolvedSessionId = session.id
+      console.log(`[POST /api/scan] ephemeral session=${session.id} kind=${auth.kind}`)
+    } catch (err) {
+      console.error('[POST /api/scan] failed to create ephemeral session:', err)
+    }
+  } else if (sessionId) {
+    const existing = await getSessionMetadata(sessionId)
+    if (!existing) {
+      return NextResponse.json({ error: 'Session not found' }, { status: 404 })
+    }
+    resolvedSessionId = sessionId
+  }
+
   // ── Create scan record ───────────────────────────────────────────────────────
   const domain = extractDomain(url)
   const prevScanId = await findPrevScanId(url)
 
   const { data: scan, error: dbError } = await db
     .from('scans')
-    .insert({ url, domain, status: 'pending', ip: clientIp ?? null, notify_email: email || null, prev_scan_id: prevScanId })
+    .insert({ url, domain, status: 'pending', ip: clientIp ?? null, notify_email: email || null, prev_scan_id: prevScanId, session_id: resolvedSessionId })
     .select('id')
     .single()
 

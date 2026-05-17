@@ -5,6 +5,7 @@ import { calculateScore } from './scorer'
 import { detectAndStoreFrameworks } from './framework-detector'
 import { matchScanIssues } from './pattern-matcher'
 import { enqueueAIJobs } from './ai-queue'
+import { loadSession } from './auth-session'
 import type { IssueClassified, IssueType, IssueSeverity, PageTestResult } from '@/types'
 
 const SCAN_TIMEOUT_MS = 120_000 // 2 minutes
@@ -44,6 +45,20 @@ export async function runScan(scanId: string, url: string): Promise<void> {
       .from('scans')
       .update({ status: 'running', started_at: new Date().toISOString() })
       .eq('id', scanId)
+
+    // Load auth session if one is linked to this scan
+    const { data: scanMeta } = await db
+      .from('scans')
+      .select('session_id')
+      .eq('id', scanId)
+      .single()
+
+    const sessionId = (scanMeta as { session_id?: string | null } | null)?.session_id ?? null
+    const authConfig = sessionId ? await loadSession(sessionId).catch(() => null) : null
+
+    if (sessionId && !authConfig) {
+      console.warn(`[scanner:${scanId}] session ${sessionId} could not be loaded (expired or missing)`)
+    }
 
     await crawlWebsite(
       url,
@@ -121,7 +136,7 @@ export async function runScan(scanId: string, url: string): Promise<void> {
           `[scanner:${scanId}] page: ${result.url} | ${result.loadTimeMs}ms | ${pageIssues.length} issues`
         )
       },
-      { signal: controller.signal, onLog: log }
+      { signal: controller.signal, onLog: log, ...(authConfig ? { auth: authConfig } : {}) }
     )
 
     // Upload all screenshots in parallel after crawl — doesn't block page testing
@@ -218,12 +233,12 @@ export async function runScan(scanId: string, url: string): Promise<void> {
     )
 
     // Re-fetch notify_email — user may have entered it after the scan started.
-    const { data: scanMeta } = await db
+    const { data: notifyMeta } = await db
       .from('scans')
       .select('notify_email')
       .eq('id', scanId)
       .single()
-    const finalEmail = (scanMeta as { notify_email?: string | null } | null)?.notify_email ?? null
+    const finalEmail = (notifyMeta as { notify_email?: string | null } | null)?.notify_email ?? null
 
     if (finalEmail) {
       const { data: prevRows } = await db
@@ -690,6 +705,44 @@ function classifyPageIssues(
             sizeKb: Math.round((r.responseSizeBytes ?? 0) / 1024),
           })),
         }
+      )
+    )
+  }
+
+  // ── Auth issues (Phase 5) ────────────────────────────────────────────────────
+
+  if (result.hasExpiredSession) {
+    issues.push(
+      issue(
+        'auth_expired',
+        'critical',
+        'Session Expired',
+        `A session-expiry signal was detected on ${result.url}. Re-authenticate and update the session in your schedule.`,
+        { url: result.url }
+      )
+    )
+  }
+
+  if (result.isAuthWall && !result.hasExpiredSession) {
+    issues.push(
+      issue(
+        'auth_wall',
+        'medium',
+        'Page Shows Login Form',
+        `${result.url} rendered a login form. This page may require authentication or the injected session was not accepted.`,
+        { url: result.url }
+      )
+    )
+  }
+
+  if (result.authRedirectUrl) {
+    issues.push(
+      issue(
+        'auth_redirect',
+        'medium',
+        'Redirected to Login',
+        `Navigating to ${result.url} redirected to ${result.authRedirectUrl}. This page is protected.`,
+        { url: result.url, redirectUrl: result.authRedirectUrl }
       )
     )
   }

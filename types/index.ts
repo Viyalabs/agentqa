@@ -23,6 +23,37 @@ export type IssueType =
   | 'console_warning'
   | 'mobile_layout'
   | 'large_asset'
+  // Phase 5 — authenticated scanning
+  | 'auth_redirect'    // page redirected to a login URL
+  | 'auth_wall'        // page rendered a login form (auth not injected or expired)
+  | 'auth_expired'     // session-expiry signal detected mid-crawl
+
+// ── Auth session types ────────────────────────────────────────────────────────
+
+export interface AuthCookie {
+  name:     string
+  value:    string
+  domain?:  string
+  path?:    string
+  secure?:  boolean
+  httpOnly?: boolean
+  sameSite?: 'Strict' | 'Lax' | 'None'
+  expires?:  number  // Unix timestamp
+}
+
+/** All supported auth injection strategies — include one or more fields. */
+export interface AuthConfig {
+  /** Primary strategy identifier (informational; all present fields are applied). */
+  kind: 'cookies' | 'storage_state' | 'headers' | 'combined'
+  /** Browser cookies to inject before the first navigation. */
+  cookies?: AuthCookie[]
+  /** JSON-encoded Playwright storageState — contains cookies + localStorage. */
+  storageState?: string
+  /** Extra HTTP headers sent on every request (e.g. Authorization: Bearer xyz). */
+  headers?: Record<string, string>
+  /** Original login URL — metadata only, used for session-expiry correlation. */
+  loginUrl?: string
+}
 
 export interface NetworkRequest {
   url: string
@@ -153,6 +184,13 @@ export interface PageTestResult {
   /** URL was unreachable (DNS failure, connection refused, timeout) */
   isUnreachable: boolean
   is404: boolean
+  // Phase 5 — auth detection
+  /** Page shows a login form or auth wall (password input present). */
+  isAuthWall: boolean
+  /** Final URL after navigation if it looks like a login/auth redirect. */
+  authRedirectUrl: string | null
+  /** Session-expiry language detected in DOM (only meaningful when auth was injected). */
+  hasExpiredSession: boolean
 }
 
 // API response shapes

@@ -1,6 +1,6 @@
 import { chromium } from 'playwright'
 import type { LaunchOptions } from 'playwright'
-import type { PageTestResult } from '@/types'
+import type { PageTestResult, AuthConfig } from '@/types'
 import { normalizeUrl, MAX_PAGES_PER_SCAN } from '@/lib/utils'
 import { testPage } from './page-tester'
 
@@ -32,11 +32,15 @@ async function getBrowserLaunchOptions(): Promise<LaunchOptions> {
 }
 const MAX_DEPTH = parseInt(process.env.MAX_CRAWL_DEPTH ?? '1', 10)
 
-// Paths that are slow, auth-gated, or cause infinite loops
-const SKIP_PATH_PATTERNS = [
-  /^\/(admin|account|settings|profile)(\/|$)/i,
+// Paths always skipped — session-destructive or payment-sensitive
+const SKIP_PATH_ALWAYS = [
   /^\/(logout|signout|sign-out|log-out)(\/|$)/i,
   /^\/(cart|checkout|payment|billing|subscribe)(\/|$)/i,
+]
+
+// Paths skipped only for unauthenticated scans (auth-gated by convention)
+const SKIP_PATH_UNAUTHED = [
+  /^\/(admin|account|settings|profile|dashboard)(\/|$)/i,
 ]
 
 // Tracker/ad/analytics hostnames — blocked at context level
@@ -48,14 +52,20 @@ const BLOCKED_DOMAINS = new Set([
   'bat.bing.com', 'stats.g.doubleclick.net',
 ])
 
-function shouldSkipUrl(url: string): boolean {
+function shouldSkipUrl(url: string, hasAuth: boolean): boolean {
   try {
     const parsed = new URL(url)
     // Skip URLs with very long query strings (infinite scroll / filter pages)
     if (parsed.search.length > 80) return true
     const path = parsed.pathname
-    for (const pattern of SKIP_PATH_PATTERNS) {
+    for (const pattern of SKIP_PATH_ALWAYS) {
       if (pattern.test(path)) return true
+    }
+    // With auth injected, crawl otherwise-gated paths
+    if (!hasAuth) {
+      for (const pattern of SKIP_PATH_UNAUTHED) {
+        if (pattern.test(path)) return true
+      }
     }
     return false
   } catch {
@@ -75,6 +85,8 @@ export interface CrawlOptions {
   signal?: AbortSignal
   /** Real-time progress messages written to the scan log. */
   onLog?: (message: string) => void | Promise<void>
+  /** Auth credentials to inject before the first navigation. */
+  auth?: AuthConfig
 }
 
 export async function crawlWebsite(
@@ -101,15 +113,49 @@ export async function crawlWebsite(
   let browser: Awaited<ReturnType<typeof chromium.launch>> | null = null
   const results: PageTestResult[] = []
 
+  const auth    = options?.auth
+  const hasAuth = !!(auth?.cookies?.length || auth?.storageState || auth?.headers)
+
   try {
     browser = await chromium.launch(await getBrowserLaunchOptions())
+
+    // storageState (full Playwright session dump) takes priority — contains cookies + localStorage
+    const storageState = auth?.storageState
+      ? (JSON.parse(auth.storageState) as NonNullable<Parameters<typeof browser.newContext>[0]>['storageState'])
+      : undefined
 
     const context = await browser.newContext({
       viewport: { width: 1280, height: 800 },
       userAgent: 'Mozilla/5.0 (compatible; AgentQA/1.0; +https://agentqa.dev/bot) Chrome/120',
       ignoreHTTPSErrors: true,
       javaScriptEnabled: true,
+      ...(storageState ? { storageState } : {}),
     })
+
+    // Inject individual cookies (supplementary to storageState if both present)
+    if (auth?.cookies?.length) {
+      await context.addCookies(
+        auth.cookies.map(c => ({
+          name:      c.name,
+          value:     c.value,
+          domain:    c.domain ?? new URL(normalizedStart).hostname,
+          path:      c.path ?? '/',
+          secure:    c.secure ?? false,
+          httpOnly:  c.httpOnly ?? false,
+          sameSite:  c.sameSite ?? 'Lax',
+          expires:   c.expires ?? -1,
+        }))
+      )
+    }
+
+    // Inject extra HTTP headers (e.g. Authorization: Bearer token)
+    if (auth?.headers && Object.keys(auth.headers).length > 0) {
+      await context.setExtraHTTPHeaders(auth.headers)
+    }
+
+    if (hasAuth) {
+      log(`Auth session injected (${auth!.kind})`)
+    }
 
     // Block fonts, media (video/audio), and known tracker domains.
     // Same-origin scripts and stylesheets are always allowed through.
@@ -146,7 +192,7 @@ export async function crawlWebsite(
       const normalized = normalizeUrl(currentUrl)
 
       if (visited.has(normalized)) continue
-      if (shouldSkipUrl(normalized)) {
+      if (shouldSkipUrl(normalized, hasAuth)) {
         console.log(`[crawler] Skipping: ${normalized}`)
         continue
       }
@@ -170,7 +216,7 @@ export async function crawlWebsite(
 
       if (depth < MAX_DEPTH && !result.isUnreachable && result.statusCode !== 404) {
         for (const link of result.links) {
-          if (!visited.has(link) && !queued.has(link) && !shouldSkipUrl(link)) {
+          if (!visited.has(link) && !queued.has(link) && !shouldSkipUrl(link, hasAuth)) {
             queued.add(link)
             queue.push({ url: link, depth: depth + 1 })
           }

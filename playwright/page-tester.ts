@@ -70,6 +70,10 @@ export async function testPage(
   let isUnreachable = false
   let is404 = false
   let isCrossOriginRedirect = false
+  // Phase 5 — auth detection
+  let isAuthWall = false
+  let authRedirectUrl: string | null = null
+  let hasExpiredSession = false
 
   // ── Event listeners ─────────────────────────────────────────────────────────
 
@@ -185,6 +189,16 @@ export async function testPage(
       } catch {
         // ignore URL parse error
       }
+
+      // Auth redirect detection — same-origin login redirects won't set isCrossOriginRedirect
+      if (finalUrl !== url) {
+        try {
+          const finalPath = new URL(finalUrl).pathname.toLowerCase()
+          if (/\/(login|signin|sign-in|auth|sso|oauth|session)(\/|$|\?)/.test(finalPath)) {
+            authRedirectUrl = finalUrl
+          }
+        } catch { /* ignore */ }
+      }
     }
 
     if (!isCrossOriginRedirect) {
@@ -277,6 +291,31 @@ export async function testPage(
         }
       }
 
+      // Auth wall + session expiry detection
+      if (statusCode === 200 && !is404) {
+        const authSignals = await page.evaluate(() => {
+          const title   = document.title?.toLowerCase() ?? ''
+          const h1Text  = document.querySelector('h1')?.textContent?.toLowerCase() ?? ''
+          const bodyLen = document.body?.textContent?.length ?? 0
+
+          // Password input = definitive auth wall signal
+          const hasPasswordInput = !!document.querySelector('input[type="password"]')
+
+          // Title/h1 auth language on short pages (not regular content)
+          const authPattern = /sign[\s-]?in|log[\s-]?in|login|authenticate|create.?account|get.?started.?free/i
+          const hasTitleSignal = bodyLen < 8000 && (authPattern.test(title) || authPattern.test(h1Text))
+
+          // Session expiry
+          const expiryPattern = /session.?expired|logged.?out|please.?sign.?in.?again|your.?session.?has.?ended|re-?authenticate/i
+          const hasExpiry = expiryPattern.test(title) || expiryPattern.test(h1Text)
+
+          return { isWall: hasPasswordInput || hasTitleSignal, hasExpiry }
+        }).catch(() => ({ isWall: false, hasExpiry: false }))
+
+        if (authSignals.isWall)  isAuthWall        = true
+        if (authSignals.hasExpiry) hasExpiredSession = true
+      }
+
       // Mobile responsiveness check — resize the already-loaded page, no second navigation
       if (statusCode === 200 && !isCrash) {
         try {
@@ -343,5 +382,8 @@ export async function testPage(
     isCrash,
     isUnreachable,
     is404,
+    isAuthWall,
+    authRedirectUrl,
+    hasExpiredSession,
   }
 }
