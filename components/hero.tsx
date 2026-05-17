@@ -3,9 +3,6 @@
 import { useState, useEffect } from 'react'
 import { Smartphone, WifiOff } from 'lucide-react'
 import { ScanForm } from './scan-form'
-import { LastScanRecall } from './last-scan-recall'
-import type { HomeStats } from '@/lib/stats'
-import { formatStat } from '@/lib/stats'
 
 const LOGS: Array<{ text: string; color: string; bg?: string; bold?: boolean }> = [
   { text: 'Launching Chrome browser...', color: 'text-zinc-500' },
@@ -166,7 +163,7 @@ function FloatingCard({
   )
 }
 
-export function Hero({ stats }: { stats?: HomeStats }) {
+export function Hero() {
   return (
     <>
       <style>{`
@@ -176,7 +173,7 @@ export function Hero({ stats }: { stats?: HomeStats }) {
         }
       `}</style>
 
-      <section className="relative overflow-hidden pt-12 pb-16">
+      <section className="relative overflow-hidden pt-24 pb-10">
         <div className="absolute inset-0 -z-10 pointer-events-none">
           <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[900px] h-[500px] bg-blue-600/10 blur-[140px] rounded-full" />
           <div className="absolute top-1/3 right-0 w-[500px] h-[400px] bg-blue-600/6 blur-[120px] rounded-full" />
@@ -210,49 +207,11 @@ export function Hero({ stats }: { stats?: HomeStats }) {
 
               <div className="max-w-xl mx-auto lg:mx-0">
                 <ScanForm />
-                <LastScanRecall />
               </div>
 
-              {/* Trust signals */}
-              <p className="text-sm text-zinc-500 mt-6 text-center lg:text-left">
+              <p className="text-sm text-zinc-500 mt-5 text-center lg:text-left">
                 Real browser · AI root cause · Under 2 min
               </p>
-
-              {/* Social proof */}
-              <p className="text-xs text-zinc-500 mt-4 text-center lg:text-left">
-                Used by AI builders, founders, and dev teams.{' '}
-                <a href="/scans" className="text-blue-400/80 hover:text-blue-400 transition-colors">
-                  See recent reports →
-                </a>
-              </p>
-
-              {/* Live aggregate stats — real data when available, beta trust fallback otherwise */}
-              {stats && stats.appsScanned > 0 ? (
-                <div className="mt-6 flex flex-wrap items-center gap-x-6 gap-y-3 text-center lg:text-left">
-                  <div>
-                    <div className="text-lg font-semibold text-white tabular-nums">{formatStat(stats.appsScanned, '')}</div>
-                    <div className="text-xs text-zinc-500">apps scanned</div>
-                  </div>
-                  <div className="h-7 w-px bg-zinc-800 hidden sm:block" />
-                  <div>
-                    <div className="text-lg font-semibold text-white tabular-nums">{formatStat(stats.bugsCaught, '')}</div>
-                    <div className="text-xs text-zinc-500">bugs caught</div>
-                  </div>
-                  {stats.patternsLearned > 0 && (
-                    <>
-                      <div className="h-7 w-px bg-zinc-800 hidden sm:block" />
-                      <div>
-                        <div className="text-lg font-semibold text-white tabular-nums">{formatStat(stats.patternsLearned, '')}</div>
-                        <div className="text-xs text-zinc-500">failure patterns identified</div>
-                      </div>
-                    </>
-                  )}
-                </div>
-              ) : (
-                <p className="text-xs text-zinc-500 mt-6 text-center lg:text-left">
-                  Early beta — used by developers shipping AI-generated apps.
-                </p>
-              )}
             </div>
 
             {/* Right: terminal visual */}
