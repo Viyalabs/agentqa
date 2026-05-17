@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getAdminClient } from '@/lib/supabase'
+import { resolveAccess } from '@/lib/access-control'
 
 export const runtime = 'nodejs'
 
@@ -91,11 +92,41 @@ export async function GET(
 
   // Sort issues: critical → medium → low (alphabetical DB sort gives wrong order)
   const severityOrder: Record<string, number> = { critical: 0, medium: 1, low: 2 }
-  const sortedIssues = ((issues ?? []) as Array<{ severity?: string }>).sort((a, b) => {
+  const sortedIssues = ((issues ?? []) as Array<{ severity?: string; from_pattern?: boolean; model_version?: string; analyzed_at?: string; confidence?: number }>) .sort((a, b) => {
     const aOrd = severityOrder[a.severity ?? ''] ?? 3
     const bOrd = severityOrder[b.severity ?? ''] ?? 3
     return aOrd !== bOrd ? aOrd - bOrd : 0
   })
+
+  // ── Debug info for admin/internal accounts ───────────────────────────────────
+  // Resolved from the scan's notify_email — no auth required.
+  // Only visible to accounts listed in INTERNAL_EMAILS.
+  const scanEmail = (scan as { notify_email?: string | null }).notify_email ?? null
+  const scanAccess = resolveAccess(scanEmail)
+  const isInternal = scanAccess.showDebugInfo
+
+  let debugInfo: Record<string, unknown> | null = null
+  if (isInternal && sortedIssues.length > 0) {
+    const analyzed    = sortedIssues.filter(i => i.analyzed_at).length
+    const fromCache   = sortedIssues.filter(i => i.from_pattern).length
+    const modelCounts = sortedIssues.reduce<Record<string, number>>((acc, i) => {
+      const m = i.model_version ?? 'none'
+      acc[m] = (acc[m] ?? 0) + 1
+      return acc
+    }, {})
+    const avgConfidence = sortedIssues.reduce((s, i) => s + (i.confidence ?? 0), 0) / sortedIssues.length
+
+    debugInfo = {
+      role:             scanAccess.role,
+      issuesTotal:      sortedIssues.length,
+      analyzed,
+      fromPatternCache: fromCache,
+      cacheHitRate:     analyzed > 0 ? `${Math.round((fromCache / analyzed) * 100)}%` : 'n/a',
+      avgConfidence:    Number(avgConfidence.toFixed(2)),
+      modelBreakdown:   modelCounts,
+      frameworks:       frameworkNames,
+    }
+  }
 
   return NextResponse.json({
     scan,
@@ -104,5 +135,6 @@ export async function GET(
     logs:       logsData ?? [],
     frameworks: frameworkNames,
     history:    historyRows ?? [],
+    ...(isInternal ? { isInternal: true, debugInfo } : {}),
   })
 }

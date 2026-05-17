@@ -58,7 +58,8 @@ export const AI_MAX_REPRESENTATIVES_PER_SCAN = 20
 // ── Scan queue ────────────────────────────────────────────────────────────────
 
 export const MAX_CONCURRENT_SCANS      = 20
-export const MAX_SCANS_PER_IP_PER_HOUR = 3
+/** Fallback used only when access-control cannot determine quota (e.g. no IP). */
+export const MAX_SCANS_PER_IP_PER_HOUR = 5   // raised from 3; per-role overrides in lib/access-control.ts
 export const DEDUP_WINDOW_MINUTES      = 15
 
 // ── Feedback rate limiting ────────────────────────────────────────────────────

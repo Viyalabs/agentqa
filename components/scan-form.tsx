@@ -29,7 +29,7 @@ export function ScanForm() {
   const [email, setEmail] = useState('')
   const [showEmail, setShowEmail] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [isRateLimited, setIsRateLimited] = useState(false)
+  const [rateLimitMinutes, setRateLimitMinutes] = useState<number | null>(null)
   const [cachedScan, setCachedScan] = useState<CachedScan | null>(null)
   const [isPending, startTransition] = useTransition()
 
@@ -48,11 +48,14 @@ export function ScanForm() {
         const data = await res.json()
 
         if (!res.ok) {
-          const msg: string = data.error ?? 'Failed to start scan. Please try again.'
-          if (res.status === 429 && msg.toLowerCase().includes('too many')) {
-            setIsRateLimited(true)
+          if (res.status === 429) {
+            // Use server-returned retry window; fall back to 60 min if absent
+            const retryMins = data.retryAfterSeconds
+              ? Math.ceil(data.retryAfterSeconds / 60)
+              : 60
+            setRateLimitMinutes(retryMins)
           } else {
-            setError(msg)
+            setError(data.error ?? 'Failed to start scan. Please try again.')
           }
           return
         }
@@ -82,7 +85,7 @@ export function ScanForm() {
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     setError(null)
-    setIsRateLimited(false)
+    setRateLimitMinutes(null)
     setCachedScan(null)
 
     const normalized = url.trim()
@@ -111,7 +114,7 @@ export function ScanForm() {
             onChange={(e) => {
               setUrl(e.target.value)
               if (error) setError(null)
-              if (isRateLimited) setIsRateLimited(false)
+              if (rateLimitMinutes) setRateLimitMinutes(null)
               if (cachedScan) setCachedScan(null)
             }}
             disabled={isPending}
@@ -198,14 +201,18 @@ export function ScanForm() {
         </div>
       )}
 
-      {isRateLimited && (
+      {rateLimitMinutes !== null && (
         <div className="mt-3 rounded-xl border border-amber-500/25 bg-amber-500/8 p-4">
           <div className="flex items-start gap-3">
             <Zap className="h-4 w-4 text-amber-400 shrink-0 mt-0.5" />
             <div className="flex-1 min-w-0">
               <p className="text-sm font-semibold text-amber-300 mb-0.5">Scan limit reached</p>
               <p className="text-xs text-amber-500/80 leading-relaxed">
-                Free tier allows 3 scans per hour. Your limit resets automatically — or get unlimited scans with Pro.
+                {rateLimitMinutes <= 5
+                  ? `Try again in ${rateLimitMinutes} minute${rateLimitMinutes !== 1 ? 's' : ''}.`
+                  : rateLimitMinutes < 60
+                  ? `Your free scans reset in about ${rateLimitMinutes} minutes.`
+                  : 'Your free scans reset hourly. Try again shortly or enter your email to get notified.'}
               </p>
               <div className="flex items-center gap-3 mt-3">
                 <button
@@ -217,7 +224,9 @@ export function ScanForm() {
                 >
                   View Pro plans →
                 </button>
-                <span className="text-amber-600 text-xs">or wait ~1 hour and try again</span>
+                <span className="text-amber-600 text-xs">
+                  resets in ~{rateLimitMinutes < 60 ? `${rateLimitMinutes} min` : '1 hr'}
+                </span>
               </div>
             </div>
           </div>

@@ -4,15 +4,16 @@ import { z } from 'zod'
 import { getAdminClient } from '@/lib/supabase'
 import { validateUrl, normalizeUrl } from '@/lib/utils'
 import { runScan } from '@/services/scanner'
-import { DEDUP_WINDOW_MINUTES, MAX_CONCURRENT_SCANS, MAX_SCANS_PER_IP_PER_HOUR } from '@/services/ai-config'
+import { resolveAccess, rateLimitDescription } from '@/lib/access-control'
+import { DEDUP_WINDOW_MINUTES, MAX_CONCURRENT_SCANS } from '@/services/ai-config'
 
 export const runtime = 'nodejs'
 export const maxDuration = 300
 
 const RequestSchema = z.object({
-  url:          z.string().min(1, 'URL is required').max(2048, 'URL is too long'),
-  email:        z.string().email().optional().or(z.literal('')),
-  forceRescan:  z.boolean().optional(),
+  url:         z.string().min(1, 'URL is required').max(2048, 'URL is too long'),
+  email:       z.string().email().optional().or(z.literal('')),
+  forceRescan: z.boolean().optional(),
 })
 
 export async function POST(req: NextRequest) {
@@ -39,8 +40,14 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: urlError }, { status: 422 })
   }
 
+  // ── Access control ───────────────────────────────────────────────────────────
+  // Resolve role from email + optional x-founder-token header.
+  // Admins bypass IP rate limiting and get unlimited AI analysis.
+  const founderToken = req.headers.get('x-founder-token')
+  const access = resolveAccess(email, founderToken)
+
   const forwarded = req.headers.get('x-forwarded-for')
-  const clientIp = forwarded ? forwarded.split(',')[0].trim() : null
+  const clientIp  = forwarded ? forwarded.split(',')[0].trim() : null
 
   const db = getAdminClient()
 
@@ -59,8 +66,7 @@ export async function POST(req: NextRequest) {
   if (recent) {
     const isInProgress = recent.status === 'pending' || recent.status === 'running'
 
-    // Always deduplicate in-progress scans — no value in running two concurrent
-    // scans for the same URL. forceRescan cannot override this.
+    // Always deduplicate in-progress scans — no value in two concurrent scans for same URL.
     if (isInProgress) {
       console.log(`[POST /api/scan] dedup:in-progress url=${url} scanId=${recent.id}`)
       if (email) {
@@ -69,9 +75,9 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ scanId: recent.id, cached: true, running: true }, { status: 200 })
     }
 
-    // Completed scan: skip dedup when the user explicitly asks for a fresh scan
+    // Completed scan: skip dedup when the user explicitly asks for a fresh scan.
     if (!forceRescan) {
-      console.log(`[POST /api/scan] dedup:completed url=${url} scanId=${recent.id} completedAt=${recent.completed_at}`)
+      console.log(`[POST /api/scan] dedup:completed url=${url} scanId=${recent.id}`)
       if (email) {
         await db.from('scans').update({ notify_email: email }).eq('id', recent.id).is('notify_email', null)
       }
@@ -84,22 +90,38 @@ export async function POST(req: NextRequest) {
     console.log(`[POST /api/scan] force-rescan url=${url} bypassing completed scan ${recent.id}`)
   }
 
-  // ── Per-IP rate limit ────────────────────────────────────────────────────────
-  if (clientIp) {
-    const hourAgo = new Date(Date.now() - 60 * 60 * 1000).toISOString()
+  // ── Per-IP rate limit (skipped for admin/founder accounts) ──────────────────
+  if (!access.bypassRateLimit && clientIp) {
+    const windowMs    = access.windowMinutes * 60 * 1000
+    const windowStart = new Date(Date.now() - windowMs).toISOString()
     const { count: ipCount, error: ipCountError } = await db
       .from('scans')
       .select('*', { count: 'exact', head: true })
       .eq('ip', clientIp)
-      .gte('created_at', hourAgo)
+      .gte('created_at', windowStart)
 
-    // Fail-safe: if the count query errors, treat as exceeded to prevent bypass
-    if (ipCountError || (ipCount ?? MAX_SCANS_PER_IP_PER_HOUR) >= MAX_SCANS_PER_IP_PER_HOUR) {
+    // Fail-safe: count query error → treat as exceeded
+    if (ipCountError || (ipCount ?? access.scansPerWindow) >= access.scansPerWindow) {
+      const retryAfterSeconds = access.windowMinutes * 60
+      console.log(`[POST /api/scan] rate-limit ip=${clientIp} count=${ipCount ?? '?'} limit=${access.scansPerWindow}/${access.windowMinutes}min`)
       return NextResponse.json(
-        { error: "You've run too many scans recently. Please wait a moment and try again." },
-        { status: 429 }
+        {
+          error: `You've reached the free scan limit (${rateLimitDescription(access)}). Please try again in ${access.windowMinutes} minutes.`,
+          retryAfterSeconds,
+          role: access.role,
+        },
+        {
+          status: 429,
+          headers: {
+            'Retry-After': String(retryAfterSeconds),
+            'X-RateLimit-Limit': String(access.scansPerWindow),
+            'X-RateLimit-Window': `${access.windowMinutes}m`,
+          },
+        }
       )
     }
+  } else if (access.bypassRateLimit) {
+    console.log(`[POST /api/scan] rate-limit bypassed role:${access.role} email:${access.email ?? 'none'}`)
   }
 
   // ── Queue limit: prevent overloading the scanner ─────────────────────────────
@@ -108,12 +130,14 @@ export async function POST(req: NextRequest) {
     .select('*', { count: 'exact', head: true })
     .in('status', ['pending', 'running'])
 
-  // Fail-safe: if the count query errors, treat as busy to prevent queue flooding
-  if (activeCountError || (activeCount ?? MAX_CONCURRENT_SCANS) >= MAX_CONCURRENT_SCANS) {
-    return NextResponse.json(
-      { error: 'Scanner is busy right now. Please try again in a few minutes.' },
-      { status: 429 }
-    )
+  // Fail-safe: count error → treat as busy. Admins bypass the queue ceiling too.
+  if (!access.bypassRateLimit) {
+    if (activeCountError || (activeCount ?? MAX_CONCURRENT_SCANS) >= MAX_CONCURRENT_SCANS) {
+      return NextResponse.json(
+        { error: 'Scanner is busy right now. Please try again in a few minutes.' },
+        { status: 429 }
+      )
+    }
   }
 
   // ── Create scan record ───────────────────────────────────────────────────────
@@ -132,7 +156,10 @@ export async function POST(req: NextRequest) {
   }
 
   const scanId: string = scan.id
-  console.log(`[POST /api/scan] new-scan url=${url} scanId=${scanId}${forceRescan ? ' (forced)' : ''}`)
+  console.log(
+    `[POST /api/scan] new-scan url=${url} scanId=${scanId} role:${access.role}` +
+    (forceRescan ? ' (forced)' : '')
+  )
 
   waitUntil(
     runScan(scanId, url).catch((err: unknown) => {
@@ -140,5 +167,10 @@ export async function POST(req: NextRequest) {
     })
   )
 
-  return NextResponse.json({ scanId }, { status: 202 })
+  // Include role in response so the client can store it alongside the scan ID.
+  // Admins use this to surface the debug panel in the results view.
+  return NextResponse.json(
+    { scanId, role: access.role },
+    { status: 202 }
+  )
 }
