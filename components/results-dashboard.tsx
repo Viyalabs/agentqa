@@ -40,6 +40,7 @@ import { IssueCard } from './issue-card'
 import { ScreenshotViewer } from './screenshot-viewer'
 import { ReportEmailCapture } from './report-email-capture'
 import { NotifyWhenDone } from './notify-when-done'
+import { ReliabilityTimeline } from './reliability-timeline'
 import type { Issue, IssueSeverity, IssueType, NetworkRequest, ScanLog, ScanStatusResponse, ScanHistoryEntry } from '@/types'
 import {
   getScoreColor,
@@ -908,6 +909,20 @@ export function ResultsDashboard({ scanId }: ResultsDashboardProps) {
             </div>
           )}
         </div>
+      )}
+
+      {/* Reliability timeline */}
+      {isComplete && scan.domain && (
+        <ReliabilityTimeline
+          domain={scan.domain}
+          currentScanId={scanId}
+          currentScore={scan.score}
+          regressionNew={scan.regression_new ?? 0}
+          regressionResolved={scan.regression_resolved ?? 0}
+          regressionRecurring={scan.regression_recurring ?? 0}
+          regressionWorsened={scan.regression_worsened ?? 0}
+          regressionImproved={scan.regression_improved ?? 0}
+        />
       )}
 
       {/* Score + stats */}
