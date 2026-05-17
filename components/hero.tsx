@@ -224,8 +224,8 @@ export function Hero({ stats }: { stats?: HomeStats }) {
                 </a>
               </p>
 
-              {/* Live aggregate stats — shown only when real data exists */}
-              {stats && stats.appsScanned > 0 && (
+              {/* Live aggregate stats — real data when available, beta trust fallback otherwise */}
+              {stats && stats.appsScanned > 0 ? (
                 <div className="mt-6 flex flex-wrap items-center gap-x-6 gap-y-3 text-center lg:text-left">
                   <div>
                     <div className="text-lg font-semibold text-white tabular-nums">{formatStat(stats.appsScanned, '')}</div>
@@ -241,11 +241,15 @@ export function Hero({ stats }: { stats?: HomeStats }) {
                       <div className="h-7 w-px bg-zinc-800 hidden sm:block" />
                       <div>
                         <div className="text-lg font-semibold text-white tabular-nums">{formatStat(stats.patternsLearned, '')}</div>
-                        <div className="text-xs text-zinc-500">AI patterns learned</div>
+                        <div className="text-xs text-zinc-500">failure patterns identified</div>
                       </div>
                     </>
                   )}
                 </div>
+              ) : (
+                <p className="text-xs text-zinc-500 mt-6 text-center lg:text-left">
+                  Early beta — used by developers shipping AI-generated apps.
+                </p>
               )}
             </div>
 

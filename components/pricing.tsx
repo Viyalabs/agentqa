@@ -63,12 +63,12 @@ export function Pricing() {
     <section className="py-20 border-t border-zinc-800/40" id="pricing">
       <div className="max-w-6xl mx-auto px-6">
         <div className="text-center mb-10">
-          <p className="text-xs uppercase tracking-[0.2em] text-zinc-500 mb-3">Simple pricing</p>
+          <p className="text-xs uppercase tracking-[0.2em] text-zinc-500 mb-3">Free during beta · Pro from $49/mo</p>
           <h2 className="text-4xl md:text-5xl font-semibold tracking-tight text-white mb-4">
             Start free. Upgrade when you need more.
           </h2>
           <p className="text-base text-zinc-400 leading-relaxed max-w-lg mx-auto">
-            Free for individual scans. Pro adds CI/CD integration, team seats, API access, and Slack notifications — everything you need to run autonomous QA on every deploy.
+            Free for individual scans. Pro adds CI/CD integration, team seats, API access, and Slack notifications — autonomous QA on every deploy.
           </p>
         </div>
 

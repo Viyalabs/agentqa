@@ -42,7 +42,7 @@ export function AiMoat() {
             Every issue is analyzed by Claude AI. You get the exact technical reason it broke and a targeted fix — ready to paste into your editor.
           </p>
           <p className="text-base text-zinc-300 max-w-xl mx-auto leading-relaxed">
-            Every diagnosis cross-references a shared pattern library built from real failures across all AgentQA scans. Repeated signatures are identified with higher confidence and matched against known fixes — instead of being analyzed cold.
+            Every diagnosis cross-references a growing failure intelligence database built from real AgentQA scans. Auth races, null reference chains, mobile overflow signatures — each pattern is matched with higher confidence than a cold model call. That&apos;s the moat: real-world software failure data, not just a model.
           </p>
         </div>
 
@@ -101,7 +101,7 @@ export function AiMoat() {
           <div className="flex items-center gap-2.5 px-6 py-3 bg-blue-950/20 border-t border-blue-500/10">
             <span className="h-1.5 w-1.5 rounded-full bg-blue-400 animate-pulse shrink-0" />
             <p className="text-xs text-blue-400 font-mono">
-              Pattern matched from 847 similar auth errors · confidence: high
+              Matched against known authentication failure patterns — root cause identified
             </p>
           </div>
         </div>
