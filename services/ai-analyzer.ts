@@ -1,4 +1,5 @@
 import { getAdminClient } from '@/lib/supabase'
+import { runRegressionWorker } from '@/services/regression-worker'
 import { updatePatternTemplates } from './pattern-matcher'
 import {
   callClaude,
@@ -1038,6 +1039,11 @@ export async function generateScanOverview(
       regression_new:       regressionNew,
       regression_resolved:  regressionResolved,
     }).eq('id', scanId)
+
+    // Populate scan_regressions + domain_issue_state tables
+    await runRegressionWorker(scanId).catch((err: unknown) => {
+      console.error(`[generateScanOverview] regression worker failed for ${scanId}:`, err)
+    })
 
     await db.rpc('increment_scan_tokens', {
       p_scan_id: scanId,

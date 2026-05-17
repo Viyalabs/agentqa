@@ -1,5 +1,11 @@
 export type ScanStatus = 'pending' | 'running' | 'completed' | 'failed'
 
+export type ScheduleCadence = 'daily' | 'weekly' | 'manual' | 'webhook'
+
+export type ChangeKind = 'new' | 'resolved' | 'recurring' | 'worsened' | 'improved'
+
+export type IssueStateStatus = 'open' | 'resolved' | 'recurring'
+
 export type IssueSeverity = 'critical' | 'medium' | 'low'
 
 export type IssueType =
@@ -41,8 +47,19 @@ export interface Scan {
   ai_overview: string | null
   ai_tokens_in: number
   ai_tokens_out: number
+  // Regression counts (Phase 2 — basic)
   regression_new: number
   regression_resolved: number
+  // Regression counts (Phase 4 — enhanced)
+  regression_recurring: number
+  regression_worsened: number
+  regression_improved: number
+  score_delta: number | null
+  // Scheduling
+  domain: string | null
+  schedule_id: string | null
+  prev_scan_id: string | null
+  run_sequence: number | null
   started_at: string | null
   completed_at: string | null
   created_at: string
@@ -215,4 +232,111 @@ export interface PatternMatchResult {
   rootCauseTemplate: string | null
   fixTemplate: string | null
   needsRefresh: boolean
+}
+
+// ── Phase 4 — Recurring Scans & Reliability Intelligence ──────────────────────
+
+export interface ScanSchedule {
+  id: string
+  domain: string
+  url: string
+  cadence: ScheduleCadence
+  notify_email: string
+  is_internal: boolean
+  enabled: boolean
+  webhook_secret: string | null
+  last_run_at: string | null
+  last_scan_id: string | null
+  next_run_at: string
+  consecutive_failures: number
+  paused_reason: string | null
+  created_by_ip: string | null
+  created_at: string
+  updated_at: string
+}
+
+export interface ScanRun {
+  id: string
+  schedule_id: string
+  scan_id: string
+  triggered_by: 'cron' | 'webhook' | 'manual' | 'retry'
+  created_at: string
+}
+
+export interface ScanRegression {
+  id: string
+  scan_id: string
+  prev_scan_id: string | null
+  schedule_id: string | null
+  domain: string
+  fingerprint: string
+  issue_type: string
+  severity: IssueSeverity
+  change_kind: ChangeKind
+  prev_severity: IssueSeverity | null
+  curr_severity: IssueSeverity | null
+  prev_count: number
+  curr_count: number
+  first_seen_at: string | null
+  days_unresolved: number
+  created_at: string
+}
+
+export interface DomainIssueState {
+  id: string
+  domain: string
+  fingerprint: string
+  pattern_id: string | null
+  first_seen_at: string
+  first_seen_scan_id: string | null
+  last_seen_at: string
+  last_seen_scan_id: string | null
+  last_resolved_at: string | null
+  last_resolved_scan_id: string | null
+  total_occurrences: number
+  consecutive_scans_seen: number
+  consecutive_scans_clean: number
+  current_status: IssueStateStatus
+  current_severity: IssueSeverity | null
+  resolution_count: number
+  reopen_count: number
+  updated_at: string
+}
+
+export interface DomainTimelineEntry {
+  scan_id: string
+  completed_at: string
+  score: number | null
+  score_delta: number | null
+  run_sequence: number | null
+  regression_new: number
+  regression_resolved: number
+  regression_recurring: number
+  regression_worsened: number
+  regression_improved: number
+}
+
+export interface AlertRule {
+  id: string
+  schedule_id: string | null
+  domain: string | null
+  rule_kind: 'score_drop' | 'new_critical' | 'unresolved_days' | 'regression_count' | 'any_new_regression' | 'fix_verified'
+  threshold: Record<string, unknown>
+  channel: 'email' | 'webhook' | 'slack'
+  channel_target: string
+  enabled: boolean
+  cooldown_minutes: number
+  last_fired_at: string | null
+  created_at: string
+}
+
+export interface PlatformMetrics {
+  active_domains_30d: number
+  scans_7d: number
+  active_schedules: number
+  top_domains: Array<{ domain: string; scan_count: number; avg_score: number | null }>
+  repeat_users: Array<{ email: string; scan_count: number; first_scan: string; last_scan: string }>
+  cache_hit_rate_7d: number | null
+  issue_recurrence_rate: number | null
+  schedule_health: Array<{ cadence: string; total: number; paused: number }>
 }

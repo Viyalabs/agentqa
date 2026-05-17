@@ -5,6 +5,7 @@ import { getAdminClient } from '@/lib/supabase'
 import { validateUrl, normalizeUrl } from '@/lib/utils'
 import { runScan } from '@/services/scanner'
 import { resolveAccess, rateLimitDescription } from '@/lib/access-control'
+import { extractDomain, findPrevScanId } from '@/services/regression-worker'
 import { DEDUP_WINDOW_MINUTES, MAX_CONCURRENT_SCANS } from '@/services/ai-config'
 
 export const runtime = 'nodejs'
@@ -141,9 +142,12 @@ export async function POST(req: NextRequest) {
   }
 
   // ── Create scan record ───────────────────────────────────────────────────────
+  const domain = extractDomain(url)
+  const prevScanId = await findPrevScanId(url)
+
   const { data: scan, error: dbError } = await db
     .from('scans')
-    .insert({ url, status: 'pending', ip: clientIp ?? null, notify_email: email || null })
+    .insert({ url, domain, status: 'pending', ip: clientIp ?? null, notify_email: email || null, prev_scan_id: prevScanId })
     .select('id')
     .single()
 

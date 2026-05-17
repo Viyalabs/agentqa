@@ -28,6 +28,9 @@ import {
   TrendingUp,
   TrendingDown,
   ChevronRight,
+  Calendar,
+  Bell,
+  BellOff,
 } from 'lucide-react'
 import { Card, CardContent } from './ui/card'
 import { Badge } from './ui/badge'
@@ -83,6 +86,56 @@ const CATEGORY_LABELS: Record<IssueCategory, string> = {
   accessibility:'Accessibility',
   seo:          'SEO',
   ux:           'UX',
+}
+
+// ── Business impact ───────────────────────────────────────────────────────────
+
+type BusinessImpact = 'SEO' | 'Accessibility' | 'Conversion' | 'Performance' | 'Availability' | 'Mobile UX' | 'Functionality'
+
+const ISSUE_BUSINESS_IMPACT: Partial<Record<string, BusinessImpact[]>> = {
+  page_crash:         ['Availability'],
+  page_not_found:     ['Availability', 'SEO'],
+  navigation_failure: ['Availability'],
+  js_error:           ['Functionality'],
+  console_error:      ['Functionality'],
+  console_warning:    ['Functionality'],
+  network_failure:    ['Performance', 'Availability'],
+  missing_image:      ['Accessibility'],
+  slow_load:          ['Performance', 'Conversion'],
+  large_asset:        ['Performance'],
+  missing_alt:        ['Accessibility', 'SEO'],
+  mobile_layout:      ['Mobile UX'],
+  missing_meta:       ['SEO'],
+  broken_form:        ['Conversion'],
+}
+
+const IMPACT_COLORS: Record<BusinessImpact, string> = {
+  'SEO':           'text-purple-400 bg-purple-500/10 border-purple-500/20',
+  'Accessibility': 'text-cyan-400 bg-cyan-500/10 border-cyan-500/20',
+  'Conversion':    'text-orange-400 bg-orange-500/10 border-orange-500/20',
+  'Performance':   'text-yellow-400 bg-yellow-500/10 border-yellow-500/20',
+  'Availability':  'text-red-400 bg-red-500/10 border-red-500/20',
+  'Mobile UX':     'text-pink-400 bg-pink-500/10 border-pink-500/20',
+  'Functionality': 'text-blue-400 bg-blue-500/10 border-blue-500/20',
+}
+
+// ── Fix effort estimates ───────────────────────────────────────────────────────
+
+const FIX_EFFORT: Partial<Record<string, string>> = {
+  missing_alt:        'Easy',
+  missing_meta:       'Easy',
+  large_asset:        'Easy',
+  console_warning:    'Easy',
+  page_not_found:     'Easy',
+  missing_image:      'Medium',
+  mobile_layout:      'Medium',
+  slow_load:          'Medium',
+  broken_form:        'Medium',
+  console_error:      'Medium',
+  js_error:           'Hard',
+  network_failure:    'Hard',
+  page_crash:         'Hard',
+  navigation_failure: 'Hard',
 }
 
 // ── Issue grouping ────────────────────────────────────────────────────────────
@@ -276,6 +329,11 @@ export function ResultsDashboard({ scanId }: ResultsDashboardProps) {
   const [categoryFilter, setCategoryFilter] = useState<IssueCategory>('all')
   const [networkTypeFilter, setNetworkTypeFilter] = useState<string>('all')
   const [groupByUrl, setGroupByUrl] = useState(false)
+  const [monitorEmail, setMonitorEmail] = useState('')
+  const [monitorCadence, setMonitorCadence] = useState<'daily' | 'weekly'>('weekly')
+  const [monitorState, setMonitorState] = useState<'idle' | 'submitting' | 'done' | 'error'>('idle')
+  const [monitorError, setMonitorError] = useState<string | null>(null)
+  const [monitorDismissed, setMonitorDismissed] = useState(false)
 
   const fetchResults = useCallback(async () => {
     try {
@@ -419,6 +477,29 @@ export function ResultsDashboard({ scanId }: ResultsDashboardProps) {
       setTimeout(() => setCopiedBadge(false), 2000)
     }).catch(() => {})
   }, [scanId])
+
+  const handleMonitorSubmit = useCallback(async () => {
+    if (!data || !monitorEmail) return
+    setMonitorState('submitting')
+    setMonitorError(null)
+    try {
+      const res = await fetch('/api/schedules', {
+        method:  'POST',
+        headers: { 'content-type': 'application/json' },
+        body:    JSON.stringify({ url: data.scan.url, cadence: monitorCadence, email: monitorEmail }),
+      })
+      const json = await res.json()
+      if (!res.ok) {
+        setMonitorState('error')
+        setMonitorError(json.error ?? 'Failed to create schedule')
+        return
+      }
+      setMonitorState('done')
+    } catch {
+      setMonitorState('error')
+      setMonitorError('Network error — could not create schedule')
+    }
+  }, [data, monitorEmail, monitorCadence])
 
   const handleRescan = useCallback(() => {
     if (!data) return
@@ -767,6 +848,68 @@ export function ResultsDashboard({ scanId }: ResultsDashboardProps) {
         </div>
       )}
 
+      {/* Monitor this site panel */}
+      {isComplete && !monitorDismissed && (
+        <div className="rounded-xl border border-blue-500/20 bg-blue-500/5 p-5">
+          {monitorState === 'done' ? (
+            <div className="flex items-start justify-between gap-4">
+              <div className="flex items-start gap-3">
+                <Bell className="h-4 w-4 text-blue-400 shrink-0 mt-0.5" />
+                <div>
+                  <p className="text-sm font-semibold text-blue-300">Monitoring active</p>
+                  <p className="text-xs text-zinc-500 mt-0.5">
+                    We&apos;ll scan this site {monitorCadence === 'daily' ? 'every day' : 'every week'} and email you if issues change.
+                  </p>
+                </div>
+              </div>
+              <button onClick={() => setMonitorDismissed(true)} className="text-zinc-600 hover:text-zinc-400">
+                <BellOff className="h-4 w-4" />
+              </button>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              <div className="flex items-center gap-2">
+                <Calendar className="h-4 w-4 text-blue-400" />
+                <p className="text-sm font-semibold text-blue-300">Monitor this site</p>
+                <button onClick={() => setMonitorDismissed(true)} className="ml-auto text-zinc-700 hover:text-zinc-500">
+                  <BellOff className="h-3.5 w-3.5" />
+                </button>
+              </div>
+              <p className="text-xs text-zinc-500">
+                Get notified whenever new issues appear or existing ones are resolved.
+              </p>
+              <div className="flex gap-2 flex-wrap">
+                <input
+                  type="email"
+                  placeholder="your@email.com"
+                  value={monitorEmail}
+                  onChange={(e) => setMonitorEmail(e.target.value)}
+                  className="flex-1 min-w-40 bg-zinc-900 border border-zinc-700 rounded-lg px-3 py-2 text-sm text-zinc-200 placeholder:text-zinc-600 focus:outline-none focus:border-blue-500"
+                />
+                <select
+                  value={monitorCadence}
+                  onChange={(e) => setMonitorCadence(e.target.value as 'daily' | 'weekly')}
+                  className="bg-zinc-900 border border-zinc-700 rounded-lg px-3 py-2 text-sm text-zinc-300 focus:outline-none focus:border-blue-500"
+                >
+                  <option value="weekly">Weekly</option>
+                  <option value="daily">Daily</option>
+                </select>
+                <button
+                  onClick={handleMonitorSubmit}
+                  disabled={!monitorEmail || monitorState === 'submitting'}
+                  className="px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-500 text-white text-sm font-medium transition-colors disabled:opacity-50"
+                >
+                  {monitorState === 'submitting' ? 'Setting up…' : 'Monitor'}
+                </button>
+              </div>
+              {monitorState === 'error' && monitorError && (
+                <p className="text-xs text-red-400">{monitorError}</p>
+              )}
+            </div>
+          )}
+        </div>
+      )}
+
       {/* Score + stats */}
       {(isComplete || scan.total_pages > 0) && (
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
@@ -925,6 +1068,8 @@ export function ResultsDashboard({ scanId }: ResultsDashboardProps) {
             <div className="space-y-2">
               {top3.map((g) => {
                 const gain = pointsFor(g)
+                const effort = FIX_EFFORT[g.type]
+                const effortColor = effort === 'Easy' ? 'text-emerald-400' : effort === 'Medium' ? 'text-yellow-400' : 'text-red-400'
                 return (
                   <div key={`${g.type}::${g.severity}`} className="flex items-center gap-3">
                     <span className={`shrink-0 text-xs font-mono font-bold px-2 py-0.5 rounded ${
@@ -933,11 +1078,14 @@ export function ResultsDashboard({ scanId }: ResultsDashboardProps) {
                       +{gain} pts
                     </span>
                     <div className="flex-1 min-w-0">
-                      <span className="text-sm text-zinc-300 truncate">{g.title}</span>
+                      <span className="text-sm text-zinc-300">{g.title}</span>
                       {g.pageCount > 1 && (
                         <span className="text-xs text-zinc-600 ml-2">{g.pageCount} pages</span>
                       )}
                     </div>
+                    {effort && (
+                      <span className={`shrink-0 text-[10px] font-medium ${effortColor}`}>{effort}</span>
+                    )}
                   </div>
                 )
               })}
@@ -1476,6 +1624,60 @@ export function ResultsDashboard({ scanId }: ResultsDashboardProps) {
                 )
               })()}
 
+              {/* Failure category breakdown */}
+              {(failedNetworkRequests.length > 0 || clientErrorRequests.length > 0 || serverErrorRequests.length > 0) && (() => {
+                const problemReqs = allNetworkRequests.filter(
+                  (r) => r.failed || (r.statusCode !== null && r.statusCode >= 400)
+                )
+                const categories: Array<{ label: string; count: number; desc: string }> = [
+                  {
+                    label: 'API / Data',
+                    count: problemReqs.filter((r) => r.resourceType === 'xhr' || r.resourceType === 'fetch').length,
+                    desc: 'XHR & Fetch failures',
+                  },
+                  {
+                    label: 'Scripts',
+                    count: problemReqs.filter((r) => r.resourceType === 'script').length,
+                    desc: 'JS load errors',
+                  },
+                  {
+                    label: 'Fonts',
+                    count: problemReqs.filter((r) => r.resourceType === 'font').length,
+                    desc: 'Font load errors',
+                  },
+                  {
+                    label: 'Images',
+                    count: problemReqs.filter((r) => r.resourceType === 'image').length,
+                    desc: 'Image load errors',
+                  },
+                  {
+                    label: 'CSS',
+                    count: problemReqs.filter((r) => r.resourceType === 'stylesheet').length,
+                    desc: 'Stylesheet errors',
+                  },
+                ].filter((c) => c.count > 0)
+
+                if (categories.length === 0) return null
+
+                return (
+                  <div className="rounded-lg border border-red-500/15 bg-red-500/5 p-3">
+                    <div className="text-[10px] text-zinc-600 uppercase tracking-wider mb-2 font-mono">Failure breakdown by type</div>
+                    <div className="flex flex-wrap gap-2">
+                      {categories.map(({ label, count, desc }) => (
+                        <div
+                          key={label}
+                          className="flex items-center gap-1.5 text-xs bg-zinc-900 border border-zinc-800 rounded-md px-2.5 py-1.5"
+                          title={desc}
+                        >
+                          <span className="text-red-400 font-mono font-bold tabular-nums">{count}</span>
+                          <span className="text-zinc-400">{label}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )
+              })()}
+
               {/* Per-page breakdown — collapsible, auto-open pages with failures */}
               <div className="space-y-1.5">
                 {pages
@@ -1826,9 +2028,16 @@ function IssueSection({ label, groups, iconColor, Icon }: IssueSectionProps) {
                       <span className="text-[10px] font-mono text-zinc-700 truncate max-w-[200px] hidden sm:block">{pagePath}</span>
                     ) : null}
                   </div>
-                  {!isOpen && g.description && (
-                    <p className="text-xs text-zinc-600 mt-0.5 truncate pr-4">{g.description}</p>
-                  )}
+                  <div className="flex items-center gap-1 flex-wrap mt-1">
+                    {(ISSUE_BUSINESS_IMPACT[g.type] ?? []).map((impact) => (
+                      <span key={impact} className={`text-[10px] font-medium px-1.5 py-0 rounded border ${IMPACT_COLORS[impact]}`}>
+                        {impact}
+                      </span>
+                    ))}
+                    {!isOpen && g.description && (
+                      <span className="text-[10px] text-zinc-600 truncate pr-4 max-w-xs">{g.description}</span>
+                    )}
+                  </div>
                 </div>
 
                 {/* AI indicator + chevron */}
