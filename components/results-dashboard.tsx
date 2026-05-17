@@ -41,6 +41,7 @@ import { ScreenshotViewer } from './screenshot-viewer'
 import { ReportEmailCapture } from './report-email-capture'
 import { NotifyWhenDone } from './notify-when-done'
 import { ReliabilityTimeline } from './reliability-timeline'
+import { RegressionPanels } from './regression-panels'
 import type { Issue, IssueSeverity, IssueType, NetworkRequest, ScanLog, ScanStatusResponse, ScanHistoryEntry } from '@/types'
 import {
   getScoreColor,
@@ -909,6 +910,14 @@ export function ResultsDashboard({ scanId }: ResultsDashboardProps) {
             </div>
           )}
         </div>
+      )}
+
+      {/* Regression intelligence panels */}
+      {isComplete && scan.prev_scan_id && (
+        <RegressionPanels
+          scanId={scanId}
+          prevScanId={scan.prev_scan_id}
+        />
       )}
 
       {/* Reliability timeline */}
