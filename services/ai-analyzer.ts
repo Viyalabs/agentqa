@@ -252,7 +252,7 @@ ${issueLines}
 Return a JSON array with exactly ${issues.length} objects in the same order:
 [{"i":1,"summary":"...","root_cause":"...","fix":["step 1","step 2"],"confidence":"high"},...]
 
-Valid JSON only. No markdown fences. Preserve issue order.`
+IMPORTANT: Return ONLY the raw JSON array. Start with [ and end with ]. No markdown, no backticks, no explanation.`
 }
 
 /**

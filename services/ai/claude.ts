@@ -397,13 +397,19 @@ export function extractJSON(text: string): unknown {
   // Strategy 1: the entire response is valid JSON
   try { return JSON.parse(text) } catch { /* fall through */ }
 
-  // Strategy 2: ```json … ``` or ``` … ``` fenced block
-  const fenced = text.match(/```(?:json)?\s*([\s\S]*?)```/)
+  // Strategy 2: ```json … ``` or ``` … ``` fenced block (greedy — finds the LAST ```)
+  const fenced = text.match(/```(?:json)?\s*([\s\S]*)```/)
   if (fenced?.[1]) {
     try { return JSON.parse(fenced[1].trim()) } catch { /* fall through */ }
   }
 
-  // Strategy 3: first { … } or [ … ] substring (handles leading/trailing prose)
+  // Strategy 3: fence opened but no closing ``` (truncated response / Haiku omits it)
+  const openFence = text.match(/^```(?:json)?\s*([\s\S]+)/m)
+  if (openFence?.[1]) {
+    try { return JSON.parse(openFence[1].trim()) } catch { /* fall through */ }
+  }
+
+  // Strategy 4: first { … } or [ … ] substring (handles leading/trailing prose)
   const bare = text.match(/(\{[\s\S]*\}|\[[\s\S]*\])/)
   if (bare?.[1]) {
     try { return JSON.parse(bare[1]) } catch { /* fall through */ }

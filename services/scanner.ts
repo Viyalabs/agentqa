@@ -17,8 +17,6 @@ interface UploadJob {
 
 export async function runScan(scanId: string, url: string): Promise<void> {
   const db = getAdminClient()
-  // Declared outside try so the catch block and the post-crawl notify path can both access it.
-  let notifyEmail: string | null = null
 
   const log = async (message: string): Promise<void> => {
     console.log(`[scanner:${scanId}] ${message}`)
@@ -42,13 +40,10 @@ export async function runScan(scanId: string, url: string): Promise<void> {
   try {
     // Inside try so any DB failure here falls into the catch → marks scan 'failed'
     // rather than leaving it stuck in 'pending' forever.
-    const { data: initialMeta } = await db
+    await db
       .from('scans')
       .update({ status: 'running', started_at: new Date().toISOString() })
       .eq('id', scanId)
-      .select('notify_email')
-      .single()
-    notifyEmail = (initialMeta as { notify_email?: string | null } | null)?.notify_email ?? null
 
     await crawlWebsite(
       url,
@@ -222,7 +217,15 @@ export async function runScan(scanId: string, url: string): Promise<void> {
       })
     )
 
-    if (notifyEmail) {
+    // Re-fetch notify_email — user may have entered it after the scan started.
+    const { data: scanMeta } = await db
+      .from('scans')
+      .select('notify_email')
+      .eq('id', scanId)
+      .single()
+    const finalEmail = (scanMeta as { notify_email?: string | null } | null)?.notify_email ?? null
+
+    if (finalEmail) {
       const { data: prevRows } = await db
         .from('scans')
         .select('score')
@@ -233,7 +236,7 @@ export async function runScan(scanId: string, url: string): Promise<void> {
         .limit(1)
       const previousScore = (prevRows?.[0] as { score: number | null } | undefined)?.score ?? null
 
-      await sendScanCompletionEmail(notifyEmail, scanId, url, score, allIssues, previousScore).catch((err: unknown) => {
+      await sendScanCompletionEmail(finalEmail, scanId, url, score, allIssues, previousScore).catch((err: unknown) => {
         console.error(`[scanner] Failed to send notify email for ${scanId}:`, err)
       })
     }
