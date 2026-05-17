@@ -1,17 +1,23 @@
 import { getAdminClient } from '@/lib/supabase'
 import { updatePatternTemplates } from './pattern-matcher'
-import { callClaude, isClaudeConfigured, CLAUDE_HAIKU, logClaudeError, extractJSON } from '@/services/ai/claude'
-import { AI_BATCH_SIZE, AI_BATCH_CONCURRENCY } from '@/services/ai-config'
+import {
+  callClaude,
+  isClaudeConfigured,
+  CLAUDE_HAIKU,
+  CLAUDE_SONNET,
+  logClaudeError,
+  extractJSON,
+  type ClaudeModel,
+} from '@/services/ai/claude'
+import { AI_BATCH_SIZE, AI_BATCH_CONCURRENCY, AI_MAX_REPRESENTATIVES_PER_SCAN } from '@/services/ai-config'
 import type { IssueType, IssueSeverity, PatternMatchResult } from '@/types'
 
+// Compressed system prompt — every token here multiplies across every call.
+// Constraints expressed once here, not repeated in every user-turn prompt.
 const ANALYSIS_SYSTEM_PROMPT =
-  'You are a senior QA engineer and debugging specialist analyzing automated browser scan findings. ' +
-  'You receive raw evidence — console errors, network failures, stack traces, timing data. ' +
-  'Translate that evidence into precise, developer-ready diagnoses. ' +
-  'Use hedged language when evidence is partial: "likely caused by", "commonly occurs when", "this typically indicates". ' +
-  'Reserve definitive statements for cases where data clearly identifies the cause (specific error text, status code, stack frame). ' +
-  'Cite the actual error messages, status codes, and API names from the evidence. ' +
-  'Never invent function names, file paths, error codes, or status codes absent from the provided data.'
+  'Senior QA engineer diagnosing web app failures from automated scans. ' +
+  'Use hedged language when evidence is partial ("likely caused by", "commonly occurs when"). ' +
+  'Cite actual error messages, status codes, API names from data. Never invent technical details.'
 
 interface IssueForAnalysis {
   id: string
@@ -24,36 +30,25 @@ interface IssueForAnalysis {
   occurrenceCount?: number  // from pattern DB — how many times seen across all scans
 }
 
+// Confidence is now computed deterministically from evidence quality — not asked of Claude.
 interface AIAnalysis {
   summary: string
   rootCause: string
   fixSuggestion: string
-  confidence: string   // "low" | "medium" | "high" — from Claude's self-assessment
 }
 
 // ── Logging helpers ────────────────────────────────────────────────────────────
 
-/** Returns a function that, when called, gives elapsed milliseconds since perf() was called. */
 function perf(): () => number {
   const t0 = Date.now()
   return () => Date.now() - t0
 }
 
-/** Write a structured trace line for the AI pipeline. Prefix is grep-friendly. */
 function pipelineLog(scanId: string, phase: string, msg: string): void {
   console.log(`[ai-pipeline:${scanId}] [${phase}] ${msg}`)
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
-
-function confidenceToFloat(c: string): number | null {
-  switch (c) {
-    case 'high':   return 0.9
-    case 'medium': return 0.6
-    case 'low':    return 0.3
-    default:       return null
-  }
-}
 
 function buildAnalysisData(issue: IssueForAnalysis, category: IssueCategory): Record<string, unknown> {
   const tags = [...new Set([issue.type, category.toLowerCase().replace('_', '-'), issue.severity])]
@@ -73,8 +68,6 @@ function buildAnalysisData(issue: IssueForAnalysis, category: IssueCategory): Re
  * Extract only the semantically useful fields from issue.details per type.
  * Avoids sending large JSON blobs (full network request arrays, long stacks)
  * when Claude only needs a focused excerpt.
- *
- * @param limit Maximum output length in characters (batch vs solo differ).
  */
 function extractDetails(issue: IssueForAnalysis, limit = 200): string {
   const d = issue.details
@@ -147,8 +140,6 @@ function frameworkLabel(frameworks: string[]): string {
   return frameworks.slice(0, 2).join(' + ')
 }
 
-// Per-framework diagnostic hints — injected into prompts when the framework is detected.
-// These tell Claude what failure patterns are common for each stack so it avoids generic advice.
 const FRAMEWORK_HINTS: Record<string, string> = {
   'next.js':   'Next.js: hydration errors (SSR/CSR state diff, window/document outside browser guard, Date.now() in render); next/image needs width+height or fill + domain in next.config.js remotePatterns; App Router needs "use client" for interactive components; async Server Components need Suspense.',
   'react':     'React: missing key props on lists, null/undefined access before first render, setState after unmount (add cleanup), unhandled Promise rejections in useEffect, prop-type mismatches in console.',
@@ -173,7 +164,7 @@ function frameworkGuidance(frameworks: string[]): string {
     .map(f => FRAMEWORK_HINTS[f.toLowerCase()])
     .filter(Boolean)
   return active.length > 0
-    ? `\nFramework context (apply to relevant issues):\n${active.map(h => `  ${h}`).join('\n')}`
+    ? `\nFramework context:\n${active.map(h => `  ${h}`).join('\n')}`
     : ''
 }
 
@@ -228,8 +219,8 @@ function issueTypeGuidance(category: IssueCategory): string {
 
 function issueCategoryHint(category: IssueCategory): string {
   switch (category) {
-    case 'JS_ERROR':      return 'stack origin, missing null-checks, polyfill gaps, app vs third-party code'
-    case 'NETWORK':       return '401/403=auth/permissions, 0=server unreachable, CORS, DNS; check error field'
+    case 'JS_ERROR':      return '401/403=auth/permissions, 0=server unreachable, CORS, DNS; check error field'
+    case 'NETWORK':       return 'stack origin, missing null-checks, polyfill gaps, app vs third-party code'
     case 'MOBILE':        return 'viewport meta tag, horizontal overflow at 375px, touch target size (44px min)'
     case 'PERFORMANCE':   return 'render-blocking scripts/CSS, uncompressed images, missing lazy loading, Cache-Control'
     case 'UI':            return 'broken asset URL path/casing, CDN origin, CSS overflow, 404 on nested route'
@@ -239,9 +230,140 @@ function issueCategoryHint(category: IssueCategory): string {
   }
 }
 
+// ── Cost optimisation helpers ─────────────────────────────────────────────────
+
 /**
- * Build a batch prompt covering up to BATCH_SIZE issues with anti-hallucination constraints.
- * Shared context is written once — major token saving vs N individual prompts.
+ * Compute evidence-based confidence deterministically.
+ * Avoids asking Claude to self-assess (saves output tokens, removes hallucinated confidence).
+ * Score reflects how clearly the collected evidence points to a specific root cause.
+ */
+function computeConfidence(issue: IssueForAnalysis): number {
+  const d = issue.details ?? {}
+  switch (issue.type) {
+    case 'js_error': {
+      const stacks = (d.stacks as string[] | undefined) ?? []
+      const errors = (d.errors as string[] | undefined) ?? []
+      if (stacks.length > 0 && stacks[0].length > 20) return 0.85  // has usable stack trace
+      if (errors.length > 0) return 0.65                            // error message only
+      return 0.35
+    }
+    case 'network_failure': {
+      const failures = (d.failures as Array<{ url?: string; status?: number }> | undefined) ?? []
+      if (failures[0]?.status && failures[0].status > 0) return 0.90  // has HTTP status
+      if (failures.length > 0) return 0.65
+      return 0.40
+    }
+    case 'console_error':    return 0.60
+    case 'missing_alt':
+    case 'missing_meta':     return 0.90  // deterministic detection — high confidence
+    case 'missing_image':    return 0.85
+    case 'slow_load':
+    case 'large_asset':      return 0.90
+    case 'page_not_found':   return 0.95
+    case 'mobile_layout':    return 0.70
+    case 'broken_form':      return 0.65
+    default:                 return 0.50
+  }
+}
+
+/**
+ * Tiered model selection.
+ * Set AI_PREMIUM_MODEL=true in env to enable Sonnet for critical JS/network issues.
+ * Default: always Haiku (cheapest, sufficient for most patterns).
+ */
+const AI_PREMIUM_MODEL_ENABLED = process.env.AI_PREMIUM_MODEL === 'true'
+
+function selectModel(issue: IssueForAnalysis): ClaudeModel {
+  if (AI_PREMIUM_MODEL_ENABLED && issue.severity === 'critical') {
+    if (issue.type === 'js_error' || issue.type === 'network_failure') return CLAUDE_SONNET
+  }
+  return CLAUDE_HAIKU
+}
+
+function selectBatchModel(reps: IssueForAnalysis[]): ClaudeModel {
+  if (AI_PREMIUM_MODEL_ENABLED) {
+    if (reps.some(r => r.severity === 'critical' && (r.type === 'js_error' || r.type === 'network_failure'))) {
+      return CLAUDE_SONNET
+    }
+  }
+  return CLAUDE_HAIKU
+}
+
+/**
+ * Issue types where multi-page instances produce identical root causes and fixes.
+ * Collapsing them into one grouped representative = one Claude call instead of N.
+ * Examples: missing_alt on 8 pages → 1 call covering all 8.
+ */
+const GROUPABLE_TYPES = new Set<IssueType>([
+  'missing_alt',
+  'missing_meta',
+  'missing_image',
+  'large_asset',
+  'console_warning',
+])
+
+function groupedTitle(type: IssueType, count: number): string {
+  const labels: Partial<Record<IssueType, string>> = {
+    missing_alt:     'Missing alt text',
+    missing_meta:    'Missing meta tags',
+    missing_image:   'Missing images',
+    large_asset:     'Oversized assets',
+    console_warning: 'Console warnings',
+  }
+  const label = labels[type] ?? type.replace(/_/g, ' ')
+  return `${label} (${count} page${count !== 1 ? 's' : ''} affected)`
+}
+
+/**
+ * A representative issue after grouping. `coversKeys` is the set of all
+ * fingerprint-or-type cache keys this representative covers — used by
+ * persistResults to apply one analysis to many issues.
+ */
+interface FinalRep {
+  issue: IssueForAnalysis
+  cacheKey: string
+  coversKeys: Set<string>
+}
+
+/**
+ * Collapse same-type groupable representatives into one FinalRep each.
+ * Non-groupable types pass through 1-to-1.
+ *
+ * Input is the already-deduplicated-by-fingerprint list of representatives.
+ * Output is a shorter list where e.g. 8 missing_alt reps become 1 grouped rep.
+ */
+function buildFinalReps(representatives: IssueForAnalysis[]): FinalRep[] {
+  const typeGroupMap = new Map<string, FinalRep>()
+  const finalReps: FinalRep[] = []
+
+  for (const rep of representatives) {
+    const cacheKey = rep.fingerprint ?? rep.type
+    if (GROUPABLE_TYPES.has(rep.type)) {
+      const existing = typeGroupMap.get(rep.type)
+      if (existing) {
+        existing.coversKeys.add(cacheKey)
+        existing.issue = {
+          ...existing.issue,
+          title: groupedTitle(rep.type, existing.coversKeys.size),
+        }
+        continue
+      }
+      const newRep: FinalRep = { issue: rep, cacheKey, coversKeys: new Set([cacheKey]) }
+      typeGroupMap.set(rep.type, newRep)
+      finalReps.push(newRep)
+    } else {
+      finalReps.push({ issue: rep, cacheKey, coversKeys: new Set([cacheKey]) })
+    }
+  }
+  return finalReps
+}
+
+// ── Prompt builders ───────────────────────────────────────────────────────────
+
+/**
+ * Batch prompt covering up to AI_BATCH_SIZE issues.
+ * Shared context written once — major token saving vs N individual prompts.
+ * Confidence is NOT in the output schema — computed deterministically instead.
  */
 function buildBatchPrompt(
   appUrl: string,
@@ -249,19 +371,16 @@ function buildBatchPrompt(
   frameworks: string[],
 ): string {
   const stack = frameworkLabel(frameworks)
-
-  // Category hints — only for categories present in this batch
   const seenCategories = [...new Set(issues.map(i => issueCategory(i.type)))]
   const hintLines = seenCategories
     .map(cat => `  ${cat}: ${issueCategoryHint(cat)}`)
     .join('\n')
-
   const fwContext = frameworkGuidance(frameworks)
 
   const issueLines = issues.map((issue, i) => {
     const cat = issueCategory(issue.type)
     const patternLine = issue.occurrenceCount && issue.occurrenceCount > 2
-      ? `\n    pattern: seen ${issue.occurrenceCount}× across scans — recurring`
+      ? `\n    pattern: seen ${issue.occurrenceCount}× across scans`
       : ''
     return [
       `[${i + 1}] ${cat} | ${issue.type} | ${issue.severity}`,
@@ -274,44 +393,36 @@ function buildBatchPrompt(
   return `App: ${appUrl}
 Stack: ${stack}${fwContext}
 
-Category hints (apply to matching issues):
+Category hints:
 ${hintLines}
-
-CONSTRAINTS:
-- Use hedged language when evidence is partial: "likely caused by", "commonly occurs when", "this typically indicates".
-- State causes definitively ONLY when data clearly identifies them (specific error text, status code, or stack frame present).
-- root_cause: cite specific evidence from the data — error message, status code, API name. 1-2 sentences. No generic statements.
-- Never invent error codes, file paths, function names, or status codes absent from the data.
-- confidence "high" = data clearly identifies cause; "medium" = partial evidence; "low" = data is sparse or ambiguous.
-- summary: 1 tight sentence — what the user experiences (include the specific feature/page if the URL is in data).
-- fix: 2-4 concrete ordered steps using ${stack} idioms and APIs where applicable.
 
 Issues:
 ${issueLines}
 
-Return a JSON array with exactly ${issues.length} objects in the same order:
-[{"i":1,"summary":"...","root_cause":"...","fix":["step 1","step 2"],"confidence":"high"},...]
+Cite evidence from data. Hedge uncertainty. Never invent. Fix steps use ${stack} idioms.
 
-IMPORTANT: Return ONLY the raw JSON array. Start with [ and end with ]. No markdown, no backticks, no explanation.`
+[{"i":1,"summary":"1 sentence — what the user experiences","root_cause":"1-2 sentences citing evidence","fix":["step 1","step 2"]},...]
+
+IMPORTANT: Return ONLY the raw JSON array. Start with [ and end with ]. No markdown, no backticks.`
 }
 
 /**
  * Analyze a batch of representative issues in a single Claude call.
- * Returns a map of cacheKey → AIAnalysis for each issue that was successfully analyzed.
- * Throws on API failure so the caller can fall back to individual calls.
+ * Returns a map of cacheKey → AIAnalysis for each successfully analyzed issue.
  */
 async function analyzeBatch(
   appUrl: string,
   issues: IssueForAnalysis[],
   frameworks: string[],
   batchLabel: string,
+  model: ClaudeModel = CLAUDE_HAIKU,
 ): Promise<{ results: Map<string, AIAnalysis>; tokensIn: number; tokensOut: number }> {
   const claudeResult = await callClaude({
     prompt:    buildBatchPrompt(appUrl, issues, frameworks),
     system:    ANALYSIS_SYSTEM_PROMPT,
-    model:     CLAUDE_HAIKU,
-    maxTokens: Math.max(200 * issues.length, 600),
-    timeoutMs: 60_000,
+    model,
+    maxTokens: Math.max(160 * issues.length, 400),
+    timeoutMs: 45_000,
     label:     batchLabel,
   })
   if (!claudeResult.ok) {
@@ -326,7 +437,6 @@ async function analyzeBatch(
     summary?: string
     root_cause?: string
     fix?: string | string[]
-    confidence?: string
   }>
 
   if (!Array.isArray(parsed)) throw new TypeError('Batch response was not a JSON array')
@@ -342,51 +452,35 @@ async function analyzeBatch(
       ? fixRaw.map((s, idx) => `${idx + 1}. ${s}`).join('\n')
       : (fixRaw?.trim() ?? '')
     if (summary) {
-      result.set(rep.fingerprint ?? rep.type, {
-        summary,
-        rootCause,
-        fixSuggestion,
-        confidence: item.confidence ?? 'low',
-      })
+      result.set(rep.fingerprint ?? rep.type, { summary, rootCause, fixSuggestion })
     }
   }
   return { results: result, tokensIn, tokensOut }
 }
 
-/** Single-issue fallback prompt with JSON output and type-specific analysis guidance */
+/** Single-issue fallback prompt. Confidence removed — computed deterministically. */
 function buildSoloPrompt(appUrl: string, issue: IssueForAnalysis, frameworks: string[]): string {
   const detailText = extractDetails(issue, 400)
-  const category = issueCategory(issue.type)
-  const guidance = issueTypeGuidance(category)
-  const stack = frameworkLabel(frameworks)
-  const fwContext = frameworkGuidance(frameworks)
+  const category   = issueCategory(issue.type)
+  const guidance   = issueTypeGuidance(category)
+  const stack      = frameworkLabel(frameworks)
+  const fwContext  = frameworkGuidance(frameworks)
   const patternCtx = issue.occurrenceCount && issue.occurrenceCount > 2
-    ? `\nPattern: seen ${issue.occurrenceCount}× across scans — this is a recurring issue type.`
+    ? `\nPattern: seen ${issue.occurrenceCount}× across scans — recurring.`
     : ''
 
-  return `You are a senior QA engineer diagnosing a web application failure.
-
-App: ${appUrl}
+  return `App: ${appUrl}
 Stack: ${stack}${fwContext}
-Category: ${category}
-Issue type: ${issue.type}
-Severity: ${issue.severity}
+Category: ${category} | Type: ${issue.type} | Severity: ${issue.severity}
 Title: ${issue.title}
 Description: ${issue.description ?? 'none'}
-Technical data: ${detailText}${patternCtx}
+Data: ${detailText}${patternCtx}
 
 FOCUS: ${guidance}
 
-CONSTRAINTS:
-- Use hedged language when evidence is partial: "likely caused by", "commonly occurs when", "this typically indicates".
-- State causes definitively ONLY when data clearly shows it (specific error text, status code, or stack frame present).
-- root_cause: name a specific technical reason using evidence from the data. No generic statements. Never invent.
-- fix: use ${stack} idioms and APIs where applicable. Steps must be immediately actionable.
-- summary: what the user experiences — include the specific page or feature if URL appears in the data.
-- confidence: "low" if data is sparse; "medium" if partial evidence; "high" if cause is clearly in the data.
+Cite evidence. Hedge uncertainty. Never invent. Fix steps use ${stack} idioms.
 
-Respond with only a JSON object. No markdown, no extra text.
-{"summary":"...","root_cause":"...","fix":["step 1","step 2"],"confidence":"high"}`
+{"summary":"...","root_cause":"...","fix":["step 1","step 2"]}`
 }
 
 function parseSoloResponse(text: string): AIAnalysis {
@@ -394,7 +488,6 @@ function parseSoloResponse(text: string): AIAnalysis {
     summary?: string
     root_cause?: string
     fix?: string | string[]
-    confidence?: string
   }
   const fixRaw = parsed.fix
   const fixSuggestion = Array.isArray(fixRaw)
@@ -404,7 +497,6 @@ function parseSoloResponse(text: string): AIAnalysis {
     summary:      parsed.summary?.trim()    ?? '',
     rootCause:    parsed.root_cause?.trim() ?? '',
     fixSuggestion,
-    confidence:   parsed.confidence         ?? 'low',
   }
 }
 
@@ -460,27 +552,41 @@ Write 2-4 sentences of plain prose:
 CONSTRAINTS: No bullet points. No filler ("it seems", "looks like"). Name specific issue numbers and types. Speak directly to the developer acting on this today.`
 }
 
-/** Append a message to scan_logs so it surfaces in the user-facing report. */
+// ── DB helpers ────────────────────────────────────────────────────────────────
+
 async function logToScan(db: ReturnType<typeof getAdminClient>, scanId: string, message: string): Promise<void> {
   try {
     await db.from('scan_logs').insert({ scan_id: scanId, message })
   } catch { /* non-fatal */ }
 }
 
+// ── Core analysis pipeline ────────────────────────────────────────────────────
+
 /**
  * Analyze all issues for a completed scan.
  *
- * Deduplication strategy (moat layer):
- * - Group issues by fingerprint (precise) rather than just type (coarse).
- * - If the pattern DB already has a root_cause_template for a fingerprint,
- *   reuse it — skip the Claude call entirely. This compounds over time:
- *   common bugs get free analysis after the first scan that saw them.
- * - After a fresh Claude analysis, write the result back to the pattern
- *   as a reusable template for all future scans.
+ * Optimisation layers (outermost → innermost):
  *
- * @param patternMatches  Output from matchScanIssues() — issue ID → pattern data.
- *                        Pass empty Map if pattern matching was skipped.
- * @param frameworks      Detected framework names for this scan (context for Claude).
+ * 1. Pattern cache  — if the pattern DB already has root_cause_template + fix_template
+ *    for this fingerprint, write it directly to issues_enriched (zero Claude cost).
+ *
+ * 2. Fingerprint dedup — issues with the same fingerprint share one Claude call.
+ *
+ * 3. Type-based grouping — GROUPABLE_TYPES (missing_alt, missing_meta, etc.) collapsed
+ *    into one representative per type: e.g. 8 pages of missing_alt → 1 call.
+ *
+ * 4. Budget cap — cap to AI_MAX_REPRESENTATIVES_PER_SCAN unique analyses, sorted by
+ *    severity (critical first) so the highest-impact issues are always within budget.
+ *
+ * 5. Batching — AI_BATCH_SIZE issues per Claude call, AI_BATCH_CONCURRENCY in parallel.
+ *
+ * 6. Model tiering — Haiku for most issues; Sonnet opt-in (AI_PREMIUM_MODEL=true)
+ *    for critical JS/network crashes only.
+ *
+ * 7. Deterministic confidence — computed from evidence quality, never asked of Claude.
+ *
+ * After fresh analysis, templates are written back to the pattern DB so future scans
+ * get cache hits for the same fingerprint.
  */
 export async function analyzeIssues(
   scanId: string,
@@ -500,8 +606,6 @@ export async function analyzeIssues(
     return
   }
 
-  // Two parallel queries: issues needing analysis + total eligible count.
-  // The count lets us log how many were skipped (ai_summary already set).
   const [
     { data: issues, error },
     { count: eligibleTotal },
@@ -518,7 +622,6 @@ export async function analyzeIssues(
   ])
 
   if (error) {
-    // Log the real error — this is the most likely cause of "AI sometimes skipped"
     console.error(`[ai-analyzer] ${scanId}: issues_with_analysis query failed — ${error.message}`)
     await logToScan(db, scanId, `AI analysis skipped — DB query error: ${error.message}`)
     return
@@ -529,7 +632,7 @@ export async function analyzeIssues(
   if (!issues || issues.length === 0) {
     pipelineLog(
       scanId, 'analyzeIssues',
-      `SKIP — all ${eligibleTotal ?? 0} eligible issue(s) already analyzed (ai_summary set, no work needed)`
+      `SKIP — all ${eligibleTotal ?? 0} eligible issue(s) already analyzed`
     )
     return
   }
@@ -542,7 +645,7 @@ export async function analyzeIssues(
   )
   await logToScan(db, scanId, `AI analysis starting for ${issues.length} issue(s)…`)
 
-  // --- Step 1: apply cached templates from pattern DB (free, instant) ----------
+  // ── Layer 1: Pattern cache (free, instant) ───────────────────────────────────
   const needsAnalysis: IssueForAnalysis[] = []
   let cacheHits = 0
 
@@ -551,13 +654,13 @@ export async function analyzeIssues(
       const match = patternMatches.get(issue.id)
       if (match?.rootCauseTemplate && match?.fixTemplate && !match.needsRefresh) {
         cacheHits++
-        pipelineLog(scanId, 'pattern-cache', `HIT  issue:${issue.id} type:${issue.type} fp:${issue.fingerprint ?? 'none'}`)
-        // Pattern already has a solution — write to issues_enriched only
+        pipelineLog(scanId, 'pattern-cache', `HIT  issue:${issue.id} type:${issue.type}`)
         await db.from('issues_enriched').upsert({
           issue_id:         issue.id,
           summary:          issue.description?.slice(0, 200) ?? issue.title,
           root_cause:       match.rootCauseTemplate,
           fix_suggestion:   match.fixTemplate,
+          confidence:       computeConfidence(issue),
           analysis_data:    { tags: [issue.type, issue.severity], category: issueCategory(issue.type) },
           model_version:    CLAUDE_HAIKU,
           from_pattern:     true,
@@ -567,10 +670,7 @@ export async function analyzeIssues(
       } else {
         const reason = !match ? 'no-pattern' : match.needsRefresh ? 'needs-refresh' : 'no-template'
         pipelineLog(scanId, 'pattern-cache', `MISS issue:${issue.id} type:${issue.type} reason:${reason}`)
-        needsAnalysis.push({
-          ...issue,
-          occurrenceCount: match?.occurrenceCount,
-        })
+        needsAnalysis.push({ ...issue, occurrenceCount: match?.occurrenceCount })
       }
     })
   )
@@ -583,13 +683,11 @@ export async function analyzeIssues(
     return
   }
 
-  // --- Step 2: deduplicate by fingerprint, then call Claude --------------------
-  // Issues with the same fingerprint get the same analysis — one API call covers all.
-  const uniqueByFp = new Map<string, IssueForAnalysis>()
+  // ── Layer 2: Fingerprint dedup ───────────────────────────────────────────────
+  const uniqueByFp  = new Map<string, IssueForAnalysis>()
   const fallbackByType = new Map<string, IssueForAnalysis>()
 
   for (const issue of needsAnalysis) {
-    const key = issue.fingerprint ?? issue.type
     if (issue.fingerprint) {
       if (!uniqueByFp.has(issue.fingerprint)) uniqueByFp.set(issue.fingerprint, issue)
     } else {
@@ -599,71 +697,105 @@ export async function analyzeIssues(
 
   const representatives = [
     ...uniqueByFp.values(),
-    // Include type-only fallbacks that aren't already covered by a fingerprint
     ...[...fallbackByType.entries()]
       .filter(([type]) => ![...uniqueByFp.values()].some((i) => i.type === type))
       .map(([, issue]) => issue),
   ]
 
-  // Build batch list before entering the loop so we know total batch count for logging
-  const batches: IssueForAnalysis[][] = []
-  for (let i = 0; i < representatives.length; i += AI_BATCH_SIZE) {
-    batches.push(representatives.slice(i, i + AI_BATCH_SIZE))
+  // ── Layer 3: Type-based grouping of repetitive issue types ──────────────────
+  // e.g. missing_alt on 8 pages (8 fingerprints) → 1 FinalRep covers all 8.
+  const finalReps = buildFinalReps(representatives)
+
+  // ── Layer 4: Budget cap — highest severity first ──────────────────────────────
+  const SEVERITY_ORDER: Record<string, number> = { critical: 0, medium: 1, low: 2 }
+  const sortedReps = [...finalReps].sort(
+    (a, b) => (SEVERITY_ORDER[a.issue.severity] ?? 3) - (SEVERITY_ORDER[b.issue.severity] ?? 3)
+  )
+  const budgetedReps = sortedReps.slice(0, AI_MAX_REPRESENTATIVES_PER_SCAN)
+  const budgetDropped = finalReps.length - budgetedReps.length
+
+  // ── Layer 5: Batching ────────────────────────────────────────────────────────
+  const batches: FinalRep[][] = []
+  for (let i = 0; i < budgetedReps.length; i += AI_BATCH_SIZE) {
+    batches.push(budgetedReps.slice(i, i + AI_BATCH_SIZE))
   }
 
   pipelineLog(
-    scanId, 'dedup',
-    `${needsAnalysis.length} issues → ${representatives.length} unique representatives → ${batches.length} batch(es) ` +
-    `(concurrency:${AI_BATCH_CONCURRENCY} batchSize:${AI_BATCH_SIZE})`
+    scanId, 'dedup+group',
+    `${needsAnalysis.length} issues → ${representatives.length} fingerprint-unique → ` +
+    `${finalReps.length} after grouping → ${budgetedReps.length} after budget cap` +
+    (budgetDropped > 0 ? ` (${budgetDropped} dropped, increase AI_MAX_REPRESENTATIVES_PER_SCAN to include)` : '') +
+    ` → ${batches.length} batch(es) (concurrency:${AI_BATCH_CONCURRENCY} batchSize:${AI_BATCH_SIZE})`
   )
 
-  // --- Step 3: call Claude in parallel batches, persist immediately per batch --
-  let totalIn = 0, totalOut = 0
+  // ── Persistence helper ───────────────────────────────────────────────────────
+  // For each issue in needsAnalysis covered by this batch's FinalReps, write results.
+  // Supports grouped reps: if issue's key is in rep.coversKeys, it gets the rep's analysis.
+  async function persistBatchResults(
+    batch: FinalRep[],
+    results: Map<string, AIAnalysis>,
+    modelVersion: string,
+  ): Promise<void> {
+    // Build the full set of keys this batch covers (direct + grouped)
+    const coveredKeys = new Set<string>()
+    for (const rep of batch) {
+      rep.coversKeys.forEach(k => coveredKeys.add(k))
+    }
 
-  // Persist analysis to issues_enriched right after each batch resolves.
-  // Avoids losing results if the lambda is killed before all batches finish.
-  async function persistResults(batchReps: IssueForAnalysis[], results: Map<string, AIAnalysis>): Promise<void> {
-    const coveredKeys = new Set(batchReps.map(r => r.fingerprint ?? r.type))
     await Promise.allSettled(
-      needsAnalysis.filter(issue => coveredKeys.has(issue.fingerprint ?? issue.type)).map(async (issue) => {
-        const cacheKey = issue.fingerprint ?? issue.type
-        const analysis = results.get(cacheKey)
-        if (!analysis) return
-        const cat   = issueCategory(issue.type)
-        const match = patternMatches.get(issue.id)
-        const { error: upsertErr } = await db.from('issues_enriched').upsert({
-          issue_id:       issue.id,
-          summary:        analysis.summary,
-          root_cause:     analysis.rootCause,
-          fix_suggestion: analysis.fixSuggestion,
-          confidence:     confidenceToFloat(analysis.confidence),
-          analysis_data:  buildAnalysisData(issue, cat),
-          model_version:  CLAUDE_HAIKU,
-          from_pattern:   false,
-          pattern_id:     match?.patternId ?? null,
-          analyzed_at:    new Date().toISOString(),
-        }, { onConflict: 'issue_id' })
-        if (upsertErr) console.error('[ai-analyzer] issues_enriched upsert failed:', upsertErr.message)
-      })
+      needsAnalysis
+        .filter(issue => coveredKeys.has(issue.fingerprint ?? issue.type))
+        .map(async (issue) => {
+          const issueCacheKey = issue.fingerprint ?? issue.type
+          // Find which rep in this batch covers this issue's key
+          const coveringRep = batch.find(rep => rep.coversKeys.has(issueCacheKey))
+          if (!coveringRep) return
+          const analysis = results.get(coveringRep.cacheKey)
+          if (!analysis) return
+
+          const cat   = issueCategory(issue.type)
+          const match = patternMatches.get(issue.id)
+          const { error: upsertErr } = await db.from('issues_enriched').upsert({
+            issue_id:       issue.id,
+            summary:        analysis.summary,
+            root_cause:     analysis.rootCause,
+            fix_suggestion: analysis.fixSuggestion,
+            confidence:     computeConfidence(issue),  // deterministic evidence-based score
+            analysis_data:  buildAnalysisData(issue, cat),
+            model_version:  modelVersion,
+            from_pattern:   false,
+            pattern_id:     match?.patternId ?? null,
+            analyzed_at:    new Date().toISOString(),
+          }, { onConflict: 'issue_id' })
+          if (upsertErr) console.error('[ai-analyzer] issues_enriched upsert failed:', upsertErr.message)
+        })
     )
   }
 
-  // Run one batch: Claude call with solo fallback, fire-and-forget pattern updates,
-  // immediate DB writes. Returns token counts for this batch only.
+  // ── Batch execution ──────────────────────────────────────────────────────────
+  let totalIn = 0, totalOut = 0
+
   async function runOneBatch(
-    batch: IssueForAnalysis[],
+    batch: FinalRep[],
     batchIdx: number,
     totalBatches: number,
   ): Promise<{ tokensIn: number; tokensOut: number }> {
-    const batchLabel = `batch-${batchIdx + 1}of${totalBatches}`
-    const elapsed    = perf()
+    const batchLabel   = `batch-${batchIdx + 1}of${totalBatches}`
+    const elapsed      = perf()
+    const batchIssues  = batch.map(r => r.issue)
+    const batchModel   = selectBatchModel(batchIssues)
     let bIn = 0, bOut = 0
 
-    pipelineLog(scanId, batchLabel, `START — ${batch.length} representative(s): [${batch.map(r => r.type).join(', ')}]`)
+    pipelineLog(
+      scanId, batchLabel,
+      `START — ${batch.length} rep(s): [${batchIssues.map(r => r.type).join(', ')}] model:${batchModel}`
+    )
 
     try {
       const { results: batchResults, tokensIn, tokensOut } = await analyzeBatch(
-        appUrl, batch, frameworks, `${scanId.slice(0, 8)}/${batchLabel}`
+        appUrl, batchIssues, frameworks,
+        `${scanId.slice(0, 8)}/${batchLabel}`,
+        batchModel,
       )
       bIn = tokensIn
       bOut = tokensOut
@@ -672,20 +804,19 @@ export async function analyzeIssues(
       const skipped  = batch.length - analyzed
       pipelineLog(
         scanId, batchLabel,
-        `SUCCESS — ${elapsed()}ms — ${analyzed} analyzed${skipped > 0 ? ` / ${skipped} no-output` : ''} — ${tokensIn} in / ${tokensOut} out tokens`
+        `SUCCESS — ${elapsed()}ms — ${analyzed} analyzed${skipped > 0 ? ` / ${skipped} no-output` : ''} — ${tokensIn}in/${tokensOut}out`
       )
 
+      // Write pattern templates for future cache hits (fire-and-forget)
       for (const [cacheKey, analysis] of batchResults) {
-        const rep = batch.find(r => (r.fingerprint ?? r.type) === cacheKey)
-        if (rep) {
-          const match = patternMatches.get(rep.id)
-          if (match?.patternId && analysis.rootCause && analysis.fixSuggestion) {
-            updatePatternTemplates(match.patternId, analysis.rootCause, analysis.fixSuggestion, CLAUDE_HAIKU)
-              .catch(err => console.error('[ai-analyzer] pattern template update failed:', err))
-          }
+        const rep   = batch.find(r => r.cacheKey === cacheKey)
+        const match = rep ? patternMatches.get(rep.issue.id) : undefined
+        if (match?.patternId && analysis.rootCause && analysis.fixSuggestion) {
+          updatePatternTemplates(match.patternId, analysis.rootCause, analysis.fixSuggestion, batchModel)
+            .catch(err => console.error('[ai-analyzer] pattern template update failed:', err))
         }
       }
-      await persistResults(batch, batchResults)
+      await persistBatchResults(batch, batchResults, batchModel)
     } catch (err) {
       const batchMsg = err instanceof Error ? err.message : String(err)
       pipelineLog(scanId, batchLabel, `FAILED — ${elapsed()}ms — falling back to solo calls: ${batchMsg}`)
@@ -693,55 +824,60 @@ export async function analyzeIssues(
       const soloResults = new Map<string, AIAnalysis>()
       await Promise.allSettled(
         batch.map(async (rep) => {
-          const cacheKey  = rep.fingerprint ?? rep.type
-          const soloLabel = `${scanId.slice(0, 8)}/solo-${rep.type}`
-          const soloTimer = perf()
+          const soloModel  = selectModel(rep.issue)
+          const soloLabel  = `${scanId.slice(0, 8)}/solo-${rep.issue.type}`
+          const soloTimer  = perf()
 
-          pipelineLog(scanId, `solo`, `START — type:${rep.type} key:${cacheKey}`)
+          pipelineLog(scanId, 'solo', `START — type:${rep.issue.type} key:${rep.cacheKey} model:${soloModel}`)
 
           try {
             const soloResult = await callClaude({
-              prompt:    buildSoloPrompt(appUrl, rep, frameworks),
+              prompt:    buildSoloPrompt(appUrl, rep.issue, frameworks),
               system:    ANALYSIS_SYSTEM_PROMPT,
-              model:     CLAUDE_HAIKU,
-              maxTokens: 350,
+              model:     soloModel,
+              maxTokens: 300,
               timeoutMs: 30_000,
               label:     soloLabel,
             })
             if (!soloResult.ok) {
               logClaudeError(soloLabel, soloResult.error)
-              pipelineLog(scanId, 'solo', `FAIL — type:${rep.type} — ${soloResult.error.message}`)
-              await logToScan(db, scanId, `AI analysis failed for issue type "${rep.type}": ${soloResult.error.message}`)
+              pipelineLog(scanId, 'solo', `FAIL — type:${rep.issue.type} — ${soloResult.error.message}`)
+              await logToScan(db, scanId, `AI analysis failed for "${rep.issue.type}": ${soloResult.error.message}`)
               return
             }
             bIn  += soloResult.usage.inputTokens
             bOut += soloResult.usage.outputTokens
             const analysis = parseSoloResponse(soloResult.data)
             if (analysis.summary) {
-              soloResults.set(cacheKey, analysis)
-              pipelineLog(scanId, 'solo', `OK — type:${rep.type} — ${soloTimer()}ms — ${soloResult.usage.inputTokens} in / ${soloResult.usage.outputTokens} out`)
-              const match = patternMatches.get(rep.id)
+              soloResults.set(rep.cacheKey, analysis)
+              pipelineLog(
+                scanId, 'solo',
+                `OK — type:${rep.issue.type} — ${soloTimer()}ms — ${soloResult.usage.inputTokens}in/${soloResult.usage.outputTokens}out`
+              )
+              const match = patternMatches.get(rep.issue.id)
               if (match?.patternId && analysis.rootCause && analysis.fixSuggestion) {
-                updatePatternTemplates(match.patternId, analysis.rootCause, analysis.fixSuggestion, CLAUDE_HAIKU)
+                updatePatternTemplates(match.patternId, analysis.rootCause, analysis.fixSuggestion, soloModel)
                   .catch(e => console.error('[ai-analyzer] pattern template update failed:', e))
               }
             } else {
-              pipelineLog(scanId, 'solo', `EMPTY — type:${rep.type} — Claude returned no summary`)
+              pipelineLog(scanId, 'solo', `EMPTY — type:${rep.issue.type} — Claude returned no summary`)
             }
           } catch (e) {
             const msg = e instanceof Error ? e.message : String(e)
-            pipelineLog(scanId, 'solo', `FAIL — type:${rep.type} — ${soloTimer()}ms — ${msg}`)
-            console.error(`[ai-analyzer] Solo call failed for ${cacheKey}:`, e)
+            pipelineLog(scanId, 'solo', `FAIL — type:${rep.issue.type} — ${soloTimer()}ms — ${msg}`)
           }
         })
       )
-      if (soloResults.size > 0) await persistResults(batch, soloResults)
+      if (soloResults.size > 0) {
+        // Convert solo results Map (keyed by rep cacheKey) to persistBatchResults format
+        await persistBatchResults(batch, soloResults, CLAUDE_HAIKU)
+      }
       await logToScan(db, scanId, `AI batch analysis failed, used per-issue fallback: ${batchMsg}`)
     }
     return { tokensIn: bIn, tokensOut: bOut }
   }
 
-  // Run AI_BATCH_CONCURRENCY batches in parallel, then the next group, and so on.
+  // Run AI_BATCH_CONCURRENCY batches in parallel, then the next group
   for (let i = 0; i < batches.length; i += AI_BATCH_CONCURRENCY) {
     const groupBatches = batches.slice(i, i + AI_BATCH_CONCURRENCY)
     const groupLabel   = `group-${Math.floor(i / AI_BATCH_CONCURRENCY) + 1}`
@@ -761,7 +897,7 @@ export async function analyzeIssues(
         groupOut += r.value.tokensOut
       }
     }
-    pipelineLog(scanId, groupLabel, `DONE — ${groupIn} in / ${groupOut} out tokens`)
+    pipelineLog(scanId, groupLabel, `DONE — ${groupIn}in/${groupOut}out tokens`)
   }
 
   if (totalIn > 0 || totalOut > 0) {
@@ -772,9 +908,8 @@ export async function analyzeIssues(
   const elapsed = total()
   pipelineLog(
     scanId, 'analyzeIssues',
-    `DONE — ${elapsed}ms — ${representatives.length} Claude call(s) — ` +
-    `${needsAnalysis.length} analyzed + ${cacheHits} from cache — ` +
-    `tokens: ${totalIn} in / ${totalOut} out`
+    `DONE — ${elapsed}ms — ${budgetedReps.length} unique representative(s) analyzed — ` +
+    `${needsAnalysis.length} issues covered (${cacheHits} from cache) — tokens: ${totalIn}in/${totalOut}out`
   )
 
   await logToScan(
@@ -821,7 +956,6 @@ export async function generateScanOverview(
       return
     }
 
-    // Parallel: fetch all issues + previous scan for regression data
     const [{ data: issueRows }, { data: prevScans }] = await Promise.all([
       db.from('issues')
         .select('type, severity, title, fingerprint')
@@ -849,7 +983,6 @@ export async function generateScanOverview(
 
     pipelineLog(scanId, 'scanOverview', `${issues.length} issues fetched — computing regression`)
 
-    // Compute regression vs the previous completed scan for the same URL
     const currentFps = new Set(
       (issueRows ?? []).map(r => r.fingerprint as string | null).filter((f): f is string => Boolean(f))
     )
@@ -884,7 +1017,7 @@ export async function generateScanOverview(
         previousScore,
       }),
       model:     CLAUDE_HAIKU,
-      maxTokens: 300,
+      maxTokens: 280,
       label:     `${scanId.slice(0, 8)}/overview`,
     })
 
@@ -914,8 +1047,7 @@ export async function generateScanOverview(
 
     pipelineLog(
       scanId, 'scanOverview',
-      `DONE — ${elapsed()}ms — regression:+${regressionNew}/-${regressionResolved} — ` +
-      `tokens: ${result.usage.inputTokens} in / ${result.usage.outputTokens} out`
+      `DONE — ${elapsed()}ms — regression:+${regressionNew}/-${regressionResolved} — tokens: ${result.usage.inputTokens}in/${result.usage.outputTokens}out`
     )
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err)

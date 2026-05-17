@@ -40,10 +40,20 @@ export const AI_JOB_TIMEOUT_MS = 240_000
 
 /**
  * Issues per Claude call in batch mode.
- * ~170 output tokens each → max_tokens ≈ BATCH_SIZE × 170.
- * Keep below 20 to stay within a 60 s per-call timeout.
+ * Smaller batches = more reliable JSON parsing, faster individual timeouts,
+ * and lower blast radius when a batch fails (solo fallback covers fewer issues).
+ * 4 issues × ~130 output tokens = ~520 out, well within 60 s per-call timeout.
  */
-export const AI_BATCH_SIZE = 14
+export const AI_BATCH_SIZE = 4
+
+/**
+ * Maximum unique issue representatives sent to Claude per scan.
+ * Applied after fingerprint dedup + same-type grouping.
+ * Representatives are sorted by severity (critical → medium → low) before capping,
+ * so the highest-impact issues are always analyzed within budget.
+ * Increase for paid/enterprise tiers; keep low to protect free-trial economics.
+ */
+export const AI_MAX_REPRESENTATIVES_PER_SCAN = 20
 
 // ── Scan queue ────────────────────────────────────────────────────────────────
 
