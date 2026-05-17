@@ -6,6 +6,7 @@ import { detectAndStoreFrameworks } from './framework-detector'
 import { matchScanIssues } from './pattern-matcher'
 import { enqueueAIJobs } from './ai-queue'
 import { loadSession } from './auth-session'
+import { enrichIssuesWithSignatures } from './signature-matcher'
 import type { IssueClassified, IssueType, IssueSeverity, PageTestResult } from '@/types'
 
 const SCAN_TIMEOUT_MS = 120_000 // 2 minutes
@@ -199,7 +200,12 @@ export async function runScan(scanId: string, url: string): Promise<void> {
       return [] as string[]
     })
 
-    // 2. Fingerprint issues + match to cross-scan pattern DB (capped at 25 s)
+    // 2. Signature enrichment — match issues to known failure library (fast, keyword-first)
+    await enrichIssuesWithSignatures(scanId, frameworks[0] ?? null).catch((err: unknown) => {
+      console.error(`[scanner] Signature enrichment failed for ${scanId}:`, err)
+    })
+
+    // 3. Fingerprint issues + match to cross-scan pattern DB (capped at 25 s)
     //    If it times out, enqueueAIJobs still runs — pattern cache just won't be warm.
     await Promise.race([
       matchScanIssues(scanId, frameworks).catch((err: unknown) => {
@@ -208,7 +214,7 @@ export async function runScan(scanId: string, url: string): Promise<void> {
       new Promise<void>(resolve => setTimeout(resolve, 25_000)),
     ])
 
-    // 3. Enqueue AI analysis jobs — always runs, even if pattern matching timed out.
+    // 4. Enqueue AI analysis jobs — always runs, even if pattern matching timed out.
     //    Scan is already marked complete above — AI runs without blocking the user.
     await enqueueAIJobs(scanId).catch((err: unknown) => {
       console.error(`[scanner] Failed to enqueue AI jobs for ${scanId}:`, err)

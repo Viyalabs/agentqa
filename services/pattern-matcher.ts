@@ -1,6 +1,7 @@
 import { getAdminClient } from '@/lib/supabase'
 import type { IssueClassified, PatternMatchResult } from '@/types'
 import { fingerprint as computeFingerprint, clusterKey as computeClusterKey } from './issue-fingerprinter'
+import { generateEmbedding, issueToEmbeddingText } from './embedding-service'
 
 export interface TopPattern {
   id: string
@@ -203,6 +204,15 @@ export async function matchScanIssues(
           // + record occurrence + create match link — no partial-write window.
           match = await upsertIssueToPattern(fp, issue, scanId, frameworks)
           fpCache.set(fp, match)
+
+          // For new patterns, generate and store an embedding asynchronously.
+          // Fire-and-forget: never blocks the scan pipeline.
+          if (match.isNew) {
+            void generateAndStorePatternEmbedding(
+              match.patternId,
+              issueToEmbeddingText(toClassifiedLike(issue, scanId)),
+            )
+          }
         } else {
           // Duplicate fingerprint in same scan: the pattern is already updated,
           // but this specific issue still needs its fingerprint written and its
@@ -224,6 +234,29 @@ export async function matchScanIssues(
   )
 
   return results
+}
+
+// ── Embedding helpers ─────────────────────────────────────────────────────────
+
+/**
+ * Generate a semantic embedding for a pattern and persist it.
+ * Called fire-and-forget after a new pattern is created; never throws.
+ */
+async function generateAndStorePatternEmbedding(
+  patternId: string,
+  text:       string,
+): Promise<void> {
+  try {
+    const embedding = await generateEmbedding(text)
+    if (!embedding) return
+    await getAdminClient()
+      .from('issue_patterns')
+      .update({ embedding })
+      .eq('id', patternId)
+      .is('embedding', null)   // only write if still empty (race-safe)
+  } catch {
+    // Embedding is best-effort — never break the scan pipeline
+  }
 }
 
 // ── Pattern intelligence ──────────────────────────────────────────────────────

@@ -221,6 +221,7 @@ export interface IssueClassified {
   title: string
   description: string | null
   details: Record<string, unknown> | null
+  signature_id?: string | null   // matched known failure signature (Phase 6)
 }
 
 export interface ScanLog {
@@ -260,6 +261,10 @@ export interface IssuePattern {
   fix_template: string | null
   first_seen_at: string
   last_seen_at: string
+  // Phase 6 — recurrence intelligence
+  recurrence_count:  number
+  first_resolved_at: string | null
+  avg_days_to_recur: number | null
 }
 
 export interface PatternMatchResult {
@@ -366,6 +371,63 @@ export interface AlertRule {
   cooldown_minutes: number
   last_fired_at: string | null
   created_at: string
+}
+
+// ── Phase 6 — Issue Intelligence & Failure Memory ─────────────────────────────
+
+export interface FailureSignature {
+  id:               string
+  framework:        string
+  name:             string
+  description:      string | null
+  issueType:        string
+  severity:         IssueSeverity
+  triggerPatterns:  string[]
+  rootCause:        string
+  fixSuggestion:    string
+  docsUrl:          string | null
+  occurrenceCount:  number
+  lastSeenAt:       string | null
+}
+
+export interface RecurrenceEvent {
+  id:                   string
+  patternFingerprint:   string
+  domain:               string
+  scanId:               string
+  eventType:            'detected' | 'resolved' | 'reappeared'
+  daysSinceLastEvent:   number | null
+  signatureId:          string | null
+  occurredAt:           string
+}
+
+export interface FrameworkStat {
+  framework:            string
+  totalScansAffected:   number
+  totalIssues:          number
+  criticalIssues:       number
+  mediumIssues:         number
+  lowIssues:            number
+  avgScore:             number | null
+  knownSignaturesSeen:  number
+  issueTypes:           string[]
+  signaturesSeen:       string[]
+}
+
+export interface IntelligenceSummary {
+  patterns: {
+    topRecurring:    IssuePattern[]
+    knownSignatures: FailureSignature[]
+  }
+  frameworks:   FrameworkStat[]
+  recurrence: {
+    totalDetections:      number
+    totalResolutions:     number
+    totalReappearances:   number
+    avgDaysToRecur:       number | null
+    recurrenceRatePct:    number | null
+  }
+  generatedAt: string
 }
 
 export interface PlatformMetrics {
