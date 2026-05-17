@@ -121,7 +121,7 @@ export async function RecentReports() {
               <Link
                 key={scan.id}
                 href={`/report/${scan.id}`}
-                className="group relative flex flex-col p-5 rounded-xl border border-zinc-800 bg-zinc-900/40 hover:border-zinc-700 hover:bg-zinc-900/70 transition-all duration-200 h-full overflow-hidden"
+                className="group relative flex flex-col p-6 rounded-xl border border-zinc-800 bg-zinc-900/40 hover:border-zinc-700 hover:bg-zinc-900/70 transition-all duration-200 h-full overflow-hidden"
               >
                 {/* Top: timestamp + live indicator */}
                 <div className="flex items-center gap-1.5 mb-4">

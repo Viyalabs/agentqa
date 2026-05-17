@@ -60,7 +60,7 @@ export function HowItWorks() {
             <div key={step.number} className="relative">
               {/* Connector line */}
               {idx < steps.length - 1 && (
-                <div className="hidden md:block absolute top-8 left-[calc(50%+2.5rem)] w-[calc(100%-2.5rem)] h-px bg-zinc-800 -z-0" />
+                <div className="hidden md:block absolute top-8 left-[calc(50%+2rem)] right-0 h-px bg-zinc-800 -z-0" />
               )}
 
               <div className="relative flex flex-col items-center text-center">
