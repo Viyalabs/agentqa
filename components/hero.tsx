@@ -3,7 +3,6 @@
 import { useState, useEffect } from 'react'
 import { Smartphone, WifiOff } from 'lucide-react'
 import { ScanForm } from './scan-form'
-import { RecentScansStrip } from './recent-scans-strip'
 import { LastScanRecall } from './last-scan-recall'
 import type { HomeStats } from '@/lib/stats'
 import { formatStat } from '@/lib/stats'
@@ -177,7 +176,7 @@ export function Hero({ stats }: { stats?: HomeStats }) {
         }
       `}</style>
 
-      <section className="relative overflow-hidden pt-24 pb-20">
+      <section className="relative overflow-hidden pt-12 pb-16">
         <div className="absolute inset-0 -z-10 pointer-events-none">
           <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[900px] h-[500px] bg-blue-600/10 blur-[140px] rounded-full" />
           <div className="absolute top-1/3 right-0 w-[500px] h-[400px] bg-blue-600/6 blur-[120px] rounded-full" />
@@ -212,7 +211,6 @@ export function Hero({ stats }: { stats?: HomeStats }) {
               <div className="max-w-xl mx-auto lg:mx-0">
                 <ScanForm />
                 <LastScanRecall />
-                <RecentScansStrip />
               </div>
 
               {/* Trust signals */}
