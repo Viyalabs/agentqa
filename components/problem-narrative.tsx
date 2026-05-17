@@ -38,7 +38,7 @@ export function ProblemNarrative() {
             <span className="text-blue-400">AgentQA is the replacement.</span>
           </h2>
           <p className="text-base font-medium text-blue-300 mt-4">
-            Every app will have an AI QA agent.
+            Every app will run autonomous QA.
           </p>
         </div>
 
@@ -85,7 +85,7 @@ export function ProblemNarrative() {
             The travel agent was replaced by Expedia. The stockbroker by Robinhood.
             The data analyst by Excel, then by AI.{' '}
             <span className="text-white font-medium">The QA engineer is next.</span>{' '}
-            Every software company has a QA function. AgentQA is building the category that automates it.
+            Every software company has a QA function. AgentQA is the category.
           </p>
         </div>
 

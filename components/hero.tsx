@@ -190,19 +190,19 @@ export function Hero({ stats: _stats }: { stats?: HomeStats }) {
                   <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75" />
                   <span className="relative inline-flex rounded-full h-2 w-2 bg-blue-500" />
                 </span>
-                AI QA Agent
+                Autonomous QA
               </div>
 
               {/* Headline */}
               <h1 className="text-5xl md:text-6xl font-semibold tracking-tight text-white mb-6 leading-[0.95]">
-                Catch bugs before{' '}
+                The QA layer{' '}
                 <span className="bg-gradient-to-r from-blue-400 via-cyan-400 to-blue-500 bg-clip-text text-transparent">
-                  your users do
+                  your app ships without.
                 </span>
               </h1>
 
               <p className="text-base text-zinc-400 mb-8 leading-relaxed max-w-xl mx-auto lg:mx-0">
-                Paste a URL. A real Chrome browser crawls every page, catches JS errors, API failures, and mobile layout breaks — and delivers a scored report in under 2&nbsp;minutes.
+                Paste a URL. A real Chrome browser tests every page — catching JS errors, API failures, and mobile layout breaks. AI root-causes each issue against a pattern library of real bugs. Scored report in under 2&nbsp;minutes.
               </p>
 
               <div className="max-w-xl mx-auto lg:mx-0">
@@ -213,7 +213,7 @@ export function Hero({ stats: _stats }: { stats?: HomeStats }) {
 
               {/* Trust signals */}
               <p className="text-sm text-zinc-500 mt-6 text-center lg:text-left">
-                Real browser · Under 2 min · No setup required
+                Real browser · AI root cause · Under 2 min
               </p>
 
               {/* Social proof */}
