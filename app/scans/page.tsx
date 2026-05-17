@@ -48,8 +48,9 @@ export default async function ScansPage() {
             AgentQA
           </Link>
           <div className="flex items-center gap-5 text-sm text-zinc-400">
-            <Link href="/patterns" className="hover:text-zinc-200 transition-colors">Patterns</Link>
-            <Link href="/" className="hover:text-zinc-200 transition-colors">Run a scan →</Link>
+            <Link href="/schedules" className="hover:text-zinc-200 transition-colors">Schedules</Link>
+            <Link href="/patterns"  className="hover:text-zinc-200 transition-colors">Patterns</Link>
+            <Link href="/"          className="hover:text-zinc-200 transition-colors">Run a scan →</Link>
           </div>
         </div>
       </nav>

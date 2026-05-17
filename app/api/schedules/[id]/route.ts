@@ -6,6 +6,44 @@ import { nextRunIso } from '@/lib/scheduler'
 
 export const runtime = 'nodejs'
 
+// GET /api/schedules/[id] — schedule detail + run history
+export async function GET(
+  _req: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  const { id } = await params
+  const db = getAdminClient()
+
+  const [{ data: schedule }, { data: runs }] = await Promise.all([
+    db.from('scan_schedules')
+      .select('id, domain, url, cadence, notify_email, enabled, next_run_at, last_run_at, last_scan_id, consecutive_failures, paused_reason, webhook_secret, created_at, updated_at')
+      .eq('id', id)
+      .single(),
+    db.from('scan_runs')
+      .select('id, scan_id, triggered_by, created_at')
+      .eq('schedule_id', id)
+      .order('created_at', { ascending: false })
+      .limit(20),
+  ])
+
+  if (!schedule) return NextResponse.json({ error: 'Schedule not found' }, { status: 404 })
+
+  const scanIds = (runs ?? []).map(r => r.scan_id as string)
+  const { data: scans } = scanIds.length > 0
+    ? await db.from('scans')
+        .select('id, score, status, total_issues, total_pages, completed_at')
+        .in('id', scanIds)
+    : { data: [] }
+
+  const scanMap = new Map((scans ?? []).map(s => [s.id as string, s]))
+  const enrichedRuns = (runs ?? []).map(r => ({
+    ...r,
+    scan: scanMap.get(r.scan_id as string) ?? null,
+  }))
+
+  return NextResponse.json({ schedule, runs: enrichedRuns })
+}
+
 const PatchSchema = z.object({
   cadence:      z.enum(['daily', 'weekly', 'manual', 'webhook']).optional(),
   enabled:      z.boolean().optional(),
