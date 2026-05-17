@@ -60,14 +60,32 @@ const NETWORK_RULES: Array<{
   // Ruby on Rails
   { framework: 'rails', pattern: /\/packs\/js\//,    weight: 0.85, signal: '/packs/js/ (Webpacker)' },
   { framework: 'rails', pattern: /\/assets\/application/, weight: 0.80, signal: '/assets/application (Sprockets)' },
+
+  // Shopify
+  { framework: 'shopify', pattern: /cdn\.shopify\.com/,     weight: 0.95, signal: 'cdn.shopify.com CDN' },
+  { framework: 'shopify', pattern: /cdn\.shopifycloud\.com/, weight: 0.90, signal: 'Shopify cloud CDN' },
+  { framework: 'shopify', pattern: /monorail-edge\.shopifysvc\.com/, weight: 0.95, signal: 'Shopify analytics beacon' },
+  { framework: 'shopify', pattern: /\/cart\.js$/,            weight: 0.85, signal: 'Shopify cart.js endpoint' },
+
+  // Vercel
+  { framework: 'vercel', pattern: /\/_vercel\/insights/, weight: 0.90, signal: 'Vercel Analytics script' },
+  { framework: 'vercel', pattern: /va\.vercel-scripts\.com/, weight: 0.90, signal: 'Vercel Web Analytics' },
+
+  // Tailwind (CDN usage only — JIT builds are indistinguishable from other CSS)
+  { framework: 'tailwind', pattern: /cdn\.tailwindcss\.com/, weight: 0.90, signal: 'Tailwind CSS CDN' },
+
+  // Alpine.js (Tailwind's common companion)
+  { framework: 'alpine', pattern: /\/alpinejs@\d/,      weight: 0.85, signal: 'Alpine.js CDN version path' },
+  { framework: 'alpine', pattern: /cdn\.jsdelivr\.net\/npm\/alpinejs/, weight: 0.85, signal: 'Alpine.js via jsDelivr' },
 ]
 
 // When a meta-framework is detected, imply its underlying library at lower confidence
 const IMPLIED_BY: Record<string, Array<{ framework: string; weight: number }>> = {
-  'next.js':  [{ framework: 'react', weight: 0.90 }],
-  'gatsby':   [{ framework: 'react', weight: 0.90 }],
-  'remix':    [{ framework: 'react', weight: 0.90 }],
-  'nuxt':     [{ framework: 'vue',   weight: 0.90 }],
+  'next.js':    [{ framework: 'react',  weight: 0.90 }],
+  'gatsby':     [{ framework: 'react',  weight: 0.90 }],
+  'remix':      [{ framework: 'react',  weight: 0.90 }],
+  'nuxt':       [{ framework: 'vue',    weight: 0.90 }],
+  'sveltekit':  [{ framework: 'svelte', weight: 0.90 }],
 }
 
 /**

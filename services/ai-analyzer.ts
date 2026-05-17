@@ -5,9 +5,13 @@ import { AI_BATCH_SIZE, AI_BATCH_CONCURRENCY } from '@/services/ai-config'
 import type { IssueType, IssueSeverity, PatternMatchResult } from '@/types'
 
 const ANALYSIS_SYSTEM_PROMPT =
-  'You are a senior web developer analyzing automated QA scan findings. ' +
-  'Be precise: cite specific status codes, DOM APIs, and property names. ' +
-  'Never invent function names, file paths, or error codes absent from the provided data.'
+  'You are a senior QA engineer and debugging specialist analyzing automated browser scan findings. ' +
+  'You receive raw evidence — console errors, network failures, stack traces, timing data. ' +
+  'Translate that evidence into precise, developer-ready diagnoses. ' +
+  'Use hedged language when evidence is partial: "likely caused by", "commonly occurs when", "this typically indicates". ' +
+  'Reserve definitive statements for cases where data clearly identifies the cause (specific error text, status code, stack frame). ' +
+  'Cite the actual error messages, status codes, and API names from the evidence. ' +
+  'Never invent function names, file paths, error codes, or status codes absent from the provided data.'
 
 interface IssueForAnalysis {
   id: string
@@ -17,6 +21,7 @@ interface IssueForAnalysis {
   description: string | null
   details: Record<string, unknown> | null
   fingerprint: string | null
+  occurrenceCount?: number  // from pattern DB — how many times seen across all scans
 }
 
 interface AIAnalysis {
@@ -142,6 +147,36 @@ function frameworkLabel(frameworks: string[]): string {
   return frameworks.slice(0, 2).join(' + ')
 }
 
+// Per-framework diagnostic hints — injected into prompts when the framework is detected.
+// These tell Claude what failure patterns are common for each stack so it avoids generic advice.
+const FRAMEWORK_HINTS: Record<string, string> = {
+  'next.js':   'Next.js: hydration errors (SSR/CSR state diff, window/document outside browser guard, Date.now() in render); next/image needs width+height or fill + domain in next.config.js remotePatterns; App Router needs "use client" for interactive components; async Server Components need Suspense.',
+  'react':     'React: missing key props on lists, null/undefined access before first render, setState after unmount (add cleanup), unhandled Promise rejections in useEffect, prop-type mismatches in console.',
+  'wordpress': 'WordPress: JS errors commonly from plugin conflicts (jQuery version mismatch, duplicate script handles); /wp-json/ 401/403 = REST API auth required; /wp-content/ 404s = CDN cache or permalink flush needed; Autoptimize/W3TC/WP Rocket can minify scripts causing conflicts.',
+  'shopify':   'Shopify: JS errors often from theme.js + app script conflicts; images should use CDN sizing params (?width=N); storefront API 429 = rate limits; Dawn theme compatibility issues with older apps; cart.js failures block checkout.',
+  'vue':       'Vue: reactivity issues with non-reactive properties (use reactive()/ref()); missing .value in template for refs; Nuxt hydration mismatches from asyncData timing or window access in server context.',
+  'nuxt':      'Nuxt: hydration mismatches from asyncData vs useFetch differences; SSR-only APIs used in universal context; use <ClientOnly> for browser-only components; check if error is in server or client build.',
+  'angular':   'Angular: NgZone exceptions from async ops outside zone; ExpressionChangedAfterItHasBeenCheckedError from change detection timing; missing providers in module declarations; zone.js errors in console.',
+  'laravel':   'Laravel: 419 = CSRF token mismatch (add X-CSRF-TOKEN header to AJAX calls); /api/ 401 = Sanctum auth not configured or token expired; mix-manifest.json 404 if npm run prod was not run; Livewire component sync errors.',
+  'sveltekit': 'SvelteKit: hydration mismatches from +page.server.js vs +page.js data loading differences; onMount is client-only; browser APIs in server-side load functions cause SSR errors.',
+  'astro':     'Astro: JS errors in island components (check client:load vs client:visible directive); hydration order issues with multiple islands; build-time vs runtime data fetching conflicts.',
+  'remix':     'Remix: loader/action 401/403 = auth middleware not applied to this route; nested route data missing; progressive enhancement breaks when JS error occurs in root loader.',
+  'vite':      'Vite: dev/prod build differences common; dynamic import() paths must be statically analyzable; @fs/ paths only exist in dev mode; CSS modules scope differs from plain CSS.',
+  'cloudflare': 'Cloudflare: CF ray IDs in responses indicate CDN-level blocking; 521/522 = origin unreachable; Rocket Loader conflicts with inline scripts (add data-cfasync="false"); Workers KV has eventual consistency.',
+  'vercel':    'Vercel: function timeouts (10s hobby, 60s pro); Edge runtime for streaming responses, Node.js runtime for heavy compute; cold starts affect first-request latency; check build logs for function size limits.',
+  'rails':     'Rails: Turbo/Stimulus conflicts with custom JS; asset pipeline fingerprint mismatches after deploy; CSRF authenticity token missing in AJAX calls (use rails-ujs or add X-CSRF-Token header).',
+  'gatsby':    'Gatsby: build-time vs runtime data differences; window/document access causes SSR build failures (wrap in typeof window !== "undefined"); GraphQL query changes require gatsby develop restart.',
+}
+
+function frameworkGuidance(frameworks: string[]): string {
+  const active = frameworks
+    .map(f => FRAMEWORK_HINTS[f.toLowerCase()])
+    .filter(Boolean)
+  return active.length > 0
+    ? `\nFramework context (apply to relevant issues):\n${active.map(h => `  ${h}`).join('\n')}`
+    : ''
+}
+
 function issueCategory(type: IssueType): IssueCategory {
   switch (type) {
     case 'js_error':
@@ -221,30 +256,35 @@ function buildBatchPrompt(
     .map(cat => `  ${cat}: ${issueCategoryHint(cat)}`)
     .join('\n')
 
+  const fwContext = frameworkGuidance(frameworks)
+
   const issueLines = issues.map((issue, i) => {
     const cat = issueCategory(issue.type)
+    const patternLine = issue.occurrenceCount && issue.occurrenceCount > 2
+      ? `\n    pattern: seen ${issue.occurrenceCount}× across scans — recurring`
+      : ''
     return [
       `[${i + 1}] ${cat} | ${issue.type} | ${issue.severity}`,
       `    title: ${issue.title}`,
       `    desc:  ${issue.description ?? 'none'}`,
       `    data:  ${extractDetails(issue, 240)}`,
-    ].join('\n')
+    ].join('\n') + patternLine
   }).join('\n\n')
 
   return `App: ${appUrl}
-Stack: ${stack}
+Stack: ${stack}${fwContext}
 
 Category hints (apply to matching issues):
 ${hintLines}
 
 CONSTRAINTS:
-- Only state what the evidence in "data" supports. If uncertain, set confidence to "low".
-- root_cause must name a specific technical reason (API name, status code, property), not a generic statement.
-- Never invent error codes, file paths, or function names absent from the data.
-- confidence: "high" = data clearly identifies cause; "medium" = partial evidence; "low" = data is thin or ambiguous.
-- summary: 1 sentence — what broke from the user's perspective.
-- root_cause: 1-2 sentences — specific technical explanation tied to the stack.
-- fix: array of 2-4 concrete ordered steps the developer can act on immediately.
+- Use hedged language when evidence is partial: "likely caused by", "commonly occurs when", "this typically indicates".
+- State causes definitively ONLY when data clearly identifies them (specific error text, status code, or stack frame present).
+- root_cause: cite specific evidence from the data — error message, status code, API name. 1-2 sentences. No generic statements.
+- Never invent error codes, file paths, function names, or status codes absent from the data.
+- confidence "high" = data clearly identifies cause; "medium" = partial evidence; "low" = data is sparse or ambiguous.
+- summary: 1 tight sentence — what the user experiences (include the specific feature/page if the URL is in data).
+- fix: 2-4 concrete ordered steps using ${stack} idioms and APIs where applicable.
 
 Issues:
 ${issueLines}
@@ -319,33 +359,34 @@ function buildSoloPrompt(appUrl: string, issue: IssueForAnalysis, frameworks: st
   const category = issueCategory(issue.type)
   const guidance = issueTypeGuidance(category)
   const stack = frameworkLabel(frameworks)
+  const fwContext = frameworkGuidance(frameworks)
+  const patternCtx = issue.occurrenceCount && issue.occurrenceCount > 2
+    ? `\nPattern: seen ${issue.occurrenceCount}× across scans — this is a recurring issue type.`
+    : ''
 
-  return `You are an expert web developer analyzing a QA scan finding.
+  return `You are a senior QA engineer diagnosing a web application failure.
 
 App: ${appUrl}
-Stack: ${stack}
+Stack: ${stack}${fwContext}
 Category: ${category}
 Issue type: ${issue.type}
 Severity: ${issue.severity}
 Title: ${issue.title}
 Description: ${issue.description ?? 'none'}
-Technical data: ${detailText}
+Technical data: ${detailText}${patternCtx}
 
 FOCUS: ${guidance}
 
 CONSTRAINTS:
-- Only state what the evidence in "Technical data" supports. If data is thin, set confidence to "low".
-- root_cause must name a specific technical reason tied to the stack, not a generic statement.
-- Never invent error codes, file paths, or function names absent from the data above.
-- summary: 1 sentence — what the user experienced or what broke.
-- root_cause: 1-2 sentences — specific technical explanation.
-- fix: array of 2-4 concrete ordered steps the developer can act on immediately.
-- confidence: "low" | "medium" | "high" based on how much the data confirms your analysis.
+- Use hedged language when evidence is partial: "likely caused by", "commonly occurs when", "this typically indicates".
+- State causes definitively ONLY when data clearly shows it (specific error text, status code, or stack frame present).
+- root_cause: name a specific technical reason using evidence from the data. No generic statements. Never invent.
+- fix: use ${stack} idioms and APIs where applicable. Steps must be immediately actionable.
+- summary: what the user experiences — include the specific page or feature if URL appears in the data.
+- confidence: "low" if data is sparse; "medium" if partial evidence; "high" if cause is clearly in the data.
 
-Example:
-{"summary":"Users see a blank screen when navigating to the checkout page","root_cause":"The async fetchCartItems() call is not awaited — it resolves after the first render commits, throwing an unhandled rejection that crashes the component tree.","fix":["Add await to the fetchCartItems() call inside the data-loading hook","Wrap the call in try/catch and render an error boundary on rejection","Add a loading skeleton that prevents rendering until the Promise resolves"],"confidence":"high"}
-
-Respond with only the JSON object. No markdown, no extra text.`
+Respond with only a JSON object. No markdown, no extra text.
+{"summary":"...","root_cause":"...","fix":["step 1","step 2"],"confidence":"high"}`
 }
 
 function parseSoloResponse(text: string): AIAnalysis {
@@ -526,7 +567,10 @@ export async function analyzeIssues(
       } else {
         const reason = !match ? 'no-pattern' : match.needsRefresh ? 'needs-refresh' : 'no-template'
         pipelineLog(scanId, 'pattern-cache', `MISS issue:${issue.id} type:${issue.type} reason:${reason}`)
-        needsAnalysis.push(issue)
+        needsAnalysis.push({
+          ...issue,
+          occurrenceCount: match?.occurrenceCount,
+        })
       }
     })
   )
