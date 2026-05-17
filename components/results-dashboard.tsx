@@ -27,6 +27,7 @@ import {
   Sparkles,
   TrendingUp,
   TrendingDown,
+  ChevronRight,
 } from 'lucide-react'
 import { Card, CardContent } from './ui/card'
 import { Badge } from './ui/badge'
@@ -178,6 +179,71 @@ function NetworkRow({ req }: { req: NetworkRequest }) {
             ? `${(req.responseSizeBytes / 1024).toFixed(0)}k`
             : `${req.responseSizeBytes}b`}
         </span>
+      )}
+    </div>
+  )
+}
+
+// ── Network page section — collapsible, auto-opens pages with failures ────────
+
+function NetworkPageSection({
+  page,
+  networkTypeFilter,
+}: {
+  page: { id: string; url: string; network_details: unknown }
+  networkTypeFilter: string
+}) {
+  const allReqs = (page.network_details as NetworkRequest[] | null) ?? []
+  const reqs = networkTypeFilter === 'all'
+    ? allReqs
+    : allReqs.filter((r) => r.resourceType === networkTypeFilter)
+
+  const failed   = reqs.filter((r) => r.failed)
+  const errored  = reqs.filter((r) => !r.failed && r.statusCode !== null && r.statusCode >= 400)
+  const hasProblems = failed.length > 0 || errored.length > 0
+
+  // Auto-open pages that have failures; others start collapsed
+  const [open, setOpen] = useState(hasProblems)
+
+  if (reqs.length === 0) return null
+
+  let displayPath = page.url
+  try { displayPath = new URL(page.url).pathname || '/' } catch { /* ok */ }
+
+  // Render failed + errored first, then success
+  const sorted = [
+    ...reqs.filter((r) => r.failed),
+    ...reqs.filter((r) => !r.failed && r.statusCode !== null && r.statusCode >= 400),
+    ...reqs.filter((r) => !r.failed && (r.statusCode === null || r.statusCode < 400)),
+  ]
+
+  return (
+    <div className="rounded-lg border border-zinc-800 overflow-hidden">
+      <button
+        onClick={() => setOpen((v) => !v)}
+        className="w-full flex items-center gap-2.5 px-3 py-2.5 text-left hover:bg-zinc-800/30 transition-colors group"
+        aria-expanded={open}
+      >
+        <Globe className="h-3 w-3 text-zinc-600 shrink-0" />
+        <span className="font-mono text-xs text-zinc-400 truncate flex-1" title={page.url}>{displayPath}</span>
+        <div className="flex items-center gap-2 shrink-0">
+          {failed.length > 0  && <span className="text-[10px] font-mono text-red-400">{failed.length} failed</span>}
+          {errored.length > 0 && <span className="text-[10px] font-mono text-yellow-400">{errored.length} err</span>}
+          <span className="text-[10px] font-mono text-zinc-700">{reqs.length} req</span>
+          <ChevronRight className={`h-3 w-3 text-zinc-600 group-hover:text-zinc-400 transition-transform duration-150 ${open ? 'rotate-90' : ''}`} />
+        </div>
+      </button>
+      {open && (
+        <div className="border-t border-zinc-800">
+          <div className="max-h-72 overflow-y-auto divide-y divide-zinc-800/40 p-1">
+            {sorted.map((req, i) => <NetworkRow key={i} req={req} />)}
+          </div>
+          {reqs.length > 15 && (
+            <div className="px-3 py-1.5 border-t border-zinc-800/50 text-[10px] text-zinc-700 font-mono text-right">
+              {reqs.length} requests total · scroll to see all
+            </div>
+          )}
+        </div>
       )}
     </div>
   )
@@ -943,52 +1009,53 @@ export function ResultsDashboard({ scanId }: ResultsDashboardProps) {
         <ScoreHistory current={scan.score} history={history} />
       )}
 
-      {/* AI Overview */}
+      {/* AI Overview — intelligence layer */}
       {isComplete && scan.ai_overview && (
-        <div className="p-4 rounded-xl border border-blue-500/20 bg-blue-500/5">
-          <div className="flex items-center gap-2 mb-2">
-            <Sparkles className="h-4 w-4 text-blue-400" />
-            <span className="text-xs font-semibold text-blue-400 uppercase tracking-wider">AI Overview</span>
+        <div className="rounded-xl border border-blue-500/30 bg-gradient-to-b from-blue-500/10 to-blue-500/3 overflow-hidden">
+          <div className="flex items-center gap-3 px-5 py-3.5 border-b border-blue-500/15">
+            <div className="flex items-center justify-center w-6 h-6 rounded-md bg-blue-500/20 border border-blue-500/25 shrink-0">
+              <Sparkles className="h-3 w-3 text-blue-400" />
+            </div>
+            <div className="flex items-center gap-2.5 flex-1 min-w-0">
+              <span className="text-xs font-bold text-blue-300 uppercase tracking-[0.14em]">AI Analysis</span>
+              <span className="text-[10px] text-zinc-600 font-mono hidden sm:block">root cause · severity correlation · highest-impact fix</span>
+            </div>
+            <span className="text-[9px] font-mono text-blue-500/50 uppercase tracking-widest hidden sm:block">Claude Haiku</span>
           </div>
-          <p className="text-sm text-zinc-300 leading-relaxed">{scan.ai_overview}</p>
-          {(scan.ai_tokens_in > 0 || scan.ai_tokens_out > 0) && (
-            <p className="text-[10px] text-zinc-600 mt-2">
-              {(scan.ai_tokens_in + scan.ai_tokens_out).toLocaleString()} tokens used ({scan.ai_tokens_in.toLocaleString()} in · {scan.ai_tokens_out.toLocaleString()} out)
-            </p>
-          )}
+          <div className="px-5 py-4">
+            <p className="text-sm text-zinc-200 leading-[1.75] font-light">{scan.ai_overview}</p>
+            {(scan.ai_tokens_in > 0 || scan.ai_tokens_out > 0) && (
+              <p className="text-[10px] text-zinc-600/60 mt-3 font-mono">
+                {(scan.ai_tokens_in + scan.ai_tokens_out).toLocaleString()} tokens · {scan.ai_tokens_in.toLocaleString()} in · {scan.ai_tokens_out.toLocaleString()} out
+              </p>
+            )}
+          </div>
         </div>
       )}
 
       {/* AI analysis in-progress */}
       {isComplete && !scan.ai_overview && isPolling && (
-        <div className="rounded-xl border border-zinc-700/60 bg-zinc-900/80 overflow-hidden">
-          {/* macOS-style chrome */}
-          <div className="flex items-center gap-1.5 px-3 py-2 border-b border-zinc-700/60 bg-zinc-800/60">
-            <span className="w-2.5 h-2.5 rounded-full bg-zinc-600" />
-            <span className="w-2.5 h-2.5 rounded-full bg-zinc-600" />
-            <span className="w-2.5 h-2.5 rounded-full bg-zinc-600" />
-            <span className="ml-2 text-[10px] font-mono text-zinc-500 tracking-widest uppercase">ai analysis</span>
-          </div>
-          <div className="p-4 space-y-3">
-            <div className="flex items-center gap-2">
-              <Sparkles className="h-3.5 w-3.5 text-blue-400 animate-pulse" />
-              <span className="text-xs font-semibold text-blue-400 uppercase tracking-wider">Analyzing issues</span>
+        <div className="rounded-xl border border-blue-500/20 bg-blue-500/5 overflow-hidden">
+          <div className="flex items-center gap-1.5 px-4 py-2.5 border-b border-blue-500/10">
+            <div className="flex gap-1.5">
+              <span className="w-2 h-2 rounded-full bg-zinc-700" />
+              <span className="w-2 h-2 rounded-full bg-zinc-700" />
+              <span className="w-2 h-2 rounded-full bg-zinc-700" />
             </div>
-            {(['matching issue patterns', 'generating root causes', 'building fix suggestions'] as const).map((label, i) => (
+            <span className="ml-2 text-[10px] font-mono text-blue-400/60 tracking-widest uppercase">ai analysis</span>
+            <Loader2 className="h-3 w-3 text-blue-400 animate-spin ml-auto" />
+          </div>
+          <div className="p-4 space-y-2.5">
+            {(['matching issue patterns across scan history', 'generating root causes from stack traces', 'building framework-specific fix steps'] as const).map((label, i) => (
               <div key={label} className="flex items-center gap-2.5">
-                <span className="font-mono text-xs text-zinc-600">$</span>
-                <span
-                  className="text-xs font-mono text-zinc-400"
-                  style={{ animation: `pulse 1.8s ease-in-out ${i * 0.4}s infinite` }}
-                >
+                <span className="font-mono text-xs text-zinc-700">$</span>
+                <span className="text-xs font-mono text-zinc-500" style={{ animation: `pulse 1.8s ease-in-out ${i * 0.4}s infinite` }}>
                   {label}
-                  <span className="inline-block w-1 h-3 ml-0.5 bg-zinc-500 align-middle animate-pulse" />
+                  <span className="inline-block w-1 h-3 ml-0.5 bg-zinc-700 align-middle animate-pulse" />
                 </span>
               </div>
             ))}
-            <p className="text-[11px] text-zinc-600 font-mono pt-1">
-              AI insights appear automatically — usually within 10–20 s
-            </p>
+            <p className="text-[10px] text-zinc-700 font-mono pt-1">Usually ready within 10–30 s after scan completes</p>
           </div>
         </div>
       )}
@@ -997,7 +1064,7 @@ export function ResultsDashboard({ scanId }: ResultsDashboardProps) {
       {isComplete && !scan.ai_overview && !isPolling && issues.some((i) => i.severity !== 'low') && (
         <div className="flex items-center gap-3 px-4 py-3 rounded-xl border border-zinc-800 bg-zinc-900/30 text-xs text-zinc-600">
           <Sparkles className="h-3.5 w-3.5 shrink-0 text-zinc-700" />
-          AI analysis is processing in the background — root causes and fix suggestions will appear when ready. Refresh to check.
+          AI analysis is processing — root causes and fix suggestions appear automatically. Refresh to check.
         </div>
       )}
 
@@ -1409,38 +1476,18 @@ export function ResultsDashboard({ scanId }: ResultsDashboardProps) {
                 )
               })()}
 
-              {/* Per-page breakdown */}
-              {pages
-                .filter((p) => p.network_details && (p.network_details as NetworkRequest[]).length > 0)
-                .map((page) => {
-                  const allReqs = page.network_details as NetworkRequest[]
-                  const reqs = networkTypeFilter === 'all'
-                    ? allReqs
-                    : allReqs.filter((r) => r.resourceType === networkTypeFilter)
-                  if (reqs.length === 0) return null
-                  const failed = reqs.filter((r) => r.failed)
-                  return (
-                    <div key={page.id} className="space-y-1">
-                      <div className="flex items-center gap-2 text-xs text-zinc-500 px-1">
-                        <Globe className="h-3 w-3 shrink-0" />
-                        <span className="font-mono truncate">{truncateUrl(page.url, 70)}</span>
-                        <span className="shrink-0 text-zinc-700">{reqs.length} req</span>
-                        {failed.length > 0 && (
-                          <span className="shrink-0 text-red-400">{failed.length} failed</span>
-                        )}
-                      </div>
-                      <Card>
-                        <CardContent className="p-1">
-                          <div className="divide-y divide-zinc-800/50">
-                            {[...reqs.filter((r) => r.failed), ...reqs.filter((r) => !r.failed)].map(
-                              (req, i) => <NetworkRow key={i} req={req} />
-                            )}
-                          </div>
-                        </CardContent>
-                      </Card>
-                    </div>
-                  )
-                })}
+              {/* Per-page breakdown — collapsible, auto-open pages with failures */}
+              <div className="space-y-1.5">
+                {pages
+                  .filter((p) => p.network_details && (p.network_details as NetworkRequest[]).length > 0)
+                  .map((page) => (
+                    <NetworkPageSection
+                      key={page.id}
+                      page={page}
+                      networkTypeFilter={networkTypeFilter}
+                    />
+                  ))}
+              </div>
             </div>
           )}
         </TabsContent>
@@ -1707,7 +1754,7 @@ function ScanLogTerminal({ logs, isRunning }: { logs: ScanLog[]; isRunning: bool
   )
 }
 
-// ── IssueSection — renders grouped issues under a severity heading ─────────────
+// ── IssueSection — severity section with collapsible accordion rows ───────────
 
 interface IssueSectionProps {
   label: string
@@ -1717,22 +1764,95 @@ interface IssueSectionProps {
 }
 
 function IssueSection({ label, groups, iconColor, Icon }: IssueSectionProps) {
+  // All collapsed by default — user expands what they need
+  const [expandedKeys, setExpandedKeys] = useState<Set<string>>(new Set())
+
+  function toggleGroup(key: string) {
+    setExpandedKeys((prev) => {
+      const next = new Set(prev)
+      next.has(key) ? next.delete(key) : next.add(key)
+      return next
+    })
+  }
+
   const totalRaw = groups.reduce((s, g) => s + g.totalCount, 0)
+
   return (
     <div>
       <h3 className={`flex items-center gap-2 text-sm font-semibold ${iconColor} mb-3`}>
         <Icon className="h-4 w-4" />
-        {label} ({totalRaw})
+        {label}
+        <span className="font-mono text-xs font-normal opacity-70">
+          {groups.length} type{groups.length !== 1 ? 's' : ''} · {totalRaw} issue{totalRaw !== 1 ? 's' : ''}
+        </span>
       </h3>
-      <div className="space-y-2">
-        {groups.map((g) => (
-          <IssueCard
-            key={`${g.type}-${g.severity}`}
-            issue={g.representative}
-            pageCount={g.pageCount > 1 ? g.pageCount : undefined}
-            totalCount={g.totalCount > 1 ? g.totalCount : undefined}
-          />
-        ))}
+      <div className="space-y-1.5">
+        {groups.map((g) => {
+          const key = `${g.type}-${g.severity}`
+          const isOpen = expandedKeys.has(key)
+          let pagePath = ''
+          if (g.affectedUrls[0]) {
+            try { pagePath = new URL(g.affectedUrls[0]).pathname || '/' } catch { pagePath = g.affectedUrls[0] }
+          }
+
+          return (
+            <div key={key} className="rounded-xl border border-zinc-800 bg-zinc-900/20 overflow-hidden transition-colors hover:border-zinc-700/80">
+              {/* Accordion header — always visible */}
+              <button
+                onClick={() => toggleGroup(key)}
+                className="w-full flex items-center gap-3 px-4 py-3 text-left transition-colors hover:bg-zinc-800/30 group"
+                aria-expanded={isOpen}
+              >
+                {/* Severity dot */}
+                <span className={`shrink-0 w-1.5 h-1.5 rounded-full ${
+                  g.severity === 'critical' ? 'bg-red-400' :
+                  g.severity === 'medium'   ? 'bg-yellow-400' : 'bg-blue-400'
+                }`} />
+
+                {/* Title + counts */}
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="text-sm text-zinc-200 font-medium">{g.title}</span>
+                    {g.totalCount > 1 && (
+                      <span className="text-[10px] font-mono text-zinc-500 bg-zinc-800 px-1.5 py-0.5 rounded">
+                        {g.totalCount}×
+                      </span>
+                    )}
+                    {g.pageCount > 1 ? (
+                      <span className="text-[10px] font-mono text-zinc-600">
+                        {g.pageCount} pages
+                      </span>
+                    ) : pagePath ? (
+                      <span className="text-[10px] font-mono text-zinc-700 truncate max-w-[200px] hidden sm:block">{pagePath}</span>
+                    ) : null}
+                  </div>
+                  {!isOpen && g.description && (
+                    <p className="text-xs text-zinc-600 mt-0.5 truncate pr-4">{g.description}</p>
+                  )}
+                </div>
+
+                {/* AI indicator + chevron */}
+                <div className="flex items-center gap-2 shrink-0">
+                  {g.representative.ai_summary && (
+                    <span className="text-[9px] font-mono text-blue-500/50 uppercase tracking-widest hidden sm:block">AI</span>
+                  )}
+                  <ChevronRight className={`h-3.5 w-3.5 text-zinc-600 group-hover:text-zinc-400 transition-transform duration-150 ${isOpen ? 'rotate-90' : ''}`} />
+                </div>
+              </button>
+
+              {/* Expanded: full issue card */}
+              {isOpen && (
+                <div className="border-t border-zinc-800">
+                  <IssueCard
+                    issue={g.representative}
+                    pageCount={g.pageCount > 1 ? g.pageCount : undefined}
+                    totalCount={g.totalCount > 1 ? g.totalCount : undefined}
+                  />
+                </div>
+              )}
+            </div>
+          )
+        })}
       </div>
     </div>
   )
