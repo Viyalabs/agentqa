@@ -304,6 +304,201 @@ function NetworkPageSection({
   )
 }
 
+// ── Network deduplication ─────────────────────────────────────────────────────
+
+interface DeduplicatedRequest {
+  url:            string
+  resourceType:   string
+  statusCode:     number | null
+  errorText:      string | null
+  failed:         boolean
+  occurrences:    number
+  pagesAffected:  number
+  p50ResponseMs:  number
+  maxResponseMs:  number
+  rep:            NetworkRequest
+}
+
+interface PagedRequest extends NetworkRequest {
+  pageUrl: string
+}
+
+function deduplicateRequests(reqs: PagedRequest[]): DeduplicatedRequest[] {
+  const map = new Map<string, { times: number[]; pages: Set<string>; rep: NetworkRequest }>()
+  for (const r of reqs) {
+    const existing = map.get(r.url)
+    if (existing) {
+      existing.times.push(r.responseTimeMs)
+      existing.pages.add(r.pageUrl)
+    } else {
+      map.set(r.url, { times: [r.responseTimeMs], pages: new Set([r.pageUrl]), rep: r })
+    }
+  }
+  return Array.from(map.entries()).map(([url, d]) => {
+    const sorted = [...d.times].sort((a, b) => a - b)
+    return {
+      url,
+      resourceType:  d.rep.resourceType,
+      statusCode:    d.rep.statusCode,
+      errorText:     d.rep.errorText,
+      failed:        d.rep.failed,
+      occurrences:   d.times.length,
+      pagesAffected: d.pages.size,
+      p50ResponseMs: sorted[Math.floor(sorted.length * 0.5)] ?? 0,
+      maxResponseMs: sorted[sorted.length - 1] ?? 0,
+      rep:           d.rep,
+    }
+  }).sort((a, b) => b.pagesAffected - a.pagesAffected || b.occurrences - a.occurrences)
+}
+
+// ── Deduplicated URL row ──────────────────────────────────────────────────────
+
+function NetworkUrlRow({ req }: { req: DeduplicatedRequest }) {
+  const statusBadge = req.failed
+    ? { label: req.errorText?.slice(0, 18) ?? 'FAILED', cls: 'text-red-400 bg-red-500/10 border-red-500/20' }
+    : req.statusCode && req.statusCode >= 500
+    ? { label: String(req.statusCode), cls: 'text-orange-400 bg-orange-500/10 border-orange-500/20' }
+    : req.statusCode && req.statusCode >= 400
+    ? { label: String(req.statusCode), cls: 'text-yellow-400 bg-yellow-500/10 border-yellow-500/20' }
+    : { label: String(req.statusCode ?? '—'), cls: 'text-zinc-500 bg-zinc-800 border-zinc-700' }
+
+  let displayUrl = req.url
+  try {
+    const u = new URL(req.url)
+    displayUrl = u.pathname + (u.search.length > 1 ? u.search.slice(0, 30) + (u.search.length > 30 ? '…' : '') : '')
+  } catch { /* ok */ }
+
+  return (
+    <div className="flex items-center gap-2.5 px-4 py-2.5 hover:bg-zinc-800/20 transition-colors border-b border-zinc-800/30 last:border-0 group">
+      <span className={`shrink-0 text-[10px] font-mono font-semibold px-1.5 py-0.5 rounded border ${statusBadge.cls}`}>
+        {statusBadge.label}
+      </span>
+      <span className="flex-1 font-mono text-xs text-zinc-400 truncate group-hover:text-zinc-200 transition-colors" title={req.url}>
+        {displayUrl}
+      </span>
+      <div className="shrink-0 flex items-center gap-3 text-[10px] font-mono text-zinc-600">
+        {req.pagesAffected > 1 && (
+          <span className="text-orange-400">{req.pagesAffected} pages</span>
+        )}
+        {req.occurrences > 1 && (
+          <span>×{req.occurrences}</span>
+        )}
+        {req.p50ResponseMs > 0 && (
+          <span className={req.p50ResponseMs > 1000 ? 'text-red-400' : req.p50ResponseMs > 500 ? 'text-yellow-400' : ''}>
+            {req.p50ResponseMs}ms
+          </span>
+        )}
+      </div>
+    </div>
+  )
+}
+
+// ── Grouped failure accordion ─────────────────────────────────────────────────
+
+const FAILURE_GROUPS = [
+  { key: 'api',    label: 'API / Data failures', types: ['xhr', 'fetch'],       icon: '⚡' },
+  { key: 'script', label: 'Script failures',      types: ['script'],             icon: '⚙' },
+  { key: 'font',   label: 'Font failures',         types: ['font'],               icon: '𝗔' },
+  { key: 'image',  label: 'Image failures',        types: ['image'],              icon: '🖼' },
+  { key: 'css',    label: 'CSS failures',          types: ['stylesheet'],         icon: '🎨' },
+  { key: 'other',  label: 'Other failures',        types: [] as string[],         icon: '•' },
+] as const
+
+function NetworkFailureAccordion({
+  label, icon, items, defaultOpen,
+}: {
+  label:       string
+  icon:        string
+  items:       DeduplicatedRequest[]
+  defaultOpen: boolean
+}) {
+  const [open, setOpen] = useState(defaultOpen)
+  if (items.length === 0) return null
+  const pageSpan = Math.max(...items.map(i => i.pagesAffected))
+
+  return (
+    <div className="rounded-lg border border-zinc-800 overflow-hidden">
+      <button
+        onClick={() => setOpen(o => !o)}
+        className="w-full flex items-center gap-2.5 px-3.5 py-2.5 text-left hover:bg-zinc-800/30 transition-colors group"
+      >
+        <span className="text-sm shrink-0 select-none">{icon}</span>
+        <span className="flex-1 text-sm text-zinc-300 font-medium">{label}</span>
+        <div className="flex items-center gap-2 text-[10px] font-mono">
+          {pageSpan > 1 && <span className="text-orange-400">{pageSpan} pages affected</span>}
+          <span className="text-red-400 font-semibold">{items.length}</span>
+          <ChevronRight className={`h-3.5 w-3.5 text-zinc-600 transition-transform duration-150 ${open ? 'rotate-90' : ''}`} />
+        </div>
+      </button>
+      {open && (
+        <div className="border-t border-zinc-800/60">
+          {items.map((req, i) => <NetworkUrlRow key={i} req={req} />)}
+        </div>
+      )}
+    </div>
+  )
+}
+
+// ── Slow requests accordion ───────────────────────────────────────────────────
+
+function NetworkSlowAccordion({ items }: { items: DeduplicatedRequest[] }) {
+  const [open, setOpen] = useState(false)
+  if (items.length === 0) return null
+
+  return (
+    <div className="rounded-lg border border-yellow-500/20 overflow-hidden">
+      <button
+        onClick={() => setOpen(o => !o)}
+        className="w-full flex items-center gap-2.5 px-3.5 py-2.5 text-left hover:bg-zinc-800/20 transition-colors"
+      >
+        <span className="text-sm shrink-0">🐢</span>
+        <span className="flex-1 text-sm text-yellow-300 font-medium">Slow requests <span className="text-zinc-600 font-normal">(p50 &gt; 1s)</span></span>
+        <div className="flex items-center gap-2 text-[10px] font-mono">
+          <span className="text-yellow-400 font-semibold">{items.length}</span>
+          <ChevronRight className={`h-3.5 w-3.5 text-zinc-600 transition-transform duration-150 ${open ? 'rotate-90' : ''}`} />
+        </div>
+      </button>
+      {open && (
+        <div className="border-t border-yellow-500/10">
+          {items.map((req, i) => <NetworkUrlRow key={i} req={req} />)}
+        </div>
+      )}
+    </div>
+  )
+}
+
+// ── Raw per-page accordion (collapsed by default) ─────────────────────────────
+
+function NetworkRawView({ pages }: { pages: Array<{ id: string; url: string; network_details: unknown }> }) {
+  const [open, setOpen] = useState(false)
+  const total = pages.reduce((s, p) => s + ((p.network_details as NetworkRequest[] | null)?.length ?? 0), 0)
+  if (total === 0) return null
+
+  return (
+    <div className="rounded-lg border border-zinc-800/50 overflow-hidden">
+      <button
+        onClick={() => setOpen(o => !o)}
+        className="w-full flex items-center gap-2.5 px-3.5 py-2.5 text-left hover:bg-zinc-800/20 transition-colors"
+      >
+        <Layers className="h-3.5 w-3.5 text-zinc-600 shrink-0" />
+        <span className="flex-1 text-sm text-zinc-500">Raw requests by page</span>
+        <div className="flex items-center gap-2 text-[10px] font-mono text-zinc-600">
+          <span>{total} total</span>
+          <ChevronRight className={`h-3.5 w-3.5 transition-transform duration-150 ${open ? 'rotate-90' : ''}`} />
+        </div>
+      </button>
+      {open && (
+        <div className="border-t border-zinc-800/50 space-y-1 p-2">
+          {pages
+            .filter(p => p.network_details && (p.network_details as NetworkRequest[]).length > 0)
+            .map(p => <NetworkPageSection key={p.id} page={p} networkTypeFilter="all" />)
+          }
+        </div>
+      )}
+    </div>
+  )
+}
+
 // ── Main component ────────────────────────────────────────────────────────────
 
 export function ResultsDashboard({ scanId }: ResultsDashboardProps) {
@@ -329,7 +524,6 @@ export function ResultsDashboard({ scanId }: ResultsDashboardProps) {
   )
   const [issueSearch, setIssueSearch] = useState('')
   const [categoryFilter, setCategoryFilter] = useState<IssueCategory>('all')
-  const [networkTypeFilter, setNetworkTypeFilter] = useState<string>('all')
   const [groupByUrl, setGroupByUrl] = useState(false)
   const [monitorEmail, setMonitorEmail] = useState('')
   const [monitorCadence, setMonitorCadence] = useState<'daily' | 'weekly'>('weekly')
@@ -1610,110 +1804,53 @@ export function ResultsDashboard({ scanId }: ResultsDashboardProps) {
                 )
               })()}
 
-              {/* Resource type filter */}
+              {/* Grouped failure accordions */}
               {(() => {
-                const resourceTypes = Array.from(new Set(allNetworkRequests.map((r) => r.resourceType))).sort()
-                const TYPE_LABELS: Record<string, string> = {
-                  xhr: 'XHR', fetch: 'Fetch', script: 'JS', stylesheet: 'CSS',
-                  document: 'Doc', image: 'Img', font: 'Font',
-                }
+                const pagedReqs: PagedRequest[] = pages.flatMap((p) =>
+                  ((p.network_details as NetworkRequest[]) ?? []).map((r) => ({ ...r, pageUrl: p.url }))
+                )
+                const problemDeduped = deduplicateRequests(
+                  pagedReqs.filter((r) => r.failed || (r.statusCode !== null && r.statusCode >= 400))
+                )
+                if (problemDeduped.length === 0) return null
+                const coveredTypes = FAILURE_GROUPS.filter(g => g.types.length > 0).flatMap(g => g.types as string[])
                 return (
-                  <div className="flex items-center gap-1 flex-wrap">
-                    {(['all', ...resourceTypes] as string[]).map((t) => {
-                      const label = t === 'all' ? 'All' : (TYPE_LABELS[t] ?? t)
-                      const isActive = networkTypeFilter === t
+                  <div className="space-y-1.5">
+                    {FAILURE_GROUPS.map((group) => {
+                      const types = group.types as string[]
+                      const items = types.length > 0
+                        ? problemDeduped.filter((r) => types.includes(r.resourceType))
+                        : problemDeduped.filter((r) => !coveredTypes.includes(r.resourceType))
                       return (
-                        <button
-                          key={t}
-                          onClick={() => setNetworkTypeFilter(t)}
-                          className={`px-2.5 py-1 rounded-md text-[11px] font-medium transition-all border ${
-                            isActive
-                              ? 'bg-zinc-700 text-white border-zinc-600'
-                              : 'text-zinc-500 border-zinc-700/50 hover:text-zinc-300 hover:border-zinc-600'
-                          }`}
-                        >
-                          {label}
-                        </button>
+                        <NetworkFailureAccordion
+                          key={group.key}
+                          label={group.label}
+                          icon={group.icon}
+                          items={items}
+                          defaultOpen={group.key === 'api' || group.key === 'script'}
+                        />
                       )
                     })}
-                    {networkTypeFilter !== 'all' && (
-                      <button
-                        onClick={() => setNetworkTypeFilter('all')}
-                        className="ml-1 text-[11px] text-zinc-600 hover:text-zinc-400 transition-colors"
-                      >
-                        × clear
-                      </button>
-                    )}
                   </div>
                 )
               })()}
 
-              {/* Failure category breakdown */}
-              {(failedNetworkRequests.length > 0 || clientErrorRequests.length > 0 || serverErrorRequests.length > 0) && (() => {
-                const problemReqs = allNetworkRequests.filter(
-                  (r) => r.failed || (r.statusCode !== null && r.statusCode >= 400)
+              {/* Slow requests accordion */}
+              {(() => {
+                const pagedReqs: PagedRequest[] = pages.flatMap((p) =>
+                  ((p.network_details as NetworkRequest[]) ?? []).map((r) => ({ ...r, pageUrl: p.url }))
                 )
-                const categories: Array<{ label: string; count: number; desc: string }> = [
-                  {
-                    label: 'API / Data',
-                    count: problemReqs.filter((r) => r.resourceType === 'xhr' || r.resourceType === 'fetch').length,
-                    desc: 'XHR & Fetch failures',
-                  },
-                  {
-                    label: 'Scripts',
-                    count: problemReqs.filter((r) => r.resourceType === 'script').length,
-                    desc: 'JS load errors',
-                  },
-                  {
-                    label: 'Fonts',
-                    count: problemReqs.filter((r) => r.resourceType === 'font').length,
-                    desc: 'Font load errors',
-                  },
-                  {
-                    label: 'Images',
-                    count: problemReqs.filter((r) => r.resourceType === 'image').length,
-                    desc: 'Image load errors',
-                  },
-                  {
-                    label: 'CSS',
-                    count: problemReqs.filter((r) => r.resourceType === 'stylesheet').length,
-                    desc: 'Stylesheet errors',
-                  },
-                ].filter((c) => c.count > 0)
-
-                if (categories.length === 0) return null
-
-                return (
-                  <div className="rounded-lg border border-red-500/15 bg-red-500/5 p-3">
-                    <div className="text-[10px] text-zinc-600 uppercase tracking-wider mb-2 font-mono">Failure breakdown by type</div>
-                    <div className="flex flex-wrap gap-2">
-                      {categories.map(({ label, count, desc }) => (
-                        <div
-                          key={label}
-                          className="flex items-center gap-1.5 text-xs bg-zinc-900 border border-zinc-800 rounded-md px-2.5 py-1.5"
-                          title={desc}
-                        >
-                          <span className="text-red-400 font-mono font-bold tabular-nums">{count}</span>
-                          <span className="text-zinc-400">{label}</span>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )
+                const slowItems = deduplicateRequests(pagedReqs).filter((r) => r.p50ResponseMs > 1000)
+                if (slowItems.length === 0) return null
+                return <NetworkSlowAccordion items={slowItems} />
               })()}
 
-              {/* Per-page breakdown — collapsible, auto-open pages with failures */}
-              <div className="space-y-1.5">
-                {pages
-                  .filter((p) => p.network_details && (p.network_details as NetworkRequest[]).length > 0)
-                  .map((page) => (
-                    <NetworkPageSection
-                      key={page.id}
-                      page={page}
-                      networkTypeFilter={networkTypeFilter}
-                    />
-                  ))}
-              </div>
+              {/* Raw per-page view — collapsed at bottom */}
+              <NetworkRawView
+                pages={pages.filter(
+                  (p) => p.network_details && (p.network_details as NetworkRequest[]).length > 0
+                )}
+              />
             </div>
           )}
         </TabsContent>
