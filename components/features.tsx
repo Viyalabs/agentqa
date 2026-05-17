@@ -145,7 +145,7 @@ export function Features() {
                 {group.items.map((feature) => (
                   <div
                     key={feature.title}
-                    className="p-5 rounded-xl border border-zinc-800 bg-zinc-900/40 hover:border-zinc-700 transition-colors h-full flex flex-col"
+                    className="p-5 rounded-xl border border-zinc-800 bg-zinc-900/40 hover:border-zinc-700 hover:bg-zinc-900/70 transition-all duration-200 h-full flex flex-col"
                   >
                     <div className={`w-9 h-9 rounded-lg ${feature.bg} flex items-center justify-center mb-3`}>
                       <feature.icon className={`h-4 w-4 ${feature.color}`} />

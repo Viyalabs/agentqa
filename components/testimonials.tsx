@@ -72,7 +72,7 @@ export function Testimonials() {
           {rest.map((t) => (
             <div
               key={t.initials}
-              className="flex flex-col p-6 rounded-xl border border-zinc-800 bg-zinc-900/40 hover:border-zinc-700 transition-colors"
+              className="flex flex-col p-6 rounded-xl border border-zinc-800 bg-zinc-900/40 hover:border-zinc-700 hover:bg-zinc-900/70 transition-all duration-200"
             >
               <div className="flex gap-1 mb-4">
                 {[...Array(5)].map((_, i) => (

@@ -53,7 +53,7 @@ export function LastScanRecall() {
       </Link>
       <button
         onClick={() => setDismissed(true)}
-        className="shrink-0 p-1 rounded text-zinc-700 hover:text-zinc-500 transition-colors"
+        className="shrink-0 p-1 rounded text-zinc-600 hover:text-zinc-400 transition-colors"
         aria-label="Dismiss"
       >
         <X className="h-3.5 w-3.5" />

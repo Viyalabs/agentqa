@@ -109,7 +109,7 @@ export function AiMoat() {
         {/* Three pillars */}
         <div className="grid sm:grid-cols-3 gap-6 mt-10 max-w-3xl mx-auto">
           {PILLARS.map((item) => (
-            <div key={item.title} className="p-5 rounded-xl border border-zinc-800 bg-zinc-900/30 text-center h-full flex flex-col">
+            <div key={item.title} className="p-5 rounded-xl border border-zinc-800 bg-zinc-900/30 hover:border-zinc-700 hover:bg-zinc-900/50 transition-all duration-200 text-center h-full flex flex-col">
               <item.icon className="h-5 w-5 text-blue-400 mx-auto mb-2" />
               <p className="text-white text-xl font-semibold mb-2">{item.title}</p>
               <p className="text-base text-zinc-400 leading-relaxed">{item.body}</p>

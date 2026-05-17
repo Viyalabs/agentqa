@@ -88,6 +88,8 @@ export function Comparison() {
         </div>
 
         <div className="rounded-2xl border border-zinc-800 overflow-hidden">
+          <div className="overflow-x-auto">
+          <div className="min-w-[560px]">
           {/* Header */}
           <div className="grid grid-cols-3 bg-zinc-900/80 border-b border-zinc-800">
             <div className="py-4 px-6 text-xs text-zinc-500 uppercase tracking-wider font-medium" />
@@ -132,7 +134,7 @@ export function Comparison() {
                   {row.check && (
                     <XCircle className="h-4 w-4 text-red-500/70 shrink-0" />
                   )}
-                  <span className={`text-center ${isCost ? 'text-red-400 font-semibold text-base' : row.check ? 'text-zinc-500 text-sm' : 'text-zinc-600 text-sm'}`}>
+                  <span className={`text-center ${isCost ? 'text-red-400 font-semibold text-base' : row.check ? 'text-zinc-500 text-sm' : 'text-zinc-500 text-sm'}`}>
                     {row.traditional}
                   </span>
                 </div>
@@ -149,6 +151,8 @@ export function Comparison() {
               </div>
             )
           })}
+          </div>
+          </div>
         </div>
 
         {/* Bottom callout */}

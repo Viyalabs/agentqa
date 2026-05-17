@@ -231,7 +231,7 @@ export function ScanForm() {
         </div>
       )}
 
-      <p className="text-xs text-zinc-600 mt-3 text-left">
+      <p className="text-xs text-zinc-500 mt-3 text-left">
         Try a demo:{' '}
         {[
           { label: 'ycombinator.com', url: 'https://ycombinator.com' },

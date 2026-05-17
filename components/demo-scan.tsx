@@ -63,11 +63,11 @@ export function DemoScan() {
   }
 
   return (
-    <section className="py-16 border-t border-zinc-800/40" id="demo">
+    <section className="py-20 border-t border-zinc-800/40" id="demo">
       <div className="max-w-6xl mx-auto px-6">
         <div className="text-center mb-10">
           <p className="text-xs uppercase tracking-[0.2em] text-zinc-500 mb-3">Live demo</p>
-          <h2 className="text-3xl md:text-4xl font-semibold tracking-tight text-white mb-4">
+          <h2 className="text-4xl md:text-5xl font-semibold tracking-tight text-white mb-4">
             See AgentQA run on a real site
           </h2>
           <p className="text-base text-zinc-400 leading-relaxed max-w-xl mx-auto mb-4">
@@ -85,7 +85,7 @@ export function DemoScan() {
           </div>
         )}
 
-        <div className="grid sm:grid-cols-3 gap-4">
+        <div className="grid sm:grid-cols-3 gap-6">
           {DEMOS.map((demo) => {
             const isLoading = isPending && activeUrl === demo.url
             return (
