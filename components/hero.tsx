@@ -66,16 +66,17 @@ function ScanTerminal() {
   }, [])
 
   return (
-    <div className="relative w-full">
-      {/* Layered ambient glow — depth without noise */}
+    <div className="relative h-[420px]">
+      {/* Ambient glow — absolute, zero layout influence */}
       <div className="absolute -inset-8 bg-blue-600/12 blur-3xl rounded-3xl pointer-events-none" />
       <div className="absolute -inset-3 bg-cyan-500/6 blur-2xl rounded-2xl pointer-events-none" />
       <div className="absolute -bottom-6 left-8 right-8 h-10 bg-blue-500/15 blur-2xl rounded-full pointer-events-none" />
 
-      <div className="relative rounded-2xl border border-zinc-700/60 bg-zinc-900/95 backdrop-blur-sm shadow-[0_25px_60px_rgba(0,0,0,0.7),0_0_30px_rgba(59,130,246,0.05)] ring-1 ring-white/5 overflow-hidden">
+      {/* Terminal card — h-full fills fixed 420px anchor; flex-col controls the three sections */}
+      <div className="relative h-full rounded-2xl border border-zinc-700/60 bg-zinc-900/95 backdrop-blur-sm shadow-[0_25px_60px_rgba(0,0,0,0.7),0_0_30px_rgba(59,130,246,0.05)] ring-1 ring-white/5 overflow-hidden flex flex-col">
 
-        {/* Title bar */}
-        <div className="flex items-center gap-2 px-5 py-3.5 border-b border-zinc-800 bg-zinc-950/60">
+        {/* Title bar — shrink-0, never compresses */}
+        <div className="flex items-center gap-2 px-5 py-3.5 border-b border-zinc-800 bg-zinc-950/60 shrink-0">
           <span className="h-3 w-3 rounded-full bg-red-500" />
           <span className="h-3 w-3 rounded-full bg-yellow-500" />
           <span className="h-3 w-3 rounded-full bg-green-500" />
@@ -86,27 +87,29 @@ function ScanTerminal() {
           </div>
         </div>
 
-        {/* Log output */}
-        <div className="p-5 font-mono text-sm space-y-2 min-h-[260px]">
-          {LOGS.slice(0, visibleCount).map((log, i) => (
-            <div
-              key={i}
-              className={`flex items-start gap-2.5 ${log.color} ${log.bg ?? ''} ${log.bold ? 'font-semibold' : ''} px-2 -mx-2 py-0.5 animate-in fade-in slide-in-from-bottom-1 duration-200`}
-            >
-              <span className="text-zinc-700 shrink-0 select-none mt-px">›</span>
-              <span className="leading-snug">{log.text}</span>
-            </div>
-          ))}
-          {visibleCount < LOGS.length && (
-            <div className="flex items-center gap-2.5 text-zinc-600 px-2 -mx-2">
-              <span className="text-zinc-700">›</span>
-              <span className="inline-block w-2 h-4 bg-blue-400/90 animate-pulse rounded-sm" />
-            </div>
-          )}
+        {/* Log output — flex-1 absorbs remaining height; overflow-hidden prevents any growth */}
+        <div className="flex-1 overflow-hidden p-5 font-mono text-sm">
+          <div className="space-y-2">
+            {LOGS.slice(0, visibleCount).map((log, i) => (
+              <div
+                key={i}
+                className={`flex items-start gap-2.5 ${log.color} ${log.bg ?? ''} ${log.bold ? 'font-semibold' : ''} px-2 -mx-2 py-0.5 animate-in fade-in duration-300`}
+              >
+                <span className="text-zinc-700 shrink-0 select-none mt-px">›</span>
+                <span className="leading-snug">{log.text}</span>
+              </div>
+            ))}
+            {visibleCount < LOGS.length && (
+              <div className="flex items-center gap-2.5 text-zinc-600 px-2 -mx-2">
+                <span className="text-zinc-700">›</span>
+                <span className="inline-block w-2 h-4 bg-blue-400/90 animate-pulse rounded-sm" />
+              </div>
+            )}
+          </div>
         </div>
 
-        {/* Progress bar */}
-        <div className="px-5 pb-5 pt-2 border-t border-zinc-800/60">
+        {/* Progress bar — shrink-0, pinned to bottom of flex column */}
+        <div className="px-5 pb-5 pt-3 border-t border-zinc-800/60 shrink-0">
           <div className="flex items-center justify-between text-xs mb-2">
             <span className="text-zinc-500 font-mono">Scanning pages</span>
             <span className="text-blue-400 font-mono font-semibold tabular-nums">{progress}%</span>
@@ -150,6 +153,7 @@ function FloatingCard({
       style={{
         animation: `float 4s ease-in-out infinite`,
         animationDelay: delays[index],
+        willChange: 'transform',
       }}
     >
       <div className={`flex items-center gap-3 px-4 py-2.5 rounded-xl border ${card.bg} backdrop-blur-md shadow-xl shadow-black/50`}>
