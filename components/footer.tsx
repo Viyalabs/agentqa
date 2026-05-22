@@ -59,10 +59,10 @@ export function Footer() {
             </a>
             {' '}·{' '}
             <a
-              href="mailto:support@viyalabs.com"
+              href="mailto:info@viyalabs.com"
               className="text-zinc-400 hover:text-white transition-colors"
             >
-              support@viyalabs.com
+              info@viyalabs.com
             </a>
           </p>
         </div>

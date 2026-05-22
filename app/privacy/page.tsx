@@ -63,7 +63,7 @@ export default function PrivacyPage() {
 
           <Section title="Data retention">
             Scan reports are retained indefinitely so shareable links remain valid. If you would like your scan data or email address deleted, contact us at{' '}
-            <a href="mailto:support@viyalabs.com" className="text-zinc-300 hover:text-white transition-colors">support@viyalabs.com</a> and we will remove it within 7 days.
+            <a href="mailto:info@viyalabs.com" className="text-zinc-300 hover:text-white transition-colors">info@viyalabs.com</a> and we will remove it within 7 days.
           </Section>
 
           <Section title="Cookies">
@@ -84,7 +84,7 @@ export default function PrivacyPage() {
 
           <Section title="Contact">
             Questions? Email us at{' '}
-            <a href="mailto:support@viyalabs.com" className="text-zinc-300 hover:text-white transition-colors">support@viyalabs.com</a>
+            <a href="mailto:info@viyalabs.com" className="text-zinc-300 hover:text-white transition-colors">info@viyalabs.com</a>
             {' '}or visit{' '}
             <a href="https://viyalabs.com" target="_blank" rel="noopener noreferrer" className="text-zinc-300 hover:text-white transition-colors">viyalabs.com</a>.
           </Section>

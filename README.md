@@ -4,7 +4,7 @@
 
 Paste a deployed URL. AgentQA launches a real Chrome browser, crawls up to 5 pages, detects bugs, captures screenshots, and delivers a scored QA report — then runs AI root-cause analysis on every issue in the background.
 
-Built by [Viyalabs](https://viyalabs.com) · [support@viyalabs.com](mailto:support@viyalabs.com) · [agentqa.viyalabs.com](https://agentqa.viyalabs.com)
+Built by [Viyalabs](https://viyalabs.com) · [info@viyalabs.com](mailto:info@viyalabs.com) · [agentqa.viyalabs.com](https://agentqa.viyalabs.com)
 
 ---
 
@@ -280,7 +280,7 @@ agentqa/
 | `ANTHROPIC_API_KEY` | optional | — | Enables AI root-cause analysis, fix suggestions, and scan overview. Without it, issues are still detected — just without AI enrichment |
 | `RESEND_API_KEY` | optional | — | Enables all email delivery (report links, notifications) |
 | `RESEND_FROM_EMAIL` | optional | `AgentQA <noreply@viyalabs.com>` | Sender address — use `onboarding@resend.dev` until domain verified |
-| `RESEND_NOTIFY_EMAIL` | optional | `support@viyalabs.com` | Admin email for waitlist/lead notifications |
+| `RESEND_NOTIFY_EMAIL` | optional | `info@viyalabs.com` | Admin email for waitlist/lead notifications |
 | `WEBHOOK_API_KEY` | optional | — | Secret for CI/CD webhook (`x-api-key` header). Generate: `openssl rand -hex 32` |
 | `WORKER_SECRET` | optional | — | Protects `/api/scan/worker` and `/api/ai/worker`. Generate: `openssl rand -hex 32` |
 | `SUPABASE_ACCESS_TOKEN` | optional | — | Required for `npm run db:migrate` via Management API |

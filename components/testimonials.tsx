@@ -65,7 +65,7 @@ export function Testimonials() {
           <p className="text-sm text-zinc-500">
             More stories coming as we grow.{' '}
             <a
-              href="mailto:support@viyalabs.com"
+              href="mailto:info@viyalabs.com"
               className="text-blue-400/80 hover:text-blue-400 transition-colors"
             >
               Share yours →

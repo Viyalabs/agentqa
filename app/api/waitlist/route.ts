@@ -7,7 +7,7 @@ export const runtime = 'nodejs'
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? 'https://agentqa.viyalabs.com'
 
 // Override via RESEND_NOTIFY_EMAIL env var (useful when using onboarding@resend.dev sender without domain verification)
-const NOTIFY_EMAIL = process.env.RESEND_NOTIFY_EMAIL ?? 'support@viyalabs.com'
+const NOTIFY_EMAIL = process.env.RESEND_NOTIFY_EMAIL ?? 'info@viyalabs.com'
 const NOTIFY_WHATSAPP = process.env.CALLMEBOT_PHONE ?? ''
 
 const RequestSchema = z.object({

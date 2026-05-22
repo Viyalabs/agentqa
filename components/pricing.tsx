@@ -83,7 +83,7 @@ export function Pricing() {
             </div>
 
             <a
-              href="mailto:support@viyalabs.com?subject=AgentQA Pro Access"
+              href="mailto:info@viyalabs.com?subject=AgentQA Pro Access"
               className="w-full mb-8 flex items-center justify-center px-4 py-2.5 rounded-lg bg-blue-600 hover:bg-blue-500 text-white text-sm font-medium transition-colors"
             >
               Get early access

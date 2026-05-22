@@ -296,7 +296,7 @@ curl -f -X POST https://agentqa.viyalabs.com/api/webhook/scan \\
         </Section>
 
         <div className="border-t border-zinc-800 pt-10 flex items-center justify-between text-sm text-zinc-600">
-          <span>Questions? <a href="mailto:support@viyalabs.com" className="text-zinc-400 hover:text-white transition-colors">support@viyalabs.com</a></span>
+          <span>Questions? <a href="mailto:info@viyalabs.com" className="text-zinc-400 hover:text-white transition-colors">info@viyalabs.com</a></span>
           <Link href="/" className="text-zinc-400 hover:text-white transition-colors">
             ← Back to AgentQA
           </Link>
