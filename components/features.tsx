@@ -9,6 +9,10 @@ import {
   Timer,
   Eye,
   Search,
+  RefreshCw,
+  GitBranch,
+  TrendingUp,
+  Bell,
 } from 'lucide-react'
 
 const GROUPS = [
@@ -111,6 +115,42 @@ const GROUPS = [
         description: 'Flags missing meta descriptions, H1 issues, and absent Open Graph images that lower search rankings and kill social share previews.',
         color: 'text-indigo-400',
         bg: 'bg-indigo-500/10',
+      },
+    ],
+  },
+  {
+    category: 'Continuous Monitoring',
+    eyebrow: 'Reliability intelligence across every deploy',
+    color: 'text-emerald-400',
+    borderColor: 'border-emerald-500/20',
+    items: [
+      {
+        icon: RefreshCw,
+        title: 'Recurring Scans',
+        description: 'Schedule scans daily, weekly, or on any cadence. Regressions are caught before they accumulate — not discovered by users.',
+        color: 'text-emerald-400',
+        bg: 'bg-emerald-500/10',
+      },
+      {
+        icon: GitBranch,
+        title: 'CI/CD Integration',
+        description: 'Trigger scans from GitHub Actions, Vercel deploy hooks, or any webhook. QA runs automatically on every merge to main.',
+        color: 'text-blue-400',
+        bg: 'bg-blue-500/10',
+      },
+      {
+        icon: TrendingUp,
+        title: 'Regression Tracking',
+        description: 'QA score is tracked across every scan. New issues are flagged as regressions — not buried in a flat list of old results.',
+        color: 'text-orange-400',
+        bg: 'bg-orange-500/10',
+      },
+      {
+        icon: Bell,
+        title: 'Slack & Email Alerts',
+        description: 'Critical issues trigger instant notifications. The right people know before users do — no dashboard polling required.',
+        color: 'text-yellow-400',
+        bg: 'bg-yellow-500/10',
       },
     ],
   },

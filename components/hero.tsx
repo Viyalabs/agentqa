@@ -190,7 +190,7 @@ export function Hero() {
                   <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75" />
                   <span className="relative inline-flex rounded-full h-2 w-2 bg-blue-500" />
                 </span>
-                Autonomous QA
+                AI Reliability Intelligence
               </div>
 
               {/* Headline */}
@@ -202,7 +202,7 @@ export function Hero() {
               </h1>
 
               <p className="text-base text-zinc-400 mb-8 leading-relaxed max-w-xl mx-auto lg:mx-0">
-                Paste a URL. A real Chrome browser tests every page — catching JS errors, API failures, and mobile layout breaks. AI root-causes each issue against a pattern library of real bugs. Scored report in under 2&nbsp;minutes.
+                Paste a URL — or trigger from CI/CD. A real Chrome browser tests every page on every deploy, catching regressions, JS errors, API failures, and mobile breaks. AI root-causes each issue against a shared pattern library of real bugs from thousands of scans. Scored report in under 2&nbsp;minutes.
               </p>
 
               <div className="max-w-xl mx-auto lg:mx-0">
@@ -210,7 +210,7 @@ export function Hero() {
               </div>
 
               <p className="text-sm text-zinc-500 mt-5 text-center lg:text-left">
-                Real browser · AI root cause · Under 2 min
+                Real browser · Regression detection · CI/CD-ready
               </p>
             </div>
 
@@ -238,14 +238,19 @@ const FOR_WHO = [
     featured: true,
   },
   {
-    emoji: '🚀',
-    title: 'Solo Founders',
-    description: 'One bug on launch day can kill your momentum. Run a scan before every deploy — catch the issue that would have tanked your Product Hunt post.',
+    emoji: '⚙️',
+    title: 'SaaS Teams',
+    description: 'Ship every sprint knowing regressions are caught before users hit them. Triggered from CI/CD — no test suite to write or maintain.',
   },
   {
-    emoji: '⚙️',
-    title: 'Small Teams',
-    description: 'Ship at startup speed without a QA bottleneck. Get a scored health report before every release — no test suite to write or maintain.',
+    emoji: '🚀',
+    title: 'Founders & Hackers',
+    description: 'One bug on launch day tanks your momentum. Scan before every deploy — catch the breaking change before your launch tweet.',
+  },
+  {
+    emoji: '🏢',
+    title: 'Dev Agencies',
+    description: 'Deliver with a QA report attached. Show clients a health score, not just a Loom walkthrough. Charge for reliability, not just delivery.',
   },
 ]
 
@@ -280,7 +285,7 @@ function ForWhoSection() {
         </div>
 
         {/* Other ICPs */}
-        <div className="grid sm:grid-cols-2 gap-6">
+        <div className="grid sm:grid-cols-3 gap-4">
           {FOR_WHO.slice(1).map((item) => (
             <div
               key={item.title}
