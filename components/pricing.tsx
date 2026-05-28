@@ -84,10 +84,13 @@ export function Pricing() {
 
             <a
               href="mailto:info@viyalabs.com?subject=AgentQA Pro Access"
-              className="w-full mb-8 flex items-center justify-center px-4 py-2.5 rounded-lg bg-blue-600 hover:bg-blue-500 text-white text-sm font-medium transition-colors"
+              className="w-full flex items-center justify-center px-4 py-2.5 rounded-lg bg-blue-600 hover:bg-blue-500 text-white text-sm font-medium transition-colors"
             >
-              Get early access
+              Request access
             </a>
+            <p className="text-xs text-zinc-600 text-center mt-2 mb-8">
+              We respond within 24 hours · info@viyalabs.com
+            </p>
 
             <ul className="space-y-3">
               {proTierFeatures.map((feature) => (

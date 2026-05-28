@@ -43,6 +43,9 @@ export function Navbar() {
           <a href="/patterns" className="hover:text-white transition-colors">
             Patterns
           </a>
+          <a href="/changelog" className="hover:text-white transition-colors">
+            Changelog
+          </a>
           <a href="/about" className="hover:text-white transition-colors">
             About
           </a>

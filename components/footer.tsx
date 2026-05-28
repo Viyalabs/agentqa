@@ -33,6 +33,7 @@ export function Footer() {
               <a href="#demo" className="block text-sm text-zinc-500 hover:text-zinc-300 transition-colors">Live Demo</a>
               <Link href="/scans" className="block text-sm text-zinc-500 hover:text-zinc-300 transition-colors">Recent Reports</Link>
               <Link href="/docs" className="block text-sm text-zinc-500 hover:text-zinc-300 transition-colors">API Docs</Link>
+              <Link href="/changelog" className="block text-sm text-zinc-500 hover:text-zinc-300 transition-colors">Changelog</Link>
             </nav>
           </div>
 

@@ -1,7 +1,7 @@
 import { ImageResponse } from 'next/og'
 
 export const runtime = 'edge'
-export const alt = 'AgentQA — AI QA Agent. Catch Bugs Before Your Users Do'
+export const alt = 'AgentQA — AI Reliability Platform for Web Apps | Viyalabs'
 export const size = { width: 1200, height: 630 }
 export const contentType = 'image/png'
 
@@ -52,9 +52,14 @@ export default function OGImage() {
           >
             ⚡
           </div>
-          <span style={{ color: 'white', fontSize: 38, fontWeight: 700, letterSpacing: '-0.5px' }}>
-            AgentQA
-          </span>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+            <span style={{ color: 'white', fontSize: 38, fontWeight: 700, letterSpacing: '-0.5px' }}>
+              AgentQA
+            </span>
+            <span style={{ color: '#52525B', fontSize: 13, fontWeight: 400 }}>
+              by Viyalabs · Chennai, India
+            </span>
+          </div>
           <span
             style={{
               color: '#60A5FA',
@@ -67,7 +72,7 @@ export default function OGImage() {
               marginLeft: 4,
             }}
           >
-            AI QA Agent
+            AI Reliability Platform
           </span>
         </div>
 
@@ -83,7 +88,7 @@ export default function OGImage() {
             marginBottom: 24,
           }}
         >
-          Catch bugs before{' '}
+          The AI reliability layer{' '}
           <span
             style={{
               background: 'linear-gradient(90deg, #60A5FA, #22D3EE)',
@@ -91,7 +96,7 @@ export default function OGImage() {
               color: 'transparent',
             }}
           >
-            your users do
+            for every deploy
           </span>
         </div>
 
@@ -106,8 +111,8 @@ export default function OGImage() {
             marginBottom: 52,
           }}
         >
-          Your autonomous QA engineer. Paste a URL — get a full QA report in under 2 minutes.
-          Zero setup. No QA team required.
+          Regression detection on every deploy. Real browser testing, AI root cause analysis,
+          and CI/CD integration for modern software teams.
         </div>
 
         {/* Stats row */}
