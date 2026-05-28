@@ -2,69 +2,95 @@ import Link from 'next/link'
 import { Separator } from './ui/separator'
 import { Activity } from 'lucide-react'
 
+const TECH_CREDITS = ['Playwright', 'Claude AI', 'Vercel', 'Supabase']
+
 export function Footer() {
   return (
-    <footer className="py-20 border-t border-zinc-800">
+    <footer className="pt-14 pb-10 border-t border-zinc-800">
       <div className="max-w-6xl mx-auto px-6">
-        <div className="flex flex-col sm:flex-row items-center justify-between gap-6 mb-12">
-          {/* Logo + tagline */}
-          <div>
+
+        {/* Top grid */}
+        <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-10 mb-12">
+
+          {/* Brand */}
+          <div className="sm:col-span-2 lg:col-span-1">
             <div className="flex items-center gap-2.5 mb-1.5">
               <Activity className="h-6 w-6 text-blue-400" />
               <span className="font-semibold text-xl text-white">AgentQA</span>
             </div>
-            <p className="text-sm text-zinc-500 pl-0.5">Autonomous QA for modern software.</p>
+            <p className="text-xs text-zinc-600 mb-4">by Viyalabs · Chennai, India</p>
+            <p className="text-xs text-zinc-500 leading-relaxed">
+              The AI reliability platform for modern software teams.
+            </p>
           </div>
 
-          {/* Links */}
-          <nav className="flex flex-wrap items-center gap-7 text-sm font-medium text-zinc-500">
-            <a href="#how-it-works" className="hover:text-zinc-300 focus-visible:text-zinc-300 transition-colors">
-              How it works
-            </a>
-            <a href="#pricing" className="hover:text-zinc-300 focus-visible:text-zinc-300 transition-colors">
-              Pricing
-            </a>
-            <Link href="/scans" className="hover:text-zinc-300 focus-visible:text-zinc-300 transition-colors">
-              Recent Scans
-            </Link>
-            <Link href="/docs" className="hover:text-zinc-300 focus-visible:text-zinc-300 transition-colors">
-              API Docs
-            </Link>
-            <Link href="/privacy" className="hover:text-zinc-300 focus-visible:text-zinc-300 transition-colors">
-              Privacy
-            </Link>
-            <a
-              href="https://github.com/PraveenPerfeito/agentqa"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="hover:text-zinc-300 focus-visible:text-zinc-300 transition-colors"
-            >
-              GitHub
-            </a>
-          </nav>
+          {/* Product */}
+          <div>
+            <p className="text-xs font-semibold text-zinc-400 uppercase tracking-wider mb-4">Product</p>
+            <nav className="space-y-3">
+              <a href="#how-it-works" className="block text-sm text-zinc-500 hover:text-zinc-300 transition-colors">How it works</a>
+              <a href="#pricing" className="block text-sm text-zinc-500 hover:text-zinc-300 transition-colors">Pricing</a>
+              <a href="#demo" className="block text-sm text-zinc-500 hover:text-zinc-300 transition-colors">Live Demo</a>
+              <Link href="/scans" className="block text-sm text-zinc-500 hover:text-zinc-300 transition-colors">Recent Reports</Link>
+              <Link href="/docs" className="block text-sm text-zinc-500 hover:text-zinc-300 transition-colors">API Docs</Link>
+            </nav>
+          </div>
+
+          {/* Company */}
+          <div>
+            <p className="text-xs font-semibold text-zinc-400 uppercase tracking-wider mb-4">Company</p>
+            <nav className="space-y-3">
+              <Link href="/about" className="block text-sm text-zinc-500 hover:text-zinc-300 transition-colors">About</Link>
+              <Link href="/contact" className="block text-sm text-zinc-500 hover:text-zinc-300 transition-colors">Contact</Link>
+              <Link href="/privacy" className="block text-sm text-zinc-500 hover:text-zinc-300 transition-colors">Privacy</Link>
+              <Link href="/terms" className="block text-sm text-zinc-500 hover:text-zinc-300 transition-colors">Terms</Link>
+            </nav>
+          </div>
+
+          {/* Connect */}
+          <div>
+            <p className="text-xs font-semibold text-zinc-400 uppercase tracking-wider mb-4">Connect</p>
+            <nav className="space-y-3">
+              <a
+                href="https://github.com/PraveenPerfeito/agentqa"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="block text-sm text-zinc-500 hover:text-zinc-300 transition-colors"
+              >
+                GitHub
+              </a>
+              <a
+                href="mailto:info@viyalabs.com"
+                className="block text-sm text-zinc-500 hover:text-zinc-300 transition-colors"
+              >
+                info@viyalabs.com
+              </a>
+              <a
+                href="https://viyalabs.com"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="block text-sm text-zinc-500 hover:text-zinc-300 transition-colors"
+              >
+                viyalabs.com
+              </a>
+            </nav>
+          </div>
         </div>
 
         <Separator />
 
-        <div className="flex flex-col sm:flex-row items-center justify-between gap-4 mt-8 text-xs text-zinc-500">
-          <p>© {new Date().getFullYear()} AgentQA · A product by Viyalabs</p>
-          <p>
-            <a
-              href="https://viyalabs.com"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-zinc-400 hover:text-white transition-colors font-medium underline underline-offset-2"
-            >
-              viyalabs.com
-            </a>
-            {' '}·{' '}
-            <a
-              href="mailto:info@viyalabs.com"
-              className="text-zinc-400 hover:text-white transition-colors"
-            >
-              info@viyalabs.com
-            </a>
-          </p>
+        {/* Bottom */}
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-4 mt-8 text-xs text-zinc-600">
+          <p>© {new Date().getFullYear()} Viyalabs. All rights reserved.</p>
+          <div className="flex items-center gap-2 flex-wrap justify-center">
+            <span className="text-zinc-700">Built with</span>
+            {TECH_CREDITS.map((tech, i) => (
+              <span key={tech} className="flex items-center gap-2">
+                {i > 0 && <span className="text-zinc-800">·</span>}
+                <span className="text-zinc-500">{tech}</span>
+              </span>
+            ))}
+          </div>
         </div>
       </div>
     </footer>

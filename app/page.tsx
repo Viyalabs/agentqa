@@ -14,6 +14,7 @@ import { CtaBanner } from '@/components/cta-banner'
 import { Pricing } from '@/components/pricing'
 import { Footer } from '@/components/footer'
 import { MobileCta } from '@/components/mobile-cta'
+import { AboutSection } from '@/components/about-section'
 
 const jsonLd = {
   '@context': 'https://schema.org',
@@ -98,6 +99,9 @@ export default async function HomePage() {
 
         {/* 13. Pricing */}
         <Pricing />
+
+        {/* 14. Company — legitimacy anchor before footer */}
+        <AboutSection />
       </main>
 
       <Footer />
