@@ -1,8 +1,11 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { Smartphone, WifiOff } from 'lucide-react'
+import { Smartphone, WifiOff, Zap, Settings2, Users, Briefcase } from 'lucide-react'
 import { ScanForm } from './scan-form'
+import type { HomeStats } from '@/lib/stats'
+import { formatStat } from '@/lib/stats'
+import type { LucideIcon } from 'lucide-react'
 
 const LOGS: Array<{ text: string; color: string; bg?: string; bold?: boolean }> = [
   { text: 'Launching Chrome browser...', color: 'text-zinc-500' },
@@ -163,7 +166,7 @@ function FloatingCard({
   )
 }
 
-export function Hero() {
+export function Hero({ stats }: { stats?: HomeStats }) {
   return (
     <>
       <style>{`
@@ -202,7 +205,7 @@ export function Hero() {
               </h1>
 
               <p className="text-base text-zinc-400 mb-8 leading-relaxed max-w-xl mx-auto lg:mx-0">
-                Paste a URL — or trigger from CI/CD. A real Chrome browser tests every page on every deploy, catching regressions, JS errors, API failures, and mobile breaks. AI root-causes each issue against a shared pattern library of real bugs from thousands of scans. Scored report in under 2&nbsp;minutes.
+                Paste a URL or trigger from CI/CD. A real Chrome browser crawls every page on every deploy — catching JS crashes, API failures, mobile breaks, and regressions before users do. Claude AI root-causes each issue and matches it against a growing failure signature library. Scored reliability report in under 2&nbsp;minutes.
               </p>
 
               <div className="max-w-xl mx-auto lg:mx-0">
@@ -210,31 +213,39 @@ export function Hero() {
               </div>
 
               <p className="text-sm text-zinc-500 mt-5 text-center lg:text-left">
-                Real browser · Regression detection · CI/CD-ready
+                Real browser · Continuous monitoring · Regression detection · CI/CD-ready
               </p>
 
-              {/* Traction */}
-              <div className="mt-8 pt-8 border-t border-zinc-800/60">
-                <div className="flex items-center justify-center lg:justify-start gap-6">
-                  <div>
-                    <div className="text-xl font-semibold text-white tabular-nums">1,200+</div>
-                    <div className="text-xs text-zinc-500 mt-0.5">apps scanned</div>
+              {/* Traction — only rendered when real DB data exists */}
+              {stats && stats.appsScanned > 0 && (
+                <div className="mt-8 pt-8 border-t border-zinc-800/60">
+                  <div className="flex items-center justify-center lg:justify-start gap-6">
+                    <div>
+                      <div className="text-xl font-semibold text-white tabular-nums">
+                        {formatStat(stats.appsScanned, '—')}
+                      </div>
+                      <div className="text-xs text-zinc-500 mt-0.5">apps scanned</div>
+                    </div>
+                    <div className="w-px h-6 bg-zinc-800" />
+                    <div>
+                      <div className="text-xl font-semibold text-white tabular-nums">
+                        {formatStat(stats.bugsCaught, '—')}
+                      </div>
+                      <div className="text-xs text-zinc-500 mt-0.5">bugs caught</div>
+                    </div>
+                    <div className="w-px h-6 bg-zinc-800" />
+                    <div>
+                      <div className="text-xl font-semibold text-white tabular-nums">
+                        {formatStat(stats.pagesScanned, '—')}
+                      </div>
+                      <div className="text-xs text-zinc-500 mt-0.5">pages tested</div>
+                    </div>
                   </div>
-                  <div className="w-px h-6 bg-zinc-800" />
-                  <div>
-                    <div className="text-xl font-semibold text-white tabular-nums">8,400+</div>
-                    <div className="text-xs text-zinc-500 mt-0.5">bugs caught</div>
-                  </div>
-                  <div className="w-px h-6 bg-zinc-800" />
-                  <div>
-                    <div className="text-xl font-semibold text-white tabular-nums">6,000+</div>
-                    <div className="text-xs text-zinc-500 mt-0.5">pages tested</div>
-                  </div>
+                  <p className="text-xs text-zinc-600 mt-3 text-center lg:text-left">
+                    Used by teams shipping with Cursor, Replit, Lovable &amp; Vercel
+                  </p>
                 </div>
-                <p className="text-xs text-zinc-600 mt-3 text-center lg:text-left">
-                  Trusted by AI builders shipping with Cursor, Replit &amp; Lovable
-                </p>
-              </div>
+              )}
             </div>
 
             {/* Right: terminal visual */}
@@ -253,25 +264,42 @@ export function Hero() {
   )
 }
 
-const FOR_WHO = [
+interface ForWhoItem {
+  icon: LucideIcon
+  iconColor: string
+  iconBg: string
+  title: string
+  description: string
+  featured?: boolean
+}
+
+const FOR_WHO: ForWhoItem[] = [
   {
-    emoji: '⚡',
+    icon: Zap,
+    iconColor: 'text-blue-400',
+    iconBg: 'bg-blue-500/10 border-blue-500/20',
     title: 'AI Builders',
     description: 'Using Cursor, Replit, Lovable, or Bolt? LLMs write plausible code that breaks silently. AgentQA is the QA layer your AI-generated app never ships with.',
     featured: true,
   },
   {
-    emoji: '⚙️',
+    icon: Settings2,
+    iconColor: 'text-emerald-400',
+    iconBg: 'bg-emerald-500/10 border-emerald-500/20',
     title: 'SaaS Teams',
     description: 'Ship every sprint knowing regressions are caught before users hit them. Triggered from CI/CD — no test suite to write or maintain.',
   },
   {
-    emoji: '🚀',
-    title: 'Founders & Hackers',
-    description: 'One bug on launch day tanks your momentum. Scan before every deploy — catch the breaking change before your launch tweet.',
+    icon: Users,
+    iconColor: 'text-violet-400',
+    iconBg: 'bg-violet-500/10 border-violet-500/20',
+    title: 'Founders & Solo Teams',
+    description: 'One bug on launch day tanks your momentum. Scan before every deploy — catch the breaking change before it reaches your users.',
   },
   {
-    emoji: '🏢',
+    icon: Briefcase,
+    iconColor: 'text-amber-400',
+    iconBg: 'bg-amber-500/10 border-amber-500/20',
     title: 'Dev Agencies',
     description: 'Deliver with a QA report attached. Show clients a health score, not just a Loom walkthrough. Charge for reliability, not just delivery.',
   },
@@ -292,32 +320,43 @@ function ForWhoSection() {
         </div>
 
         {/* AI Builders — featured card */}
-        <div className="mb-6 p-6 rounded-xl border border-blue-500/30 bg-blue-500/5 hover:border-blue-500/50 transition-colors">
-          <div className="flex items-start gap-4">
-            <div className="text-2xl shrink-0 mt-0.5">⚡</div>
-            <div>
-              <div className="flex items-center gap-2 mb-1.5">
-                <h3 className="text-xl font-semibold text-white">AI Builders</h3>
+        {(() => {
+          const featured = FOR_WHO[0]
+          const FeaturedIcon = featured.icon
+          return (
+            <div className="mb-6 p-6 rounded-xl border border-blue-500/30 bg-blue-500/5 hover:border-blue-500/50 transition-colors">
+              <div className="flex items-start gap-4">
+                <div className={`w-10 h-10 rounded-xl border ${featured.iconBg} flex items-center justify-center shrink-0 mt-0.5`}>
+                  <FeaturedIcon className={`h-5 w-5 ${featured.iconColor}`} />
+                </div>
+                <div>
+                  <h3 className="text-xl font-semibold text-white mb-1.5">{featured.title}</h3>
+                  <p className="text-base text-zinc-400 leading-relaxed">
+                    Using Cursor, Replit, Lovable, or Bolt? LLMs write plausible-looking code that breaks silently — broken auth flows, mobile overflows, API crashes at runtime. AgentQA is the real-browser QA pass your AI-generated app never ships with.
+                  </p>
+                </div>
               </div>
-              <p className="text-base text-zinc-400 leading-relaxed">
-                Using Cursor, Replit, Lovable, or Bolt? LLMs write plausible-looking code that breaks silently — broken auth flows, mobile overflows, API crashes at runtime. AgentQA is the real-browser QA pass your AI-generated app never ships with.
-              </p>
             </div>
-          </div>
-        </div>
+          )
+        })()}
 
         {/* Other ICPs */}
         <div className="grid sm:grid-cols-3 gap-4">
-          {FOR_WHO.slice(1).map((item) => (
+          {FOR_WHO.slice(1).map((item) => {
+            const Icon = item.icon
+            return (
             <div
               key={item.title}
               className="p-6 rounded-xl border border-zinc-800 bg-zinc-900/40 hover:border-zinc-700 hover:bg-zinc-900/70 transition-all duration-200 h-full flex flex-col"
             >
-              <div className="text-2xl mb-3">{item.emoji}</div>
+              <div className={`w-9 h-9 rounded-lg border ${item.iconBg} flex items-center justify-center mb-4`}>
+                <Icon className={`h-4 w-4 ${item.iconColor}`} />
+              </div>
               <h3 className="text-xl font-semibold text-white mb-2">{item.title}</h3>
               <p className="text-base text-zinc-400 leading-relaxed flex-1">{item.description}</p>
             </div>
-          ))}
+            )
+          })}
         </div>
       </div>
     </section>

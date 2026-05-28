@@ -2,32 +2,38 @@
 
 import { useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
-import { ArrowRight, Loader2, ShoppingCart, BarChart3, Layout, AlertCircle } from 'lucide-react'
+import { ArrowRight, Loader2, AlertCircle, Layers, Hash, TrendingUp } from 'lucide-react'
+
+// Resolved at build time — points to /demo-app on whichever domain is deployed
+const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? 'https://agentqa.viyalabs.com'
 
 const DEMOS = [
   {
-    label: 'SaaS App',
-    url: 'https://vercel.com',
-    description: 'Marketing site with pricing, docs, and dashboard links',
-    icon: BarChart3,
+    label: 'AI-Built SaaS App',
+    url: `${APP_URL}/demo-app`,
+    description: 'A realistic AI-generated dashboard with seeded issues — guaranteed findings every scan',
+    icon: Layers,
     color: 'text-blue-400',
     bg: 'bg-blue-500/10 border-blue-500/20 hover:border-blue-500/40',
+    badge: 'Recommended',
   },
   {
-    label: 'E-commerce',
-    url: 'https://demo.vercel.store',
-    description: 'Next.js Commerce demo — product pages, cart, checkout',
-    icon: ShoppingCart,
+    label: 'Minimal HTML Site',
+    url: 'https://news.ycombinator.com',
+    description: 'Classic forum — tests SEO meta, OG image, accessibility, and core page health',
+    icon: Hash,
+    color: 'text-orange-400',
+    bg: 'bg-orange-500/10 border-orange-500/20 hover:border-orange-500/40',
+    badge: null,
+  },
+  {
+    label: 'React SaaS Platform',
+    url: 'https://www.producthunt.com',
+    description: 'JS-heavy product platform — dynamic content, image loading, mobile layout detection',
+    icon: TrendingUp,
     color: 'text-green-400',
     bg: 'bg-green-500/10 border-green-500/20 hover:border-green-500/40',
-  },
-  {
-    label: 'Portfolio',
-    url: 'https://nextjs.org',
-    description: 'Documentation site with many pages and navigation links',
-    icon: Layout,
-    color: 'text-yellow-400',
-    bg: 'bg-yellow-500/10 border-yellow-500/20 hover:border-yellow-500/40',
+    badge: null,
   },
 ]
 
@@ -71,10 +77,10 @@ export function DemoScan() {
             See AgentQA run on a real site
           </h2>
           <p className="text-base text-zinc-400 leading-relaxed max-w-xl mx-auto mb-4">
-            Pick a site — it runs the exact same scan your users would trigger. Watch it happen live.
+            Pick a site below — AgentQA runs the exact same scan your users trigger. Real browser, live results, real findings.
           </p>
           <p className="text-xs text-zinc-500">
-            Takes ~90 seconds · Real browser · Same scan your users would trigger
+            ~90 seconds · Real Chrome browser · Publicly accessible sites only
           </p>
         </div>
 
@@ -99,11 +105,18 @@ export function DemoScan() {
                   <div className="w-10 h-10 rounded-lg bg-zinc-900/60 border border-zinc-800 flex items-center justify-center">
                     <demo.icon className={`h-5 w-5 ${demo.color}`} />
                   </div>
-                  {isLoading ? (
-                    <Loader2 className="h-4 w-4 text-zinc-500 animate-spin" />
-                  ) : (
-                    <ArrowRight className={`h-4 w-4 ${demo.color} opacity-0 group-hover:opacity-100 transition-opacity`} />
-                  )}
+                  <div className="flex items-center gap-2">
+                    {demo.badge && (
+                      <span className="text-[10px] px-1.5 py-0.5 rounded bg-blue-500/20 text-blue-400 font-mono font-bold uppercase tracking-wide">
+                        {demo.badge}
+                      </span>
+                    )}
+                    {isLoading ? (
+                      <Loader2 className="h-4 w-4 text-zinc-500 animate-spin" />
+                    ) : (
+                      <ArrowRight className={`h-4 w-4 ${demo.color} opacity-0 group-hover:opacity-100 transition-opacity`} />
+                    )}
+                  </div>
                 </div>
 
                 <div className={`text-sm font-semibold mb-1 ${demo.color}`}>{demo.label}</div>

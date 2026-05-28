@@ -25,12 +25,12 @@ export function CtaBanner() {
           </p>
 
           <h2 className="text-4xl md:text-5xl font-semibold tracking-tight text-white mb-4 leading-[1.05]">
-            You have bugs you don&apos;t know about.
+            Your next deploy could break production.
           </h2>
 
           <p className="text-sm text-zinc-400 leading-relaxed mb-6 max-w-md mx-auto">
-            Most broken pages are found by users, not the team that built them.
-            One scan before launch changes that.
+            Most regressions are found by users, not the team that shipped them.
+            Continuous reliability testing on every deploy changes that.
           </p>
 
           <div className="flex flex-col items-center gap-3">
@@ -50,6 +50,8 @@ export function CtaBanner() {
           {/* Micro proof row */}
           <div className="mt-8 flex items-center justify-center gap-2 flex-wrap">
             <span className="text-xs text-zinc-600">Real Chrome browser</span>
+            <span className="text-zinc-800 select-none">·</span>
+            <span className="text-xs text-zinc-600">Regression detection</span>
             <span className="text-zinc-800 select-none">·</span>
             <span className="text-xs text-zinc-600">AI root-cause analysis</span>
             <span className="text-zinc-800 select-none">·</span>

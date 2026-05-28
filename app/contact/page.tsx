@@ -1,6 +1,6 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
-import { Activity, Mail, Github, Globe, MapPin } from 'lucide-react'
+import { Activity, Mail, Github, Globe, MapPin, Twitter, Linkedin } from 'lucide-react'
 
 export const metadata: Metadata = {
   title: 'Contact — AgentQA',
@@ -33,20 +33,65 @@ export default function ContactPage() {
 
         <div className="space-y-4 mb-12">
           <a
-            href="mailto:support@viyalabs.com"
+            href="https://x.com/Viyalabs"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center gap-4 p-5 rounded-xl border border-zinc-800 bg-zinc-900/40 hover:border-zinc-700 transition-colors group"
+          >
+            <div className="w-10 h-10 rounded-lg bg-zinc-800 border border-zinc-700 flex items-center justify-center shrink-0">
+              <Twitter className="h-5 w-5 text-zinc-300" />
+            </div>
+            <div>
+              <p className="text-white font-semibold text-sm group-hover:text-zinc-300 transition-colors">@Viyalabs on X</p>
+              <p className="text-zinc-500 text-xs mt-0.5">Updates, releases, and product news</p>
+            </div>
+          </a>
+
+          <a
+            href="https://www.linkedin.com/in/praveen-perfeito-75852a64/"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center gap-4 p-5 rounded-xl border border-zinc-800 bg-zinc-900/40 hover:border-zinc-700 transition-colors group"
+          >
+            <div className="w-10 h-10 rounded-lg bg-zinc-800 border border-zinc-700 flex items-center justify-center shrink-0">
+              <Linkedin className="h-5 w-5 text-zinc-300" />
+            </div>
+            <div>
+              <p className="text-white font-semibold text-sm group-hover:text-zinc-300 transition-colors">Praveen Kumar — LinkedIn</p>
+              <p className="text-zinc-500 text-xs mt-0.5">Founder profile</p>
+            </div>
+          </a>
+
+          <a
+            href="https://share.google/qtFKmag7l8VFFIaEl"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center gap-4 p-5 rounded-xl border border-zinc-800 bg-zinc-900/40 hover:border-zinc-700 transition-colors group"
+          >
+            <div className="w-10 h-10 rounded-lg bg-zinc-800 border border-zinc-700 flex items-center justify-center shrink-0">
+              <Globe className="h-5 w-5 text-zinc-400" />
+            </div>
+            <div>
+              <p className="text-white font-semibold text-sm group-hover:text-zinc-300 transition-colors">Viyalabs on Google</p>
+              <p className="text-zinc-500 text-xs mt-0.5">Google Business profile</p>
+            </div>
+          </a>
+
+          <a
+            href="mailto:info@viyalabs.com"
             className="flex items-center gap-4 p-5 rounded-xl border border-zinc-800 bg-zinc-900/40 hover:border-zinc-700 transition-colors group"
           >
             <div className="w-10 h-10 rounded-lg bg-blue-500/10 border border-blue-500/20 flex items-center justify-center shrink-0">
               <Mail className="h-5 w-5 text-blue-400" />
             </div>
             <div>
-              <p className="text-white font-semibold text-sm group-hover:text-blue-300 transition-colors">support@viyalabs.com</p>
+              <p className="text-white font-semibold text-sm group-hover:text-blue-300 transition-colors">info@viyalabs.com</p>
               <p className="text-zinc-500 text-xs mt-0.5">General questions, support, feedback</p>
             </div>
           </a>
 
           <a
-            href="https://github.com/PraveenPerfeito/agentqa"
+            href="https://github.com/Viyalabs/agentqa"
             target="_blank"
             rel="noopener noreferrer"
             className="flex items-center gap-4 p-5 rounded-xl border border-zinc-800 bg-zinc-900/40 hover:border-zinc-700 transition-colors group"
@@ -55,7 +100,7 @@ export default function ContactPage() {
               <Github className="h-5 w-5 text-zinc-300" />
             </div>
             <div>
-              <p className="text-white font-semibold text-sm group-hover:text-zinc-300 transition-colors">GitHub — PraveenPerfeito/agentqa</p>
+              <p className="text-white font-semibold text-sm group-hover:text-zinc-300 transition-colors">GitHub — Viyalabs/agentqa</p>
               <p className="text-zinc-500 text-xs mt-0.5">Bug reports, feature requests, open source</p>
             </div>
           </a>
@@ -74,6 +119,20 @@ export default function ContactPage() {
               <p className="text-zinc-500 text-xs mt-0.5">Company website</p>
             </div>
           </a>
+        </div>
+
+        {/* Founder */}
+        <div className="p-5 rounded-xl border border-zinc-800 bg-zinc-900/40 mb-4">
+          <p className="text-xs text-zinc-600 uppercase tracking-wider font-mono mb-4">Built by</p>
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-blue-500/10 border border-blue-500/20 flex items-center justify-center shrink-0 text-blue-400 font-bold select-none">
+              P
+            </div>
+            <div>
+              <p className="text-white font-semibold">Praveen Kumar</p>
+              <p className="text-zinc-500 text-sm mt-0.5">Founder, Viyalabs</p>
+            </div>
+          </div>
         </div>
 
         {/* Company */}

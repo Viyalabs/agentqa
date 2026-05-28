@@ -18,7 +18,7 @@ export function Footer() {
               <Activity className="h-6 w-6 text-blue-400" />
               <span className="font-semibold text-xl text-white">AgentQA</span>
             </div>
-            <p className="text-xs text-zinc-600 mb-4">by Viyalabs · Chennai, India</p>
+            <p className="text-xs text-zinc-600 mb-4">by Praveen Kumar · Viyalabs · Chennai, India</p>
             <p className="text-xs text-zinc-500 leading-relaxed">
               The AI reliability platform for modern software teams.
             </p>
@@ -53,7 +53,23 @@ export function Footer() {
             <p className="text-xs font-semibold text-zinc-400 uppercase tracking-wider mb-4">Connect</p>
             <nav className="space-y-3">
               <a
-                href="https://github.com/PraveenPerfeito/agentqa"
+                href="https://x.com/Viyalabs"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="block text-sm text-zinc-500 hover:text-zinc-300 transition-colors"
+              >
+                X / Twitter
+              </a>
+              <a
+                href="https://www.linkedin.com/in/praveen-perfeito-75852a64/"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="block text-sm text-zinc-500 hover:text-zinc-300 transition-colors"
+              >
+                LinkedIn
+              </a>
+              <a
+                href="https://github.com/Viyalabs/agentqa"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="block text-sm text-zinc-500 hover:text-zinc-300 transition-colors"
@@ -65,6 +81,14 @@ export function Footer() {
                 className="block text-sm text-zinc-500 hover:text-zinc-300 transition-colors"
               >
                 info@viyalabs.com
+              </a>
+              <a
+                href="https://share.google/qtFKmag7l8VFFIaEl"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="block text-sm text-zinc-500 hover:text-zinc-300 transition-colors"
+              >
+                Google Business
               </a>
               <a
                 href="https://viyalabs.com"

@@ -53,7 +53,7 @@ export function Navbar() {
             Docs
           </a>
           <a
-            href="https://github.com/PraveenPerfeito/agentqa"
+            href="https://github.com/Viyalabs/agentqa"
             target="_blank"
             rel="noopener noreferrer"
             className="hover:text-white transition-colors"

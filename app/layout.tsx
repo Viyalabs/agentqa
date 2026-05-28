@@ -44,8 +44,11 @@ export const metadata: Metadata = {
     'startup QA tool',
   ],
 
-  authors: [{ name: 'Viyalabs', url: 'https://viyalabs.com' }],
-  creator: 'Viyalabs',
+  authors: [
+    { name: 'Praveen Kumar', url: 'https://www.linkedin.com/in/praveen-perfeito-75852a64/' },
+    { name: 'Viyalabs', url: 'https://viyalabs.com' },
+  ],
+  creator: 'Praveen Kumar — Viyalabs',
   publisher: 'Viyalabs',
 
   alternates: {

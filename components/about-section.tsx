@@ -63,9 +63,9 @@ export function AboutSection() {
                 Chennai, India
               </span>
               <span className="text-zinc-700">·</span>
-              <span>AgentQA by Viyalabs</span>
+              <span>Built by Praveen Kumar</span>
               <span className="text-zinc-700">·</span>
-              <span>Founded 2025</span>
+              <span>Viyalabs, 2025</span>
             </div>
 
             <Link

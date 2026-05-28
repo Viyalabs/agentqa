@@ -1,6 +1,6 @@
 import {
   Bug,
-  Video,
+  Camera,
   BarChart3,
   Network,
   Smartphone,
@@ -59,9 +59,9 @@ const GROUPS = [
     borderColor: 'border-blue-500/20',
     items: [
       {
-        icon: Video,
-        title: 'Screenshots & Video Replay',
-        description: 'Desktop and mobile screenshots for every page, plus video recordings of failures so you see exactly what broke.',
+        icon: Camera,
+        title: 'Screenshots & Page Capture',
+        description: 'Desktop and mobile screenshots for every page — side-by-side visual diff so you see exactly how each page renders across viewports.',
         color: 'text-blue-400',
         bg: 'bg-blue-500/10',
       },
@@ -162,12 +162,12 @@ export function Features() {
     <section className="py-20 bg-zinc-950/50 border-y border-zinc-800/50">
       <div className="max-w-6xl mx-auto px-6">
         <div className="text-center mb-10">
-          <p className="text-xs uppercase tracking-[0.2em] text-zinc-500 mb-3">What your AI QA engineer covers</p>
+          <p className="text-xs uppercase tracking-[0.2em] text-zinc-500 mb-3">What AgentQA tests on every deploy</p>
           <h2 className="text-4xl md:text-5xl font-semibold tracking-tight text-white mb-4">
             Full-stack coverage, zero configuration
           </h2>
           <p className="text-base text-zinc-400 leading-relaxed max-w-xl mx-auto">
-            Every scan tests desktop and mobile across all discovered pages — JS errors, network failures, layout breaks, performance, and more.
+            Every deploy triggers desktop and mobile testing across all discovered pages — JS errors, network failures, layout breaks, performance regressions, and more.
           </p>
         </div>
 

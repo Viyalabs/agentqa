@@ -1,15 +1,13 @@
 import { Hero } from '@/components/hero'
 import { Navbar } from '@/components/navbar'
-import { ProblemNarrative } from '@/components/problem-narrative'
+import { getHomeStats } from '@/lib/stats'
+import { WhyAgentQA } from '@/components/why-agentqa'
 import { HowItWorks } from '@/components/how-it-works'
-import { Comparison } from '@/components/comparison'
-import { ReportPreview } from '@/components/report-preview'
 import { DemoScan } from '@/components/demo-scan'
 import { AiMoat } from '@/components/ai-moat'
-import { Testimonials } from '@/components/testimonials'
-import { TechBar } from '@/components/tech-bar'
 import { Features } from '@/components/features'
 import { RecentReports } from '@/components/recent-reports'
+import { ReliabilityIntelligence } from '@/components/reliability-intelligence'
 import { CtaBanner } from '@/components/cta-banner'
 import { Pricing } from '@/components/pricing'
 import { Footer } from '@/components/footer'
@@ -52,6 +50,8 @@ const jsonLd = {
 export const revalidate = 3600
 
 export default async function HomePage() {
+  const stats = await getHomeStats()
+
   return (
     <div className="min-h-screen bg-[#0A0A0F]">
       <script
@@ -62,45 +62,36 @@ export default async function HomePage() {
 
       <main>
         {/* 1. Hero + Who Is This For */}
-        <Hero />
+        <Hero stats={stats} />
 
-        {/* 2. Tool compatibility bar */}
-        <TechBar />
-
-        {/* 3. Live scan gallery — proof before explanation */}
+        {/* 2. Live scan gallery */}
         <RecentReports />
 
-        {/* 4. Problem narrative + AI builders wedge */}
-        <ProblemNarrative />
+        {/* 3. Why AgentQA — problem + comparison */}
+        <WhyAgentQA />
 
-        {/* 5. How it works */}
+        {/* 4. How it works */}
         <HowItWorks />
 
-        {/* 6. Traditional QA vs AgentQA */}
-        <Comparison />
-
-        {/* 7. Real report output */}
-        <ReportPreview />
-
-        {/* 8. Live demo scan */}
+        {/* 5. Live demo scan */}
         <DemoScan />
 
-        {/* 9. AI moat — root cause + fix centerpiece */}
+        {/* 6. AI moat — root cause + fix */}
         <AiMoat />
 
-        {/* 10. Full feature set */}
+        {/* 7. Full feature set */}
         <Features />
 
-        {/* 11. Social proof */}
-        <Testimonials />
+        {/* 8. Reliability intelligence */}
+        <ReliabilityIntelligence />
 
-        {/* 12. CTA before pricing */}
+        {/* 9. CTA */}
         <CtaBanner />
 
-        {/* 13. Pricing */}
+        {/* 10. Pricing */}
         <Pricing />
 
-        {/* 14. Company — legitimacy anchor before footer */}
+        {/* 11. Company */}
         <AboutSection />
       </main>
 

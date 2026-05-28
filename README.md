@@ -1,10 +1,10 @@
 # AgentQA
 
-**Autonomous AI QA engineer for web apps.**
+**Continuous AI reliability intelligence for web apps.**
 
-Paste a deployed URL. AgentQA launches a real Chrome browser, crawls up to 5 pages, detects bugs, captures screenshots, and delivers a scored QA report — then runs AI root-cause analysis on every issue in the background.
+Paste a deployed URL or trigger from CI/CD. AgentQA launches a real Chrome browser, crawls every page, detects bugs, captures screenshots, and delivers a scored reliability report — then runs AI root-cause analysis matched against a growing failure signature library.
 
-Built by [Viyalabs](https://viyalabs.com) · [info@viyalabs.com](mailto:info@viyalabs.com) · [agentqa.viyalabs.com](https://agentqa.viyalabs.com)
+Built by [Praveen Kumar](https://www.linkedin.com/in/praveen-perfeito-75852a64/) · [Viyalabs](https://viyalabs.com) · [info@viyalabs.com](mailto:info@viyalabs.com) · [agentqa.viyalabs.com](https://agentqa.viyalabs.com)
 
 ---
 
@@ -20,9 +20,14 @@ Built by [Viyalabs](https://viyalabs.com) · [info@viyalabs.com](mailto:info@viy
 | **Network debugging** | XHR/Fetch/script/stylesheet requests — status, timing, size |
 | **JS error stacks** | Uncaught exceptions via `page.on('pageerror')` with full stack traces |
 | **Real-time scan log** | Live terminal feed in dashboard as scan progresses |
-| **AI root-cause analysis** | Claude Haiku analyzes every issue in the background — produces a one-sentence summary, specific root cause, and ordered fix steps |
+| **AI root-cause analysis** | Claude Haiku analyzes every issue — produces a one-sentence summary, specific root cause, and ordered fix steps |
 | **AI scan overview** | One-paragraph engineering summary generated after all issues are analyzed |
+| **Failure signature matching** | 33 known framework-specific failure signatures (Next.js hydration, Shopify race conditions, Laravel CSRF) matched before any Claude call — instant, zero cost |
 | **Pattern learning** | Identical fingerprinted issues reuse cached AI templates — zero extra Claude calls after the first occurrence |
+| **Regression tracking** | Issues resolved in one scan and reappearing in a later scan are flagged as regressions, not new issues |
+| **Recurrence intelligence** | `recurrence_count` and `avg_days_to_recur` tracked per pattern across all scans |
+| **Semantic embeddings** | Optional pgvector-powered semantic similarity matching for issue clustering (requires OpenAI key) |
+| **Scheduled scans** | Daily, weekly, or custom cadence — automated reliability monitoring without manual triggers |
 | **Feedback loop** | Thumbs up/down on AI fix suggestions; negative feedback flags the pattern for re-analysis |
 | **Shareable reports** | Permanent public URL at `/report/{id}` with OG preview card |
 | **Notify when done** | User submits email while scan runs; scanner emails the report link on completion |
@@ -40,7 +45,8 @@ Built by [Viyalabs](https://viyalabs.com) · [info@viyalabs.com](mailto:info@viy
 | UI | Shadcn-style Radix UI components |
 | Testing engine | Playwright (real Chromium) |
 | AI analysis | Anthropic Claude Haiku (`claude-haiku-4-5-20251001`) |
-| Database | Supabase (PostgreSQL + RLS) |
+| Semantic embeddings | OpenAI `text-embedding-3-small` via pgvector (optional) |
+| Database | Supabase (PostgreSQL + pgvector + RLS) |
 | Storage | Supabase Storage (screenshots, mobile screenshots) |
 | Email | Resend API |
 | Analytics | Vercel Analytics |
@@ -53,7 +59,7 @@ Built by [Viyalabs](https://viyalabs.com) · [info@viyalabs.com](mailto:info@viy
 ### 1. Clone and install
 
 ```bash
-git clone https://github.com/PraveenPerfeito/agentqa
+git clone https://github.com/Viyalabs/agentqa
 cd agentqa
 npm install
 ```
@@ -89,21 +95,24 @@ SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
 NEXT_PUBLIC_APP_URL=http://localhost:3000
 
 # Optional — AI root-cause analysis (Claude Haiku)
-ANTHROPIC_API_KEY=sk-ant-your-key-here        # get at console.anthropic.com
+ANTHROPIC_API_KEY=sk-ant-your-key-here
 
-# Optional — Resend (email notifications + report emails)
+# Optional — Semantic embeddings + similarity matching (OpenAI)
+OPENAI_API_KEY=sk-your-openai-key-here
+
+# Optional — Resend (email notifications)
 RESEND_API_KEY=re_your_api_key_here
-RESEND_FROM_EMAIL=onboarding@resend.dev        # use this until domain is verified
-RESEND_NOTIFY_EMAIL=your@email.com             # admin notification recipient
+RESEND_FROM_EMAIL=onboarding@resend.dev
+RESEND_NOTIFY_EMAIL=your@email.com
 
-# Optional — CI/CD webhook authentication
-WEBHOOK_API_KEY=your_secret_key_here           # generate: openssl rand -hex 32
+# Optional — CI/CD webhook
+WEBHOOK_API_KEY=your_secret_key_here
 
-# Optional — internal worker protection
-WORKER_SECRET=your_worker_secret               # generate: openssl rand -hex 32
+# Optional — worker protection
+WORKER_SECRET=your_worker_secret
 ```
 
-> Supabase values: **Settings → API** in your Supabase dashboard.
+See `.env.example` for the full list including founder access, beta emails, session encryption, and WhatsApp notifications.
 
 ### 5. Run the dev server
 
@@ -117,28 +126,24 @@ Open [http://localhost:3000](http://localhost:3000).
 
 ## Database migrations
 
-All schema changes are managed through a single migration runner:
-
 ```bash
 npm run db:migrate
 ```
 
-This reads `.env.local` and applies all pending migrations via the Supabase Management API (HTTPS — no direct Postgres connection required). Migrations are idempotent; re-running is safe.
+Reads `.env.local` and applies all pending migrations via the Supabase Management API. Idempotent — safe to re-run.
 
-**Required in `.env.local` for migrations:**
+**Required for migrations:**
 
 ```env
-SUPABASE_ACCESS_TOKEN=your-personal-access-token   # supabase.com/dashboard/account/tokens
+SUPABASE_ACCESS_TOKEN=your-personal-access-token
 NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
 ```
-
-The runner creates all tables, views, functions, indexes, and RLS policies in the correct order. See `scripts/migrate.js` for the full migration history.
 
 ---
 
 ## CI/CD integration
 
-Automatically QA-gate every deployment. See [agentqa.viyalabs.com/docs](https://agentqa.viyalabs.com/docs) for full docs.
+Automatically QA-gate every deployment. Full docs at [agentqa.viyalabs.com/docs](https://agentqa.viyalabs.com/docs).
 
 ### Setup
 
@@ -166,7 +171,7 @@ jobs:
             -d '{"url":"${{ github.event.deployment_status.target_url }}","failThreshold":75}'
 ```
 
-Returns `200` when score ≥ `failThreshold`, `422` when score falls below — failing the build automatically.
+Returns `200` when score ≥ `failThreshold`, `422` when score falls below.
 
 ### Response shape
 
@@ -190,57 +195,68 @@ Returns `200` when score ≥ `failThreshold`, `422` when score falls below — f
 ```
 agentqa/
 ├── app/
-│   ├── page.tsx                        # Homepage (ISR, 1h revalidate)
-│   ├── layout.tsx                      # Root layout + Vercel Analytics + SEO metadata
+│   ├── page.tsx                        # Homepage (ISR, 1h revalidate) — 11 sections
+│   ├── layout.tsx                      # Root layout + SEO metadata + Vercel Analytics
 │   ├── opengraph-image.tsx             # Homepage OG image (edge)
 │   ├── icon.svg                        # SVG favicon
 │   ├── robots.ts                       # robots.txt
-│   ├── sitemap.ts                      # sitemap.xml (/, /docs, /scans, /privacy)
+│   ├── sitemap.ts                      # sitemap.xml
+│   ├── demo-app/
+│   │   ├── page.tsx                    # Controlled demo page — seeded issues for DemoScan
+│   │   └── demo-error-trigger.tsx      # Client component — fires real uncaught TypeError
+│   ├── about/
+│   │   └── page.tsx                    # /about — founder story, company info, tech stack
+│   ├── contact/
+│   │   └── page.tsx                    # /contact — email, LinkedIn, X, GitHub, Google Business
+│   ├── internal/
+│   │   └── page.tsx                    # /internal — founder analytics dashboard (token-gated)
 │   ├── api/
 │   │   ├── scan/
-│   │   │   ├── route.ts                # POST /api/scan — start scan (dedup, rate limit, queue limit)
-│   │   │   ├── [id]/
-│   │   │   │   ├── route.ts            # GET /api/scan/:id — poll results, issues, logs, frameworks
-│   │   │   │   └── notify/
-│   │   │   │       └── route.ts        # POST /api/scan/:id/notify — store notify email
-│   │   │   └── worker/
-│   │   │       └── route.ts            # Internal scan worker endpoint
-│   │   ├── ai/
-│   │   │   └── worker/
-│   │   │       └── route.ts            # POST /api/ai/worker — drains AI analysis job queue
-│   │   ├── cron/
-│   │   │   └── ai-worker/
-│   │   │       └── route.ts            # Vercel Cron trigger (every 5 min) → /api/ai/worker
-│   │   ├── issues/
-│   │   │   └── [id]/
-│   │   │       └── feedback/
-│   │   │           └── route.ts        # POST /api/issues/:id/feedback — thumbs up/down on AI fix
-│   │   ├── waitlist/
-│   │   │   └── route.ts                # POST /api/waitlist — Pro waitlist + report email
-│   │   └── webhook/
-│   │       └── scan/
-│   │           └── route.ts            # POST /api/webhook/scan — CI/CD integration
-│   ├── scan/[id]/
-│   │   └── page.tsx                    # Live scan progress page
+│   │   │   ├── route.ts                # POST /api/scan — start scan
+│   │   │   ├── [id]/route.ts           # GET /api/scan/:id — poll results
+│   │   │   ├── [id]/notify/route.ts    # POST /api/scan/:id/notify
+│   │   │   └── worker/route.ts         # Internal scan worker
+│   │   ├── ai/worker/route.ts          # POST /api/ai/worker — drains AI job queue
+│   │   ├── cron/ai-worker/route.ts     # Vercel Cron → /api/ai/worker (every 5 min)
+│   │   ├── issues/[id]/feedback/route.ts # POST /api/issues/:id/feedback
+│   │   ├── intelligence/route.ts       # GET /api/intelligence — cross-scan failure summary
+│   │   ├── admin/metrics/route.ts      # GET /api/admin/metrics — founder analytics (gated)
+│   │   ├── waitlist/route.ts           # POST /api/waitlist — Pro waitlist + Resend + WhatsApp
+│   │   └── webhook/scan/route.ts       # POST /api/webhook/scan — CI/CD integration
+│   ├── scan/[id]/page.tsx              # Live scan progress page
 │   ├── report/[id]/
 │   │   ├── page.tsx                    # Shareable public report (ISR 60s)
-│   │   └── opengraph-image.tsx         # Per-report OG image with score card
-│   ├── scans/
-│   │   └── page.tsx                    # /scans — public feed of 50 recent scans
-│   ├── docs/
-│   │   └── page.tsx                    # /docs — CI/CD API documentation
-│   └── privacy/
-│       └── page.tsx                    # /privacy — privacy policy
+│   │   └── opengraph-image.tsx         # Per-report OG score card
+│   ├── scans/page.tsx                  # /scans — public feed of recent scans
+│   ├── docs/page.tsx                   # /docs — CI/CD API documentation
+│   ├── changelog/page.tsx              # /changelog
+│   ├── privacy/page.tsx                # /privacy
+│   └── terms/page.tsx                  # /terms
 ├── components/
-│   ├── results-dashboard.tsx           # Real-time scan dashboard (polls API, shows AI analysis)
-│   ├── issue-card.tsx                  # Issue display with AI summary, root cause, fix steps, feedback
-│   ├── scan-form.tsx                   # URL input form (homepage)
+│   ├── hero.tsx                        # Hero + ForWhoSection — scan form, traction stats (live DB)
+│   ├── why-agentqa.tsx                 # Problem narrative + compact comparison table (merged)
+│   ├── how-it-works.tsx                # 4-step process
+│   ├── demo-scan.tsx                   # Live demo — controlled /demo-app + 2 real-world sites
+│   ├── ai-moat.tsx                     # AI root cause + fix deep dive
+│   ├── features.tsx                    # Full feature grid (5 categories)
+│   ├── reliability-intelligence.tsx    # Cross-scan pattern memory, regression tracking (live DB)
+│   ├── cta-banner.tsx                  # Conversion CTA
+│   ├── pricing.tsx                     # Free tier + Pro waitlist form (POST /api/waitlist)
+│   ├── about-section.tsx               # Founder + company — homepage legitimacy anchor
+│   ├── recent-reports.tsx              # Live scan gallery (server component, ISR 60s)
+│   ├── navbar.tsx                      # Fixed nav
+│   ├── footer.tsx                      # Four-column footer with all social links
+│   ├── results-dashboard.tsx           # Real-time scan dashboard
+│   ├── issue-card.tsx                  # Issue display with AI analysis + feedback
+│   ├── scan-form.tsx                   # URL input form
 │   ├── screenshot-viewer.tsx           # Screenshot grid + lightbox
-│   ├── notify-when-done.tsx            # Email form shown while scan runs
-│   └── ...                            # Landing page components (hero, features, pricing, etc.)
+│   ├── notify-when-done.tsx            # Email capture during scan
+│   ├── mobile-cta.tsx                  # Mobile sticky CTA
+│   └── reliability-timeline.tsx        # Per-scan timeline (used in report view)
 ├── lib/
 │   ├── supabase.ts                     # Supabase clients + storage helpers
-│   ├── stats.ts                        # getHomeStats() for homepage live stats
+│   ├── stats.ts                        # getHomeStats() — live DB counts for hero
+│   ├── access-control.ts               # Founder token + internal/beta email tiers
 │   └── utils.ts                        # URL validation, formatting, score helpers
 ├── playwright/
 │   ├── crawler.ts                      # BFS web crawler with abort signal + resource blocking
@@ -250,17 +266,21 @@ agentqa/
 │   ├── scorer.ts                       # QA score calculation
 │   ├── ai-analyzer.ts                  # AI analysis orchestrator — batches issues, calls Claude
 │   ├── ai-queue.ts                     # AI job queue — enqueue, claim, complete, fail with backoff
-│   ├── pattern-matcher.ts              # Issue fingerprint → pattern DB — template reuse, clustering
+│   ├── ai-config.ts                    # Model tiering (Haiku default, Sonnet for critical issues)
+│   ├── pattern-matcher.ts              # Issue fingerprint → pattern DB — template reuse
 │   ├── issue-fingerprinter.ts          # Per-issue fingerprint + cluster key generation
-│   └── ai/
-│       └── claude.ts                   # Singleton Claude client — retries, timeouts, JSON parsing
+│   ├── signature-matcher.ts            # Two-pass signature matching: keyword → semantic ANN
+│   ├── known-signatures.ts             # 33 seeded failure signatures across 8 frameworks
+│   ├── embedding-service.ts            # OpenAI text-embedding-3-small wrapper (optional)
+│   ├── regression-worker.ts            # Post-scan regression computation + lifecycle events
+│   └── ai/claude.ts                    # Singleton Claude client — retries, timeouts, JSON parsing
 ├── scripts/
-│   └── migrate.js                      # Database migration runner (Management API or direct Postgres)
+│   └── migrate.js                      # Database migration runner
 ├── types/
-│   └── index.ts                        # All TypeScript types (Scan, Issue, ScanStatusResponse…)
+│   └── index.ts                        # All TypeScript types
 ├── database/
 │   ├── schema.sql                      # Full Supabase schema reference
-│   └── migrations/                     # Individual migration SQL files (reference only)
+│   └── migrations/                     # Individual migration SQL files
 └── __tests__/
     ├── url-validation.test.ts
     ├── scorer.test.ts
@@ -276,19 +296,28 @@ agentqa/
 | `NEXT_PUBLIC_SUPABASE_URL` | ✅ | — | Supabase project URL |
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | ✅ | — | Supabase anon key (public reads) |
 | `SUPABASE_SERVICE_ROLE_KEY` | ✅ | — | Supabase service role key (writes) |
-| `NEXT_PUBLIC_APP_URL` | ✅ | `https://agentqa.viyalabs.com` | Base URL for report/email links and AI worker trigger. Local dev: `http://localhost:3000` |
-| `ANTHROPIC_API_KEY` | optional | — | Enables AI root-cause analysis, fix suggestions, and scan overview. Without it, issues are still detected — just without AI enrichment |
-| `RESEND_API_KEY` | optional | — | Enables all email delivery (report links, notifications) |
-| `RESEND_FROM_EMAIL` | optional | `AgentQA <noreply@viyalabs.com>` | Sender address — use `onboarding@resend.dev` until domain verified |
-| `RESEND_NOTIFY_EMAIL` | optional | `info@viyalabs.com` | Admin email for waitlist/lead notifications |
-| `WEBHOOK_API_KEY` | optional | — | Secret for CI/CD webhook (`x-api-key` header). Generate: `openssl rand -hex 32` |
-| `WORKER_SECRET` | optional | — | Protects `/api/scan/worker` and `/api/ai/worker`. Generate: `openssl rand -hex 32` |
+| `NEXT_PUBLIC_APP_URL` | ✅ | `https://agentqa.viyalabs.com` | Base URL for reports, emails, and demo scan |
+| `ANTHROPIC_API_KEY` | optional | — | Enables AI root-cause analysis and scan overview |
+| `OPENAI_API_KEY` | optional | — | Enables semantic embeddings + pgvector similarity matching |
+| `AI_PREMIUM_MODEL` | optional | `false` | Set `true` to use Claude Sonnet for critical JS/network issues |
+| `RESEND_API_KEY` | optional | — | Email delivery (report links, waitlist notifications) |
+| `RESEND_FROM_EMAIL` | optional | `AgentQA <noreply@viyalabs.com>` | Sender — use `onboarding@resend.dev` until domain verified |
+| `RESEND_NOTIFY_EMAIL` | optional | `info@viyalabs.com` | Admin notification recipient |
+| `WEBHOOK_API_KEY` | optional | — | CI/CD webhook secret (`x-api-key` header) |
+| `WORKER_SECRET` | optional | — | Protects `/api/scan/worker` and `/api/ai/worker` |
+| `CRON_SECRET` | optional | — | Vercel sets automatically on Pro; required if self-hosting |
+| `SESSION_ENCRYPTION_KEY` | optional | — | AES-256-GCM key for auth session credentials (64 hex chars) |
+| `FOUNDER_TOKEN` | optional | — | Header token for internal access without email check |
+| `INTERNAL_EMAILS` | optional | — | Comma-separated emails — bypass rate limits, full AI analysis |
+| `BETA_EMAILS` | optional | — | Comma-separated emails — elevated limits (20 scans/hr) |
 | `SUPABASE_ACCESS_TOKEN` | optional | — | Required for `npm run db:migrate` via Management API |
-| `CRON_SECRET` | optional | — | Vercel sets this automatically on Pro. Required if self-hosting cron |
-| `PLAYWRIGHT_HEADLESS` | optional | `true` | Set `false` to see browser window during local dev |
+| `SUPABASE_POOLER_URL` | optional | — | PostgreSQL pooler URL for direct migration scripts |
+| `PLAYWRIGHT_HEADLESS` | optional | `true` | Set `false` to see browser during local dev |
 | `PLAYWRIGHT_TIMEOUT_MS` | optional | `10000` | Per-page navigation timeout in ms |
 | `MAX_PAGES_PER_SCAN` | optional | `5` | Max pages per scan |
 | `MAX_CRAWL_DEPTH` | optional | `1` | BFS depth from start URL |
+| `CALLMEBOT_API_KEY` | optional | — | WhatsApp notifications for waitlist leads |
+| `CALLMEBOT_PHONE` | optional | — | WhatsApp phone number (with country code, no +) |
 
 ---
 
@@ -296,33 +325,63 @@ agentqa/
 
 | Table / View | Purpose |
 |---|---|
-| `scans` | One row per scan — URL, status, score, `notify_email`, `ip`, `ai_overview` |
+| `scans` | One row per scan — URL, status, score, `notify_email`, `ip`, `ai_overview`, `session_id` |
 | `scanned_pages` | Per-page data — status code, load time, screenshot URLs, network details |
-| `issues` | Every detected issue — type, severity, details JSONB, `ai_summary`, `root_cause`, `fix_suggestion` |
-| `issues_enriched` | Full AI analysis record — confidence, model version, whether result came from pattern cache |
-| `issues_with_analysis` | View joining `issues` + `issues_enriched` + `issue_patterns` — used by the scan results API |
-| `issue_patterns` | Fingerprint → root cause template. Populated on first analysis; reused on every subsequent match |
-| `pattern_clusters` | Groups of related patterns (same issue family across different pages/apps) |
-| `pattern_occurrences` | Time-series log of which scans triggered each pattern |
-| `ai_analysis_jobs` | Async job queue — `issue_batch` and `scan_overview` jobs with priority, status, retry count |
-| `scan_frameworks` | Detected tech stack per scan (Next.js, React, etc.) with confidence scores |
-| `page_logs` | Console errors/warnings + JS stack traces per page |
-| `scan_logs` | Real-time progress messages shown in the dashboard terminal |
+| `issues` | Every detected issue — type, severity, details JSONB, `ai_summary`, `root_cause`, `fix_suggestion`, `signature_id` |
+| `issues_enriched` | Full AI analysis record — confidence, model version, pattern cache hit |
+| `issues_with_analysis` | View joining `issues` + `issues_enriched` + `issue_patterns` |
+| `issue_patterns` | Fingerprint → root cause template + recurrence tracking + embeddings |
+| `pattern_clusters` | Groups of related patterns across pages/apps |
+| `pattern_occurrences` | Time-series log of pattern triggers per scan |
+| `failure_signatures` | 33 pre-seeded known failure signatures — matched before AI analysis |
+| `issue_resolution_events` | Lifecycle events: `detected`, `resolved`, `reappeared` per domain+fingerprint |
+| `domain_issue_state` | Current open/resolved status per domain fingerprint |
+| `scan_regressions` | Per-scan regression diffs (new / resolved / recurring / worsened / improved) |
+| `scan_schedules` | Recurring scan configuration — cadence, next run, owner email |
+| `ai_analysis_jobs` | Async job queue — `issue_batch` and `scan_overview` jobs |
+| `scan_frameworks` | Detected tech stack per scan with confidence scores |
+| `page_logs` | Console errors/warnings + JS stack traces |
+| `scan_logs` | Real-time progress messages |
 | `waitlist` | Pro plan signups — email, name, timestamp |
+| `domain_recurrence_summary` | View — detection / resolution / reappearance counts per domain |
+| `framework_failure_analytics` | View — issue breakdown by detected framework |
+
+---
+
+## Intelligence layer
+
+### Failure signature matching
+
+Before any Claude call, every issue is matched against 33 pre-seeded failure signatures across 8 frameworks using a two-pass approach:
+
+1. **Keyword/regex** — fast pattern match against `triggerPatterns` (no API, no latency)
+2. **Semantic ANN** — pgvector cosine similarity via `find_signature_by_embedding` (requires `OPENAI_API_KEY`)
+
+Matched signatures provide instant root cause and fix — Claude is only called for genuinely novel issues.
+
+### Pattern learning
+
+The first time a fingerprinted issue is analyzed by Claude, the root cause and fix are written back to `issue_patterns` as a reusable template. Every subsequent scan that matches the fingerprint skips Claude entirely.
+
+### Regression tracking
+
+After each scan, `regression-worker.ts` runs two Postgres functions:
+- `agentqa_compute_regressions` — diffs current vs previous scan per fingerprint
+- `agentqa_apply_scan_to_state` — updates `domain_issue_state` memory
+
+Lifecycle events (`detected`, `resolved`, `reappeared`) are logged to `issue_resolution_events`, powering the recurrence intelligence API at `GET /api/intelligence`.
 
 ---
 
 ## AI analysis pipeline
 
-After a scan completes, two async jobs are enqueued in `ai_analysis_jobs`:
+After a scan completes, two async jobs are enqueued:
 
-1. **`issue_batch` (priority 1)** — groups issues by fingerprint, sends batches of up to 14 issues to Claude Haiku in a single call, writes `ai_summary` / `root_cause` / `fix_suggestion` to each issue. Issues whose fingerprint already has a pattern template skip the Claude call entirely.
+1. **`issue_batch` (priority 1)** — groups issues by fingerprint, sends batches to Claude Haiku, writes `ai_summary` / `root_cause` / `fix_suggestion`. Issues with cached pattern templates skip Claude entirely.
 
-2. **`scan_overview` (priority 2)** — after issue analysis, generates a 2–3 sentence engineering summary for the scan and stores it in `scans.ai_overview`.
+2. **`scan_overview` (priority 2)** — generates a 2–3 sentence engineering summary stored in `scans.ai_overview`.
 
-Jobs are drained by `POST /api/ai/worker`, triggered by Vercel Cron every 5 minutes. Each invocation reaps stuck jobs (lambda crashed mid-job), processes up to 10 jobs, then refreshes pattern velocity metrics.
-
-**Pattern learning:** the first time a fingerprinted issue is analyzed by Claude, the root cause and fix are written back to `issue_patterns` as a reusable template. Every subsequent scan that hits the same fingerprint skips Claude entirely — analysis is instant and free.
+Jobs are drained by `POST /api/ai/worker`, triggered by Vercel Cron every 5 minutes.
 
 ---
 
@@ -336,9 +395,9 @@ Jobs are drained by `POST /api/ai/worker`, triggered by Vercel Cron every 5 minu
 
 `Score = max(0, 100 − total_deductions)`
 
-**Critical issues:** page crash, navigation failure (unreachable), uncaught JS exception (TypeError / ReferenceError / SyntaxError)  
-**Medium issues:** 404, console errors, failed XHR/Fetch, broken images, missing alt text, mobile layout overflow, broken forms  
-**Low issues:** page load > 5s, 3+ console warnings, assets > 500 KB, missing meta description/OG image/H1
+**Critical:** page crash, unreachable page, uncaught JS exception (TypeError / ReferenceError / SyntaxError)
+**Medium:** 404, console errors, failed XHR/Fetch, broken images, missing alt text, mobile overflow, broken forms
+**Low:** load > 5s, 3+ console warnings, assets > 500 KB, missing meta description/OG image/H1
 
 ---
 
@@ -346,61 +405,74 @@ Jobs are drained by `POST /api/ai/worker`, triggered by Vercel Cron every 5 minu
 
 | Limit | Value | Scope |
 |---|---|---|
-| Per-IP scan rate | 3 scans/hour | Per client IP (`x-forwarded-for`) |
-| Global queue | 20 concurrent scans | All active `pending`/`running` scans |
+| Per-IP scan rate | 3 scans/hour | Per client IP |
+| Global queue | 20 concurrent scans | All active pending/running scans |
 | URL deduplication | 15-minute window | Returns cached result for same URL |
 | Feedback endpoint | 10 requests/minute | Per IP, in-process sliding window |
+
+Internal emails (`INTERNAL_EMAILS`) bypass all limits. Beta emails (`BETA_EMAILS`) get 20 scans/hour.
 
 ---
 
 ## API reference
 
 ### `POST /api/scan`
-Start a scan. Returns `{ scanId }` (202) or `{ scanId, cached: true }` (200) for recent scans within the dedup window.
+Start a scan. Returns `{ scanId }` (202) or `{ scanId, cached: true }` (200) for dedup window hits.
 
 Body: `{ url: string, email?: string }`
 
 ### `GET /api/scan/:id`
-Poll scan status. Returns `{ scan, pages, issues, logs, frameworks, history }`. Issues are sorted critical → medium → low.
+Poll scan status. Returns `{ scan, pages, issues, logs, frameworks, history }`. Issues sorted critical → medium → low.
 
 ### `POST /api/scan/:id/notify`
-Store a notification email while scan is running. Scanner emails the report link on completion.
+Store notification email. Scanner sends report link on completion.
 
 ### `POST /api/issues/:id/feedback`
-Record thumbs up/down on an AI fix suggestion. Rate-limited per IP. Negative feedback flags the pattern for re-analysis on the next scan.
+Thumbs up/down on AI fix. Negative feedback flags pattern for re-analysis.
 
 Body: `{ helpful: boolean }`
 
-### `POST /api/waitlist`
-Join Pro waitlist. Optionally attach a `scanId` to receive the report link by email.
+### `GET /api/intelligence`
+Cross-scan failure intelligence summary — recurring patterns, matched signatures, framework breakdown, recurrence metrics.
 
-### `POST /api/webhook/scan` *(requires `x-api-key` header)*
-CI/CD integration — runs scan synchronously. Returns `200` (passed) or `422` (score below threshold).
+Query params: `domain?`, `days?` (default 30)
+
+### `POST /api/waitlist`
+Join Pro waitlist. Stores to Supabase, notifies via Resend + WhatsApp.
+
+Body: `{ email: string, name?: string, scanId?: string }`
+
+### `POST /api/webhook/scan` *(requires `x-api-key`)*
+CI/CD integration — synchronous scan. Returns `200` (passed) or `422` (below threshold).
 
 Body: `{ url: string, failThreshold?: number }` (default threshold: 70)
 
-### `POST /api/ai/worker` *(internal — requires `x-worker-secret` if `WORKER_SECRET` is set)*
-Drain the AI analysis job queue. Called by Vercel Cron every 5 minutes. Responds immediately (202); processing continues via `waitUntil`.
+### `POST /api/ai/worker` *(requires `x-worker-secret` if `WORKER_SECRET` set)*
+Drain AI job queue. Called by Vercel Cron every 5 minutes.
 
 ---
 
 ## Architecture decisions
 
-**Fire-and-forget scanning:** `POST /api/scan` creates the DB record, returns `scanId` immediately, and uses `waitUntil` to keep the serverless function alive while the scan runs in the background. The frontend polls every 2.5s.
+**Fire-and-forget scanning:** `POST /api/scan` returns `scanId` immediately, uses `waitUntil` to keep the serverless function alive while the scan runs. Frontend polls every 2.5s.
 
-**Async AI queue:** AI analysis runs in a separate job queue after the scan completes so it doesn't block the scan result. The frontend polls for up to 90 seconds after scan completion to catch AI results. A Vercel Cron triggers the AI worker every 5 minutes as a safety net.
+**Async AI queue:** AI runs after the scan completes in a separate job queue. Frontend polls up to 90s post-completion. Vercel Cron is the safety net.
 
-**Pattern-first analysis:** Before calling Claude, every issue is checked against the fingerprint cache in `issue_patterns`. If a matching template exists and hasn't been flagged for refresh, it's applied instantly. Claude is only called for genuinely novel issues. This compounds over time — common bugs become free after the first scan.
+**Signature-first, pattern-second, Claude-last:** Issues flow through three layers before a Claude call — known signature match → fingerprint cache hit → novel issue (Claude). Most repeat issues never touch Claude.
 
-**Deferred screenshot uploads:** Screenshots are collected in memory during the crawl and uploaded to Supabase Storage in parallel after all pages are tested. Removes 3–5s of upload latency from each page's critical path.
+**Regression worker:** Runs post-scan via two idempotent Postgres functions. Lifecycle events power the intelligence API. Never blocks the scan result.
 
-**2-minute global timeout:** `AbortController` fires at 120s. The crawler checks the signal between pages and stops cleanly, always returning partial results — users never see an infinite loading state.
+**Fire-and-forget embeddings:** Pattern embeddings are generated async after pattern creation, never block the scan pipeline. Uses `.is('embedding', null)` guard to be race-safe.
 
-**JSONB for network details:** Each page generates ≤60 tracked requests. Storing as JSONB on `scanned_pages` avoids an extra join and keeps the API response flat.
+**hnsw over ivfflat:** pgvector index uses `hnsw` (works on empty tables) instead of `ivfflat` (requires training data at index creation time).
 
-**IP rate limiting without Redis:** Client IP stored in `scans.ip` at insert time. Rate check queries the `scans` table for recent inserts from the same IP — no external cache needed for 3 req/hour granularity. Fail-safe: if the count query errors, the request is rejected rather than allowed through.
+**Deferred screenshot uploads:** Screenshots collected in memory, uploaded in parallel after crawl. Removes 3–5s of upload latency per page.
 
-**Node.js runtime everywhere:** Playwright requires Node.js APIs (child processes, file system). Edge runtime is incompatible. Only the OG image routes use edge runtime.
+**2-minute global timeout:** `AbortController` fires at 120s. Crawler stops cleanly between pages, always returns partial results.
+
+**IP rate limiting without Redis:** Rate check queries `scans` table — no external cache needed for 3 req/hour granularity.
+
+**Node.js runtime everywhere:** Playwright requires Node.js APIs. Edge runtime only for OG image routes.
 
 ---
 
@@ -408,14 +480,14 @@ Drain the AI analysis job queue. Called by Vercel Cron every 5 minutes. Responds
 
 ### Vercel (recommended)
 
-1. Push to GitHub
+1. Push to GitHub (`github.com/Viyalabs/agentqa`)
 2. Import at [vercel.com](https://vercel.com)
 3. Add all environment variables from `.env.example`
 4. Set **Function Region** to your nearest region
-5. Run `npm run db:migrate` to apply the schema
+5. Run `npm run db:migrate`
 6. Deploy
 
-> **Vercel Hobby vs Pro:** Hobby has a 60-second function timeout. Large sites may not complete a full scan. Upgrade to Vercel Pro for the 300-second timeout needed for reliable results and AI analysis.
+> **Vercel Hobby vs Pro:** Hobby has a 60-second function timeout. Upgrade to Pro for the 300-second timeout needed for reliable full-site scans.
 
 ### Running tests
 

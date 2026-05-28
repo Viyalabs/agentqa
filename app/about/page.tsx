@@ -148,6 +148,42 @@ export default function AboutPage() {
           </div>
         </div>
 
+        {/* Founder */}
+        <div className="mb-16 p-6 rounded-2xl border border-zinc-800 bg-zinc-900/30">
+          <p className="text-xs text-zinc-600 uppercase tracking-wider font-mono mb-5">Built by</p>
+          <div className="flex items-start gap-4">
+            <div className="w-11 h-11 rounded-xl bg-blue-500/10 border border-blue-500/20 flex items-center justify-center shrink-0 text-blue-400 font-bold text-base select-none">
+              P
+            </div>
+            <div>
+              <p className="text-white font-semibold text-lg leading-tight">Praveen Kumar</p>
+              <p className="text-zinc-500 text-sm mt-0.5">Founder, Viyalabs · Chennai, India</p>
+              <p className="text-zinc-400 text-sm leading-relaxed mt-3 max-w-xl">
+                I built AgentQA after watching AI coding tools ship apps with silent bugs — broken auth flows,
+                mobile overflows, JS crashes that only appear in a real browser. Traditional QA tooling
+                requires test scripts and engineering time most teams don&apos;t have. I wanted one URL to fix that.
+              </p>
+              <div className="flex items-center gap-4 mt-3">
+                <a
+                  href="mailto:info@viyalabs.com"
+                  className="text-sm text-blue-400 hover:text-blue-300 transition-colors"
+                >
+                  info@viyalabs.com
+                </a>
+                <span className="text-zinc-700">·</span>
+                <a
+                  href="https://www.linkedin.com/in/praveen-perfeito-75852a64/"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-sm text-zinc-400 hover:text-zinc-200 transition-colors"
+                >
+                  LinkedIn
+                </a>
+              </div>
+            </div>
+          </div>
+        </div>
+
         {/* Tech stack */}
         <div className="mb-16">
           <h2 className="text-xl font-semibold text-white mb-6">Built on proven infrastructure</h2>

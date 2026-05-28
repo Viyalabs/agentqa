@@ -64,8 +64,8 @@ export default function TermsPage() {
 
           <Section title="Contact">
             Questions about these terms? Email{' '}
-            <a href="mailto:support@viyalabs.com" className="text-zinc-300 hover:text-white transition-colors">
-              support@viyalabs.com
+            <a href="mailto:info@viyalabs.com" className="text-zinc-300 hover:text-white transition-colors">
+              info@viyalabs.com
             </a>
             {' '}or visit{' '}
             <a href="https://viyalabs.com" target="_blank" rel="noopener noreferrer" className="text-zinc-300 hover:text-white transition-colors">

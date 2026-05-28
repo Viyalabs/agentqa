@@ -15,7 +15,7 @@ const steps = [
     icon: ScanSearch,
     title: 'We crawl & test',
     description:
-      'A real Chrome browser visits every page — testing desktop and mobile, catching JS errors with stack traces, inspecting every network request, recording failures on video.',
+      'A real Chrome browser visits every page — testing desktop and mobile, catching JS errors with full stack traces, inspecting every network request, and flagging mobile layout breaks at 375 px.',
     color: 'text-blue-400',
     bg: 'bg-blue-500/10 border-blue-500/20',
   },
@@ -24,7 +24,7 @@ const steps = [
     icon: FileBarChart,
     title: 'Get your report',
     description:
-      'A 0–100 QA score with severity-classified issues, screenshots, video replays, and a network tab — all shareable via a single permanent link.',
+      'A 0–100 reliability score with severity-classified issues, desktop and mobile screenshots, network request logs, and a page-by-page breakdown — shareable via a single permanent link.',
     color: 'text-blue-400',
     bg: 'bg-blue-500/10 border-blue-500/20',
   },
@@ -48,10 +48,10 @@ export function HowItWorks() {
         <div className="text-center mb-10">
           <p className="text-xs uppercase tracking-[0.2em] text-zinc-500 mb-3">How it works</p>
           <h2 className="text-4xl md:text-5xl font-semibold tracking-tight text-white mb-4">
-            From URL to full QA report in 4 steps
+            From deploy to reliability report in minutes
           </h2>
           <p className="text-base text-zinc-400 leading-relaxed max-w-xl mx-auto">
-            Four automated phases — crawl, analyze, classify, report — delivering a scored report with every issue ranked and the fix already written.
+            Four automated phases — crawl, test, analyze, report — running on every deploy. Every issue ranked by severity, root-caused by AI, and matched against a growing failure pattern library.
           </p>
         </div>
 
