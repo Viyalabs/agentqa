@@ -7,9 +7,9 @@ import './globals.css'
 const inter = Inter({ subsets: ['latin'] })
 
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? 'https://agentqa.viyalabs.com'
-const TITLE = 'AgentQA — AI QA Agent. Catch Bugs Before Your Users Do'
+const TITLE = 'AgentQA — AI Reliability Platform for Web Apps | Viyalabs'
 const DESCRIPTION =
-  'AgentQA is your autonomous AI QA engineer. Paste a URL and get a full QA report in under 2 minutes — real Chrome browser, zero setup, no QA team required. Works with Cursor, Replit, Lovable, and any web app.'
+  'AgentQA by Viyalabs is the AI reliability platform for modern software teams. Automated QA on every deploy — real Chrome browser, regression detection, AI root cause analysis, and CI/CD integration. Built for SaaS startups, AI-generated apps, and engineering teams.'
 
 export const metadata: Metadata = {
   metadataBase: new URL(APP_URL),
@@ -22,26 +22,26 @@ export const metadata: Metadata = {
   description: DESCRIPTION,
 
   keywords: [
+    'AI reliability platform',
     'AI QA agent',
-    'autonomous QA',
     'automated QA tool',
+    'regression detection',
+    'CI/CD QA integration',
+    'automated regression testing',
     'AI app testing',
-    'website testing',
-    'automated QA',
+    'web app reliability',
     'Playwright testing',
     'bug detection',
     'AI generated app testing',
     'Cursor app testing',
     'Replit app testing',
     'Lovable app testing',
-    'website scanner',
     'QA automation',
     'web app testing',
-    'automated website testing',
-    'web app QA',
     'JavaScript error detection',
     'mobile responsiveness testing',
-    'no setup QA',
+    'Viyalabs',
+    'startup QA tool',
   ],
 
   authors: [{ name: 'Viyalabs', url: 'https://viyalabs.com' }],

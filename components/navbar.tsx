@@ -23,9 +23,10 @@ export function Navbar() {
     >
       <div className="max-w-6xl mx-auto px-6 h-16 flex items-center justify-between">
         {/* Brand */}
-        <a href="/" className="flex items-center gap-2.5 text-white font-semibold text-lg hover:opacity-90 transition-opacity">
+        <a href="/" className="flex items-center gap-2 hover:opacity-90 transition-opacity">
           <Activity className="h-5 w-5 text-blue-400" />
-          AgentQA
+          <span className="text-white font-semibold text-lg">AgentQA</span>
+          <span className="text-xs text-zinc-600 font-normal hidden md:inline ml-0.5">by Viyalabs</span>
         </a>
 
         {/* Nav links */}
@@ -41,6 +42,9 @@ export function Navbar() {
           </a>
           <a href="/patterns" className="hover:text-white transition-colors">
             Patterns
+          </a>
+          <a href="/about" className="hover:text-white transition-colors">
+            About
           </a>
           <a href="/docs" className="hover:text-white transition-colors">
             Docs

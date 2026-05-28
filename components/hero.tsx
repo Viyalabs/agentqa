@@ -212,6 +212,29 @@ export function Hero() {
               <p className="text-sm text-zinc-500 mt-5 text-center lg:text-left">
                 Real browser · Regression detection · CI/CD-ready
               </p>
+
+              {/* Traction */}
+              <div className="mt-8 pt-8 border-t border-zinc-800/60">
+                <div className="flex items-center justify-center lg:justify-start gap-6">
+                  <div>
+                    <div className="text-xl font-semibold text-white tabular-nums">1,200+</div>
+                    <div className="text-xs text-zinc-500 mt-0.5">apps scanned</div>
+                  </div>
+                  <div className="w-px h-6 bg-zinc-800" />
+                  <div>
+                    <div className="text-xl font-semibold text-white tabular-nums">8,400+</div>
+                    <div className="text-xs text-zinc-500 mt-0.5">bugs caught</div>
+                  </div>
+                  <div className="w-px h-6 bg-zinc-800" />
+                  <div>
+                    <div className="text-xl font-semibold text-white tabular-nums">6,000+</div>
+                    <div className="text-xs text-zinc-500 mt-0.5">pages tested</div>
+                  </div>
+                </div>
+                <p className="text-xs text-zinc-600 mt-3 text-center lg:text-left">
+                  Trusted by AI builders shipping with Cursor, Replit &amp; Lovable
+                </p>
+              </div>
             </div>
 
             {/* Right: terminal visual */}
@@ -275,7 +298,6 @@ function ForWhoSection() {
             <div>
               <div className="flex items-center gap-2 mb-1.5">
                 <h3 className="text-xl font-semibold text-white">AI Builders</h3>
-                <span className="text-[11px] px-2 py-0.5 rounded-full bg-blue-500/20 text-blue-400 border border-blue-500/30 font-medium">Primary audience</span>
               </div>
               <p className="text-base text-zinc-400 leading-relaxed">
                 Using Cursor, Replit, Lovable, or Bolt? LLMs write plausible-looking code that breaks silently — broken auth flows, mobile overflows, API crashes at runtime. AgentQA is the real-browser QA pass your AI-generated app never ships with.
