@@ -13,6 +13,7 @@ import { Pricing } from '@/components/pricing'
 import { Footer } from '@/components/footer'
 import { MobileCta } from '@/components/mobile-cta'
 import { AboutSection } from '@/components/about-section'
+import { WhyNow } from '@/components/why-now'
 
 const jsonLd = {
   '@context': 'https://schema.org',
@@ -69,6 +70,9 @@ export default async function HomePage() {
 
         {/* 3. Why AgentQA — problem + comparison */}
         <WhyAgentQA />
+
+        {/* 4b. Why now — market timing & investor narrative */}
+        <WhyNow />
 
         {/* 4. How it works */}
         <HowItWorks />

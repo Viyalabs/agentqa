@@ -1,0 +1,54 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(rm -f tsconfig.tsbuildinfo)",
+      "Bash(node --max-old-space-size=1024 ./node_modules/.bin/tsc --noEmit)",
+      "Bash(npx --max-old-space-size=2048 tsc --noEmit --skipLibCheck)",
+      "Bash(npx jest *)",
+      "Bash(git -C d:/AgentQA status)",
+      "Bash(git -C d:/AgentQA init)",
+      "Bash(git -C d:/AgentQA add .)",
+      "Bash(git -C d:/AgentQA status --short)",
+      "Bash(git -C d:/AgentQA rm --cached .claude/settings.local.json)",
+      "Bash(git -C d:/AgentQA add .gitignore)",
+      "Bash(git -C d:/AgentQA config user.email \"praveen@blindmatrix.com\")",
+      "Bash(git -C d:/AgentQA config user.name \"Praveen\")",
+      "Bash(git -C d:/AgentQA commit -m ' *)",
+      "Bash(git -C d:/AgentQA remote add origin https://github.com/PraveenPerfeito/agentqa.git)",
+      "Bash(git -C d:/AgentQA push -u origin master)",
+      "Bash(git -C d:/AgentQA add README.md playwright/page-tester.ts components/demo-scan.tsx)",
+      "Bash(git -C d:/AgentQA push)",
+      "Bash(git -C d:/AgentQA add components/footer.tsx components/demo-scan.tsx components/results-dashboard.tsx)",
+      "Bash(git -C \"d:/AgentQA\" status)",
+      "Bash(git -C \"d:/AgentQA\" diff --stat)",
+      "Bash(git -C \"d:/AgentQA\" log --oneline -5)",
+      "Bash(git -C \"d:/AgentQA\" add components/faq.tsx components/mobile-cta.tsx app/globals.css app/page.tsx app/report/[id]/error.tsx app/report/[id]/page.tsx app/scan/[id]/page.tsx components/comparison.tsx components/cta-banner.tsx components/demo-scan.tsx components/features.tsx components/footer.tsx components/future-of-qa.tsx components/hero.tsx components/how-it-works.tsx components/navbar.tsx components/pricing.tsx components/problem-narrative.tsx components/report-preview.tsx components/scan-form.tsx components/tech-bar.tsx components/testimonials.tsx database/schema.sql)"
+    ]
+  },
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write|Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "cat >/dev/null || true; git rev-parse --git-dir >/dev/null 2>&1 && code-review-graph update --skip-flows --repo \"D:/AgentQA\" || true",
+            "timeout": 30
+          }
+        ]
+      }
+    ],
+    "SessionStart": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "cat >/dev/null || true; git rev-parse --git-dir >/dev/null 2>&1 && code-review-graph status --repo \"D:/AgentQA\" || echo 'Not a git repo, skipping'",
+            "timeout": 10
+          }
+        ]
+      }
+    ]
+  }
+}

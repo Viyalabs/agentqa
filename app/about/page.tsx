@@ -89,6 +89,28 @@ export default function AboutPage() {
           </p>
         </div>
 
+        {/* Market moment */}
+        <div className="mb-16">
+          <h2 className="text-xl font-semibold text-white mb-6">The market moment</h2>
+          <div className="grid sm:grid-cols-3 gap-4 mb-6">
+            <div className="p-5 rounded-xl border border-zinc-800 bg-zinc-900/40">
+              <div className="text-2xl font-semibold text-white mb-1">30M+</div>
+              <div className="text-sm text-zinc-500 leading-relaxed">developers using AI coding tools</div>
+            </div>
+            <div className="p-5 rounded-xl border border-zinc-800 bg-zinc-900/40">
+              <div className="text-2xl font-semibold text-white mb-1">$0</div>
+              <div className="text-sm text-zinc-500 leading-relaxed">spent on QA by most AI-built apps at launch</div>
+            </div>
+            <div className="p-5 rounded-xl border border-zinc-800 bg-zinc-900/40">
+              <div className="text-2xl font-semibold text-white mb-1">Every app</div>
+              <div className="text-sm text-zinc-500 leading-relaxed">built with AI is a potential customer</div>
+            </div>
+          </div>
+          <p className="text-zinc-400 text-sm leading-relaxed max-w-2xl">
+            AI coding tools are compressing development timelines from months to hours. The QA infrastructure hasn&apos;t caught up. AgentQA is building that infrastructure layer before it becomes a commodity.
+          </p>
+        </div>
+
         {/* Story + What we build */}
         <div className="grid md:grid-cols-2 gap-12 mb-16">
           <div>
@@ -193,6 +215,60 @@ export default function AboutPage() {
               <div key={tech.name} className="flex items-center gap-3 p-3 rounded-lg border border-zinc-800 bg-zinc-900/40">
                 <span className="text-sm font-mono text-zinc-300 font-medium">{tech.name}</span>
                 <span className="text-xs text-zinc-600">{tech.desc}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Reliability roadmap */}
+        <div className="mb-16">
+          <h2 className="text-xl font-semibold text-white mb-2">The reliability roadmap</h2>
+          <p className="text-zinc-500 text-sm mb-6">Three phases. Two live today.</p>
+          <div className="space-y-3">
+            {[
+              {
+                phase: '01',
+                title: 'Detect',
+                status: 'Live',
+                desc: 'Real browser crawls every page. Classifies every bug by severity. Scores every app from 0–100. Zero setup, any framework, any URL.',
+              },
+              {
+                phase: '02',
+                title: 'Diagnose',
+                status: 'Live',
+                desc: 'Claude AI explains every issue — root cause, technical reason, specific fix suggestion. Cross-scan pattern memory means known bugs get instant answers.',
+              },
+              {
+                phase: '03',
+                title: 'Fix',
+                status: 'Building',
+                desc: 'AgentQA opens the pull request. Detect, diagnose, and patch — fully autonomous. The QA loop closes without a human in the loop.',
+              },
+            ].map((item) => (
+              <div
+                key={item.phase}
+                className={`flex items-start gap-4 p-4 rounded-xl border ${
+                  item.status === 'Live'
+                    ? 'border-blue-500/20 bg-blue-500/5'
+                    : 'border-zinc-800 bg-zinc-900/30 opacity-70'
+                }`}
+              >
+                <span className="text-xs font-mono text-zinc-600 mt-1 shrink-0 w-6">{item.phase}</span>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 mb-1">
+                    <span className="text-white font-semibold">{item.title}</span>
+                    <span
+                      className={`text-xs px-2 py-0.5 rounded-full ${
+                        item.status === 'Live'
+                          ? 'bg-green-500/10 text-green-400 border border-green-500/20'
+                          : 'bg-zinc-800 text-zinc-500 border border-zinc-700'
+                      }`}
+                    >
+                      {item.status}
+                    </span>
+                  </div>
+                  <p className="text-zinc-400 text-sm leading-relaxed">{item.desc}</p>
+                </div>
               </div>
             ))}
           </div>

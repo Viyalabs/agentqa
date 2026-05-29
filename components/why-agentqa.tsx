@@ -146,10 +146,15 @@ export function WhyAgentQA() {
         </div>
 
         {/* Closing line */}
-        <p className="text-center text-base text-zinc-400">
-          Static test suites require an engineer to write them, another to maintain them.{' '}
-          <span className="text-white font-medium">AgentQA requires a URL.</span>
-        </p>
+        <div className="text-center text-base text-zinc-400">
+          <p className="text-sm text-zinc-400 leading-relaxed mb-3">
+            Static test suites go stale the moment your UI changes. Playwright scripts need an engineer to write them, maintain them, and fix them after every redesign. Manual QA doesn&apos;t scale past a certain team size.
+          </p>
+          <p className="text-sm text-zinc-400 leading-relaxed">
+            AgentQA works on any URL, in any framework, with zero configuration.{' '}
+            <span className="text-white font-medium">The reliability intelligence compounds with every scan — not worse.</span>
+          </p>
+        </div>
 
       </div>
     </section>
