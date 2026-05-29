@@ -23,14 +23,14 @@ const CARDS = [
     iconBg: 'bg-blue-500/10',
     border: 'border-blue-500/20',
     title: 'A new infrastructure layer is emerging',
-    body: 'Every AI-built app needs a real-browser reliability pass before it ships. This layer didn\'t exist. AgentQA is building it — automated, intelligent, and continuous.',
+    body: 'Every AI-built app needs a real-browser reliability pass before it ships. This layer didn\'t exist. AgentQA is that layer — automated, intelligent, and continuously improving.',
   },
 ]
 
 const ANALOGS = [
   { name: 'Stripe', claim: 'made payments infrastructure accessible to every developer' },
   { name: 'Vercel', claim: 'made deployment infrastructure accessible to every team' },
-  { name: 'AgentQA', claim: 'is making reliability infrastructure accessible to every team that ships software', highlight: true },
+  { name: 'AgentQA', claim: 'makes reliability infrastructure accessible to every team that ships software', highlight: true },
 ]
 
 export function WhyNow() {

@@ -34,7 +34,7 @@ const COMPARISON_ROWS: ComparisonRow[] = [
   { aspect: 'Time to results',traditional: 'Hours to days',                   agentqa: 'Under 2 minutes'                },
   { aspect: 'Mobile testing', traditional: 'Manual device checks',             agentqa: 'Automatic on every scan'        },
   { aspect: 'AI root cause',  traditional: 'None',                             agentqa: 'Every issue explained', check: true },
-  { aspect: 'Maintenance',    traditional: 'Scripts go stale — need rewrites', agentqa: 'Nothing to maintain'            },
+  { aspect: 'Maintenance',    traditional: 'Scripts go stale — need rewrites', agentqa: 'Intelligence that compounds'      },
 ]
 
 export function WhyAgentQA() {

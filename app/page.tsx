@@ -68,11 +68,11 @@ export default async function HomePage() {
         {/* 2. Live scan gallery */}
         <RecentReports />
 
-        {/* 3. Why AgentQA — problem + comparison */}
-        <WhyAgentQA />
-
-        {/* 4b. Why now — market timing & investor narrative */}
+        {/* 3. Why now — market timing sets up the problem */}
         <WhyNow />
+
+        {/* 4. Why AgentQA — problem + comparison */}
+        <WhyAgentQA />
 
         {/* 4. How it works */}
         <HowItWorks />
