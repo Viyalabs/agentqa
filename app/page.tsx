@@ -2,7 +2,6 @@ import { Hero } from '@/components/hero'
 import { Navbar } from '@/components/navbar'
 import { getHomeStats } from '@/lib/stats'
 import { WhyAgentQA } from '@/components/why-agentqa'
-import { HowItWorks } from '@/components/how-it-works'
 import { DemoScan } from '@/components/demo-scan'
 import { AiMoat } from '@/components/ai-moat'
 import { Features } from '@/components/features'
@@ -12,8 +11,6 @@ import { CtaBanner } from '@/components/cta-banner'
 import { Pricing } from '@/components/pricing'
 import { Footer } from '@/components/footer'
 import { MobileCta } from '@/components/mobile-cta'
-import { AboutSection } from '@/components/about-section'
-import { WhyNow } from '@/components/why-now'
 
 const jsonLd = {
   '@context': 'https://schema.org',
@@ -22,7 +19,7 @@ const jsonLd = {
   applicationCategory: 'DeveloperApplication',
   operatingSystem: 'Web',
   description:
-    'AgentQA is an autonomous AI QA agent that tests your web app using a real browser, detects bugs, captures screenshots, finds JS errors, tests mobile responsiveness, and delivers a QA report in under 2 minutes.',
+    'AgentQA is the AI reliability intelligence platform for modern software teams. Real browser testing, regression detection, and AI root cause analysis on every deploy.',
   url: process.env.NEXT_PUBLIC_APP_URL ?? 'https://agentqa.viyalabs.com',
   offers: {
     '@type': 'Offer',
@@ -35,16 +32,15 @@ const jsonLd = {
     url: 'https://viyalabs.com',
   },
   featureList: [
-    'Autonomous AI QA agent',
-    'Automated website testing',
-    'Real browser Playwright testing',
-    'JavaScript error detection',
+    'AI reliability intelligence',
+    'Real browser testing with Playwright',
+    'JavaScript error detection with stack traces',
     'Mobile responsiveness testing',
-    'Screenshot capture',
+    'Regression detection across deploys',
+    'AI root cause analysis with Claude',
+    'Cross-scan failure pattern library',
+    'CI/CD integration',
     'QA score report',
-    'Bug detection',
-    'No setup required',
-    'Works with Cursor, Replit, Lovable',
   ],
 }
 
@@ -62,41 +58,32 @@ export default async function HomePage() {
       <Navbar />
 
       <main>
-        {/* 1. Hero + Who Is This For */}
+        {/* 1. Hero + audience segments */}
         <Hero stats={stats} />
 
-        {/* 2. Live scan gallery */}
+        {/* 2. Live scan evidence — proof before explanation */}
         <RecentReports />
 
-        {/* 3. Why now — market timing sets up the problem */}
-        <WhyNow />
-
-        {/* 4. Why AgentQA — problem + comparison */}
+        {/* 3. The problem + direct comparison */}
         <WhyAgentQA />
 
-        {/* 4. How it works */}
-        <HowItWorks />
-
-        {/* 5. Live demo scan */}
-        <DemoScan />
-
-        {/* 6. AI moat — root cause + fix */}
-        <AiMoat />
-
-        {/* 7. Full feature set */}
+        {/* 4. What it covers */}
         <Features />
 
-        {/* 8. Reliability intelligence */}
+        {/* 5. AI differentiation — root cause + pattern intelligence */}
+        <AiMoat />
+
+        {/* 6. The moat — live pattern data */}
         <ReliabilityIntelligence />
 
-        {/* 9. CTA */}
-        <CtaBanner />
+        {/* 7. Try it live */}
+        <DemoScan />
 
-        {/* 10. Pricing */}
+        {/* 8. Pricing */}
         <Pricing />
 
-        {/* 11. Company */}
-        <AboutSection />
+        {/* 9. Close */}
+        <CtaBanner />
       </main>
 
       <Footer />

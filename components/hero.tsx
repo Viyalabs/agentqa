@@ -212,10 +212,6 @@ export function Hero({ stats }: { stats?: HomeStats }) {
                 <ScanForm />
               </div>
 
-              <p className="text-sm text-zinc-500 mt-5 text-center lg:text-left">
-                Real browser · AI root-cause analysis · Regression detection · CI/CD-ready
-              </p>
-
               {/* Traction — only rendered when real DB data exists */}
               {stats && stats.appsScanned > 0 && (
                 <div className="mt-8 pt-8 border-t border-zinc-800/60">
