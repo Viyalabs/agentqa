@@ -22,12 +22,12 @@ export function FAQ() {
   const [open, setOpen] = useState<number | null>(0)
 
   return (
-    <section className="py-16 border-t border-zinc-800/40">
+    <section className="py-20 border-t border-zinc-800/40">
       <div className="max-w-6xl mx-auto px-6">
         <div className="max-w-3xl mx-auto">
           <div className="text-center mb-10">
-            <p className="text-xs font-mono text-blue-400 tracking-widest uppercase mb-3">FAQ</p>
-            <h2 className="text-3xl md:text-4xl font-semibold tracking-tight text-white mb-4">
+            <p className="text-xs uppercase tracking-[0.2em] text-zinc-500 mb-3">FAQ</p>
+            <h2 className="text-4xl md:text-5xl font-semibold tracking-tight text-white mb-4">
               Common questions
             </h2>
             <p className="text-base text-zinc-400 leading-relaxed">
@@ -46,7 +46,7 @@ export function FAQ() {
                   onClick={() => setOpen(open === i ? null : i)}
                   aria-expanded={open === i}
                 >
-                  <span className="text-white font-semibold text-xl leading-snug">{faq.q}</span>
+                  <span className="text-white font-semibold text-base leading-snug">{faq.q}</span>
                   <ChevronDown
                     className={`h-4 w-4 text-zinc-500 shrink-0 transition-transform duration-200 ${
                       open === i ? 'rotate-180' : ''

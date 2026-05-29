@@ -11,7 +11,7 @@ function focusScanInput() {
 
 export function CtaBanner() {
   return (
-    <section className="relative py-16 border-t border-blue-500/15 overflow-hidden">
+    <section className="relative py-20 border-t border-blue-500/15 overflow-hidden">
       {/* Faint radial glow — depth without noise */}
       <div className="absolute inset-0 pointer-events-none">
         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[640px] h-[280px] bg-blue-600/8 blur-3xl rounded-full" />
