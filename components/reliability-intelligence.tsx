@@ -89,9 +89,8 @@ export async function ReliabilityIntelligence() {
             </h2>
           </div>
           <p className="text-base text-zinc-400 leading-relaxed lg:pb-1">
-            Every scan contributes to a shared failure intelligence layer. Known bug signatures are
-            matched instantly — no Claude call, no latency. Regressions are tracked across
-            deploys, not just per scan.
+            Every scan feeds a shared pattern library. Known bug signatures are matched instantly —
+            no Claude call, no latency. Regressions are tracked across deploys, not just per scan.
           </p>
         </div>
 

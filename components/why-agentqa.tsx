@@ -47,7 +47,7 @@ export function WhyAgentQA() {
           <div>
             <p className="text-xs uppercase tracking-[0.2em] text-zinc-500 mb-4">Why AgentQA</p>
             <h2 className="text-4xl md:text-5xl font-semibold tracking-tight text-white leading-tight">
-              The reliability gap is growing.
+              The QA gap is growing.
               <br />
               <span className="text-blue-400">AgentQA closes it.</span>
             </h2>

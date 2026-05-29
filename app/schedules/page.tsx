@@ -384,7 +384,7 @@ export default function SchedulesPage() {
           <div>
             <h1 className="text-3xl font-semibold tracking-tight text-white mb-1">My Schedules</h1>
             <p className="text-sm text-zinc-500">
-              Automated reliability monitoring for your websites.
+              Automated QA testing on a recurring schedule.
             </p>
           </div>
           {email && (

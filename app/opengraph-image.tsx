@@ -88,7 +88,7 @@ export default function OGImage() {
             marginBottom: 24,
           }}
         >
-          The AI reliability layer{' '}
+          The QA layer{' '}
           <span
             style={{
               background: 'linear-gradient(90deg, #60A5FA, #22D3EE)',
@@ -96,7 +96,7 @@ export default function OGImage() {
               color: 'transparent',
             }}
           >
-            for every deploy
+            your app ships without
           </span>
         </div>
 

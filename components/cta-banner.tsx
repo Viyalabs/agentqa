@@ -30,7 +30,7 @@ export function CtaBanner() {
 
           <p className="text-sm text-zinc-400 leading-relaxed mb-6 max-w-md mx-auto">
             Most regressions are found by users, not the team that shipped them.
-            Continuous reliability testing on every deploy changes that.
+            Automated QA on every deploy changes that.
           </p>
 
           <div className="flex flex-col items-center gap-3">

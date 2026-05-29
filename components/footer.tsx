@@ -20,7 +20,7 @@ export function Footer() {
             </div>
             <p className="text-xs text-zinc-600 mb-4">by Praveen Kumar · Viyalabs · Chennai, India</p>
             <p className="text-xs text-zinc-500 leading-relaxed">
-              The AI reliability platform for modern software teams.
+              Automated QA testing for modern software teams.
             </p>
           </div>
 

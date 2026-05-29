@@ -13,7 +13,7 @@ const PILLARS = [
   },
   {
     icon: Sparkles,
-    title: 'AI reliability intelligence',
+    title: 'AI root-cause analysis',
     body: 'Claude AI analyzes every detected issue — root cause, technical explanation, and a developer-ready fix. Not just detection. Explanation.',
     color: 'text-cyan-400',
     bg: 'bg-cyan-500/10',
@@ -37,7 +37,7 @@ export function AboutSection() {
           <div>
             <p className="text-xs font-mono text-blue-400 tracking-widest uppercase mb-3">About AgentQA</p>
             <h2 className="text-3xl md:text-4xl font-semibold tracking-tight text-white mb-5">
-              The reliability layer for modern software
+              Automated QA for modern software
             </h2>
             <p className="text-zinc-400 leading-relaxed mb-4">
               AI coding tools are changing how software gets built — apps that used to take months now ship in days. But speed without reliability isn&apos;t progress. Production bugs erode trust faster than features build it.

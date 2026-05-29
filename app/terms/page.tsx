@@ -4,7 +4,7 @@ import { Activity } from 'lucide-react'
 
 export const metadata: Metadata = {
   title: 'Terms of Service — AgentQA',
-  description: 'Terms of service for AgentQA, an AI reliability platform by Viyalabs.',
+  description: 'Terms of service for AgentQA, an automated QA testing platform by Viyalabs.',
   robots: { index: true },
 }
 
@@ -34,7 +34,7 @@ export default function TermsPage() {
           </Section>
 
           <Section title="What AgentQA does">
-            AgentQA is an automated QA and reliability platform. It scans publicly accessible web applications using a real browser, detects issues, and generates reports with AI-powered analysis. You submit a URL; we test what&apos;s publicly accessible.
+            AgentQA is an automated QA testing platform. It scans publicly accessible web applications using a real browser, detects issues, and generates reports with AI-powered analysis. You submit a URL; we test what&apos;s publicly accessible.
           </Section>
 
           <Section title="Acceptable use">
@@ -51,7 +51,7 @@ export default function TermsPage() {
           </Section>
 
           <Section title="Intellectual property">
-            Scan reports and outputs belong to you. AgentQA retains anonymized, aggregated data about issue patterns across all scans to improve the product and its AI reliability intelligence.
+            Scan reports and outputs belong to you. AgentQA retains anonymized, aggregated data about issue patterns across all scans to improve the product and its AI analysis.
           </Section>
 
           <Section title="Limitation of liability">

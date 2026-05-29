@@ -7,9 +7,9 @@ import './globals.css'
 const inter = Inter({ subsets: ['latin'] })
 
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? 'https://agentqa.viyalabs.com'
-const TITLE = 'AgentQA — AI Reliability Platform for Web Apps | Viyalabs'
+const TITLE = 'AgentQA — Automated QA Testing for Web Apps | Viyalabs'
 const DESCRIPTION =
-  'AgentQA by Viyalabs is the AI reliability platform for modern software teams. Automated QA on every deploy — real Chrome browser, regression detection, AI root cause analysis, and CI/CD integration. Built for SaaS startups, AI-generated apps, and engineering teams.'
+  'AgentQA by Viyalabs is the automated QA testing platform for modern web apps. Real Chrome browser testing on every deploy — JS error detection, regression tracking, AI root cause analysis, and CI/CD integration. Built for SaaS startups, AI-generated apps, and engineering teams.'
 
 export const metadata: Metadata = {
   metadataBase: new URL(APP_URL),
@@ -22,7 +22,7 @@ export const metadata: Metadata = {
   description: DESCRIPTION,
 
   keywords: [
-    'AI reliability platform',
+    'automated QA testing',
     'AI QA agent',
     'automated QA tool',
     'regression detection',

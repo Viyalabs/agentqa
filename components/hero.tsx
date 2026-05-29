@@ -193,7 +193,7 @@ export function Hero({ stats }: { stats?: HomeStats }) {
                   <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75" />
                   <span className="relative inline-flex rounded-full h-2 w-2 bg-blue-500" />
                 </span>
-                AI Reliability Intelligence
+                Automated QA Testing
               </div>
 
               {/* Headline */}
@@ -213,7 +213,7 @@ export function Hero({ stats }: { stats?: HomeStats }) {
               </div>
 
               <p className="text-sm text-zinc-500 mt-5 text-center lg:text-left">
-                Real browser · Continuous monitoring · Regression detection · CI/CD-ready
+                Real browser · AI root-cause analysis · Regression detection · CI/CD-ready
               </p>
 
               {/* Traction — only rendered when real DB data exists */}

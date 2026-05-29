@@ -4,10 +4,10 @@ import { Activity, ArrowRight, MapPin, Code2, Sparkles, Shield } from 'lucide-re
 
 export const metadata: Metadata = {
   title: 'About — AgentQA',
-  description: 'AgentQA is an AI reliability platform for modern software teams, built by Viyalabs in Chennai, India.',
+  description: 'AgentQA is an automated QA testing platform for modern web apps, built by Praveen Kumar at Viyalabs in Chennai, India.',
   openGraph: {
-    title: 'About AgentQA — AI Reliability Platform',
-    description: 'We\'re building the reliability layer for modern software. Real browser testing, AI root cause analysis, cross-scan pattern intelligence.',
+    title: 'About AgentQA — Automated QA Testing',
+    description: 'Automated QA testing for modern web apps. Real browser testing, AI root cause analysis, and cross-scan regression detection.',
   },
 }
 
@@ -30,7 +30,7 @@ const WHAT_WE_BUILD = [
   },
   {
     icon: Sparkles,
-    title: 'AI reliability intelligence',
+    title: 'AI root-cause analysis',
     body: 'Claude AI analyzes every detected issue — root cause, technical explanation, and developer-ready fix suggestion. Not just detection: explanation.',
     color: 'text-cyan-400',
     bg: 'bg-cyan-500/10',
@@ -73,10 +73,10 @@ export default function AboutPage() {
         <div className="mb-16 max-w-3xl">
           <p className="text-xs font-mono text-blue-400 tracking-widest uppercase mb-4">About AgentQA</p>
           <h1 className="text-4xl md:text-5xl font-semibold tracking-tight text-white mb-6 leading-tight">
-            The reliability layer<br />for modern software
+            Automated QA testing<br />for modern software
           </h1>
           <p className="text-xl text-zinc-400 leading-relaxed">
-            We&apos;re building the AI reliability platform for the next generation of software. As AI coding tools make shipping faster than ever, teams need a smarter way to ensure quality.
+            We&apos;re building the automated QA testing platform for the next generation of software. As AI coding tools make shipping faster than ever, teams need a smarter way to catch bugs before users do.
           </p>
         </div>
 

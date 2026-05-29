@@ -11,7 +11,7 @@ const DEMOS = [
   {
     label: 'AI-Built SaaS App',
     url: `${APP_URL}/demo-app`,
-    description: 'A realistic AI-generated dashboard with seeded issues — guaranteed findings every scan',
+    description: '4-page SaaS app with seeded issues — guaranteed JS errors, broken images, mobile overflow, and failed API calls every scan',
     icon: Layers,
     color: 'text-blue-400',
     bg: 'bg-blue-500/10 border-blue-500/20 hover:border-blue-500/40',

@@ -49,8 +49,8 @@ const RELEASES: Release[] = [
     icon: RefreshCw,
     iconColor: 'text-purple-400',
     iconBg: 'bg-purple-500/10',
-    headline: 'Reliability Intelligence Platform',
-    description: 'AgentQA becomes a continuous monitoring platform — recurring scans, regression classification, reliability timelines, and authenticated-flow testing.',
+    headline: 'Regression Intelligence',
+    description: 'AgentQA adds scheduled scans, regression classification, pattern memory, reliability timelines, and authenticated-flow testing.',
     changes: [
       { type: 'feat', text: 'Recurring scan scheduling — run QA daily, weekly, or on any cadence' },
       { type: 'feat', text: 'Regression intelligence — classifies issues as New, Resolved, Recurring, or Worsened across deploys' },
@@ -169,7 +169,7 @@ export default function ChangelogPage() {
           <p className="text-xs font-mono text-blue-400 tracking-widest uppercase mb-4">Product Updates</p>
           <h1 className="text-3xl md:text-4xl font-semibold tracking-tight text-white mb-4">Changelog</h1>
           <p className="text-zinc-400 leading-relaxed max-w-xl">
-            Every release, feature, and improvement to AgentQA — the AI reliability platform for modern software teams.
+            Every release, feature, and improvement to AgentQA — automated QA testing for modern software teams.
             Built by <a href="https://viyalabs.com" target="_blank" rel="noopener noreferrer" className="text-zinc-300 hover:text-white transition-colors">Viyalabs</a> in Chennai, India.
           </p>
         </div>
