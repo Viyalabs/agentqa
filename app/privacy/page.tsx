@@ -14,12 +14,14 @@ export default function PrivacyPage() {
   return (
     <div className="min-h-screen bg-[#0A0A0F]">
       {/* Nav */}
-      <nav className="border-b border-zinc-800/50 bg-[#0A0A0F]/90 backdrop-blur-md">
-        <div className="max-w-4xl mx-auto px-4 h-14 flex items-center">
-          <Link href="/" className="flex items-center gap-2 font-semibold text-white hover:opacity-90 transition-opacity">
+      <nav className="sticky top-0 z-50 border-b border-zinc-800/50 bg-[#0A0A0F]/90 backdrop-blur-md">
+        <div className="max-w-4xl mx-auto px-6 h-16 flex items-center justify-between">
+          <Link href="/" className="flex items-center gap-2 hover:opacity-90 transition-opacity">
             <Activity className="h-5 w-5 text-blue-400" />
-            AgentQA
+            <span className="font-semibold text-white">AgentQA</span>
+            <span className="text-xs text-zinc-600 font-normal hidden md:inline ml-0.5">by Viyalabs</span>
           </Link>
+          <Link href="/" className="text-sm text-zinc-400 hover:text-white transition-colors">← Back</Link>
         </div>
       </nav>
 

@@ -4,10 +4,10 @@ import { Activity, ArrowRight, MapPin, Code2, Sparkles, Shield } from 'lucide-re
 
 export const metadata: Metadata = {
   title: 'About — AgentQA',
-  description: 'AgentQA is an automated QA testing platform for modern web apps, built by Praveen Kumar at Viyalabs in Chennai, India.',
+  description: 'AgentQA is the AI reliability platform for modern software teams, built by Praveen Kumar at Viyalabs in Chennai, India. Real browser testing, regression detection, and AI root cause analysis.',
   openGraph: {
-    title: 'About AgentQA — Automated QA Testing',
-    description: 'Automated QA testing for modern web apps. Real browser testing, AI root cause analysis, and cross-scan regression detection.',
+    title: 'About AgentQA — AI Reliability Platform | Viyalabs',
+    description: 'The AI reliability platform for modern software. Real browser testing, regression detection, and AI root cause analysis on every deploy.',
   },
 }
 
@@ -51,9 +51,10 @@ export default function AboutPage() {
       {/* Nav */}
       <nav className="sticky top-0 z-50 border-b border-zinc-800/50 bg-[#0A0A0F]/90 backdrop-blur-md">
         <div className="max-w-5xl mx-auto px-6 h-16 flex items-center justify-between">
-          <Link href="/" className="flex items-center gap-2.5 font-semibold text-white hover:opacity-90 transition-opacity">
+          <Link href="/" className="flex items-center gap-2 hover:opacity-90 transition-opacity">
             <Activity className="h-5 w-5 text-blue-400" />
-            AgentQA
+            <span className="font-semibold text-white">AgentQA</span>
+            <span className="text-xs text-zinc-600 font-normal hidden md:inline ml-0.5">by Viyalabs</span>
           </Link>
           <div className="flex items-center gap-6 text-sm text-zinc-400">
             <Link href="/contact" className="hover:text-white transition-colors">Contact</Link>
@@ -73,10 +74,10 @@ export default function AboutPage() {
         <div className="mb-16 max-w-3xl">
           <p className="text-xs font-mono text-blue-400 tracking-widest uppercase mb-4">About AgentQA</p>
           <h1 className="text-4xl md:text-5xl font-semibold tracking-tight text-white mb-6 leading-tight">
-            Automated QA testing<br />for modern software
+            The AI reliability layer<br />for modern software
           </h1>
           <p className="text-xl text-zinc-400 leading-relaxed">
-            We&apos;re building the automated QA testing platform for the next generation of software. As AI coding tools make shipping faster than ever, teams need a smarter way to catch bugs before users do.
+            We&apos;re building the AI reliability platform for the next generation of software. As AI coding tools make shipping faster than ever, teams need automated QA that keeps up.
           </p>
         </div>
 
@@ -143,8 +144,8 @@ export default function AboutPage() {
           </div>
           <div className="p-5 rounded-xl border border-zinc-800 bg-zinc-900/40">
             <p className="text-xs text-zinc-600 uppercase tracking-wider mb-2">Stage</p>
-            <p className="text-white font-semibold">Early Access</p>
-            <p className="text-zinc-500 text-sm mt-1">Actively launching</p>
+            <p className="text-white font-semibold">Live · Free tier</p>
+            <p className="text-zinc-500 text-sm mt-1">Shipping weekly</p>
           </div>
         </div>
 
@@ -218,7 +219,7 @@ export default function AboutPage() {
 
       <footer className="border-t border-zinc-800 mt-16 py-8">
         <div className="max-w-5xl mx-auto px-6 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-zinc-600">
-          <span>© {new Date().getFullYear()} Viyalabs. All rights reserved.</span>
+          <span>© {new Date().getFullYear()} Viyalabs · Chennai, India. All rights reserved.</span>
           <div className="flex gap-6">
             <Link href="/" className="hover:text-zinc-400 transition-colors">Home</Link>
             <Link href="/contact" className="hover:text-zinc-400 transition-colors">Contact</Link>

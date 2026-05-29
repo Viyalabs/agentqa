@@ -1,6 +1,6 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
-import { Activity, Mail, Github, Globe, MapPin, Twitter, Linkedin } from 'lucide-react'
+import { Activity, Mail, Github, Globe, MapPin, Twitter, Linkedin, Building2 } from 'lucide-react'
 
 export const metadata: Metadata = {
   title: 'Contact — AgentQA',
@@ -14,9 +14,10 @@ export default function ContactPage() {
       {/* Nav */}
       <nav className="sticky top-0 z-50 border-b border-zinc-800/50 bg-[#0A0A0F]/90 backdrop-blur-md">
         <div className="max-w-4xl mx-auto px-6 h-16 flex items-center justify-between">
-          <Link href="/" className="flex items-center gap-2.5 font-semibold text-white hover:opacity-90 transition-opacity">
+          <Link href="/" className="flex items-center gap-2 hover:opacity-90 transition-opacity">
             <Activity className="h-5 w-5 text-blue-400" />
-            AgentQA
+            <span className="font-semibold text-white">AgentQA</span>
+            <span className="text-xs text-zinc-600 font-normal hidden md:inline ml-0.5">by Viyalabs</span>
           </Link>
           <Link href="/" className="text-sm text-zinc-400 hover:text-white transition-colors">
             ← Back to home
@@ -69,7 +70,7 @@ export default function ContactPage() {
             className="flex items-center gap-4 p-5 rounded-xl border border-zinc-800 bg-zinc-900/40 hover:border-zinc-700 transition-colors group"
           >
             <div className="w-10 h-10 rounded-lg bg-zinc-800 border border-zinc-700 flex items-center justify-center shrink-0">
-              <Globe className="h-5 w-5 text-zinc-400" />
+              <Building2 className="h-5 w-5 text-zinc-400" />
             </div>
             <div>
               <p className="text-white font-semibold text-sm group-hover:text-zinc-300 transition-colors">Viyalabs on Google</p>

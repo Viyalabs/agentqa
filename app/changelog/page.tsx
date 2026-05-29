@@ -29,8 +29,8 @@ const RELEASES: Release[] = [
     icon: Sparkles,
     iconColor: 'text-blue-400',
     iconBg: 'bg-blue-500/10',
-    headline: 'Startup Positioning & Company Identity',
-    description: 'Significant improvements to product positioning, company trust signals, and investor-facing copy.',
+    headline: 'Platform Relaunch & Company Pages',
+    description: 'AgentQA launches dedicated company pages, expands the Continuous Monitoring feature group, and ships platform-level identity across all surfaces.',
     changes: [
       { type: 'feat', text: 'New About page with company mission, story, and tech stack' },
       { type: 'feat', text: 'Contact and Terms pages' },

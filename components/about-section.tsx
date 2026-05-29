@@ -37,7 +37,7 @@ export function AboutSection() {
           <div>
             <p className="text-xs font-mono text-blue-400 tracking-widest uppercase mb-3">About AgentQA</p>
             <h2 className="text-3xl md:text-4xl font-semibold tracking-tight text-white mb-5">
-              Automated QA for modern software
+              The reliability layer for modern software
             </h2>
             <p className="text-zinc-400 leading-relaxed mb-4">
               AI coding tools are changing how software gets built — apps that used to take months now ship in days. But speed without reliability isn&apos;t progress. Production bugs erode trust faster than features build it.
@@ -63,9 +63,9 @@ export function AboutSection() {
                 Chennai, India
               </span>
               <span className="text-zinc-700">·</span>
-              <span>Built by Praveen Kumar</span>
+              <span>Viyalabs</span>
               <span className="text-zinc-700">·</span>
-              <span>Viyalabs, 2025</span>
+              <span>Founded 2025</span>
             </div>
 
             <Link
