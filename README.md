@@ -14,6 +14,7 @@ Built by [Praveen Kumar](https://www.linkedin.com/in/praveen-perfeito-75852a64/)
 |---|---|
 | **Real browser crawling** | Playwright Chromium visits every page — not a headless HTTP client |
 | **Multi-page BFS crawl** | Up to 5 pages, depth 1, skipping admin/auth/cart routes automatically |
+| **Authenticated scanning** | Inject cookies, storage state, or HTTP headers to scan behind login — sessions stored encrypted (AES-256-GCM) in `scan_sessions` |
 | **Issue detection** | 404s, JS crashes, console errors, broken images, failed API calls, broken forms, slow loads, mobile overflow, large assets, missing alt text, missing meta tags |
 | **QA Score** | 0–100, severity-weighted (critical −20 cap 60, medium −8 cap 30, low −2 cap 10) |
 | **Desktop + mobile screenshots** | Full captures at 1280×800 and 375×812 per page |
@@ -195,7 +196,7 @@ Returns `200` when score ≥ `failThreshold`, `422` when score falls below.
 ```
 agentqa/
 ├── app/
-│   ├── page.tsx                        # Homepage (ISR, 1h revalidate) — 11 sections
+│   ├── page.tsx                        # Homepage (ISR, 1h revalidate) — 9 sections
 │   ├── layout.tsx                      # Root layout + SEO metadata + Vercel Analytics
 │   ├── opengraph-image.tsx             # Homepage OG image (edge)
 │   ├── icon.svg                        # SVG favicon
@@ -234,15 +235,16 @@ agentqa/
 │   └── terms/page.tsx                  # /terms
 ├── components/
 │   ├── hero.tsx                        # Hero + ForWhoSection — scan form, traction stats (live DB)
-│   ├── why-agentqa.tsx                 # Problem narrative + compact comparison table (merged)
-│   ├── how-it-works.tsx                # 4-step process
+│   ├── why-agentqa.tsx                 # Problem framing + compact comparison table (Traditional QA vs AgentQA)
+│   ├── why-now.tsx                     # Market timing — AI shipping speed gap + category positioning
+│   ├── how-it-works.tsx                # 4-step process (not on homepage, reusable)
 │   ├── demo-scan.tsx                   # Live demo — controlled /demo-app + 2 real-world sites
 │   ├── ai-moat.tsx                     # AI root cause + fix deep dive
-│   ├── features.tsx                    # Full feature grid (5 categories)
+│   ├── features.tsx                    # Feature grid (3 categories: Detection, Debugging, Continuous Monitoring)
 │   ├── reliability-intelligence.tsx    # Cross-scan pattern memory, regression tracking (live DB)
 │   ├── cta-banner.tsx                  # Conversion CTA
 │   ├── pricing.tsx                     # Free tier + Pro waitlist form (POST /api/waitlist)
-│   ├── about-section.tsx               # Founder + company — homepage legitimacy anchor
+│   ├── about-section.tsx               # Company + mission section (used on /about)
 │   ├── recent-reports.tsx              # Live scan gallery (server component, ISR 60s)
 │   ├── navbar.tsx                      # Fixed nav
 │   ├── footer.tsx                      # Four-column footer with all social links
@@ -264,6 +266,7 @@ agentqa/
 ├── services/
 │   ├── scanner.ts                      # Scan orchestrator — timeout, screenshots, notify email
 │   ├── scorer.ts                       # QA score calculation
+│   ├── auth-session.ts                 # Authenticated scanning — AES-256-GCM session storage, CRUD
 │   ├── ai-analyzer.ts                  # AI analysis orchestrator — batches issues, calls Claude
 │   ├── ai-queue.ts                     # AI job queue — enqueue, claim, complete, fail with backoff
 │   ├── ai-config.ts                    # Model tiering (Haiku default, Sonnet for critical issues)
@@ -306,7 +309,7 @@ agentqa/
 | `WEBHOOK_API_KEY` | optional | — | CI/CD webhook secret (`x-api-key` header) |
 | `WORKER_SECRET` | optional | — | Protects `/api/scan/worker` and `/api/ai/worker` |
 | `CRON_SECRET` | optional | — | Vercel sets automatically on Pro; required if self-hosting |
-| `SESSION_ENCRYPTION_KEY` | optional | — | AES-256-GCM key for auth session credentials (64 hex chars) |
+| `SESSION_ENCRYPTION_KEY` | optional* | — | AES-256-GCM key for auth session credentials (64 hex chars). Required to use authenticated scanning. Generate: `node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"` |
 | `FOUNDER_TOKEN` | optional | — | Header token for internal access without email check |
 | `INTERNAL_EMAILS` | optional | — | Comma-separated emails — bypass rate limits, full AI analysis |
 | `BETA_EMAILS` | optional | — | Comma-separated emails — elevated limits (20 scans/hr) |
@@ -325,7 +328,8 @@ agentqa/
 
 | Table / View | Purpose |
 |---|---|
-| `scans` | One row per scan — URL, status, score, `notify_email`, `ip`, `ai_overview`, `session_id` |
+| `scans` | One row per scan — URL, status, score, `notify_email`, `ip`, `ai_overview`, `session_id`, `prev_scan_id` |
+| `scan_sessions` | Encrypted auth credentials for authenticated scanning — cookies, storage state, or headers |
 | `scanned_pages` | Per-page data — status code, load time, screenshot URLs, network details |
 | `issues` | Every detected issue — type, severity, details JSONB, `ai_summary`, `root_cause`, `fix_suggestion`, `signature_id` |
 | `issues_enriched` | Full AI analysis record — confidence, model version, pattern cache hit |
